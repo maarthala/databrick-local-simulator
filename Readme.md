@@ -1,8 +1,6 @@
-# databrick-local-simulator
+# Databrick Local Simulator
 
-<p align="center">
-  <img src="./flow.png" alt="Data Engineering Pipeline Flow" width="700"/>
-</p>
+
 
 A ready-to-use, containerized Data Engineering learning environment inspired by real-world data pipelines. This project brings together popular open-source tools—such as Airflow, Spark, Kafka, ClickHouse, Superset, Trino, Jupyter, and LocalStack—using Docker Compose for seamless orchestration and hands-on practice.
 
@@ -17,15 +15,27 @@ A ready-to-use, containerized Data Engineering learning environment inspired by 
 
 ---
 
+<p align="center">
+  <img src="./flow.png" alt="Data Engineering Pipeline Flow" width="700"/>
+</p>
+
 ## Quick Start
 
 1. **Clone the repository**
+   ```sh
+   git clone https://github.com/maarthala/databrick-local-simulator.git
+   ```
 2. **Start the stack:**  
    ```sh
+   # containes docker compose yaml files
    sh env-up.sh
    ```
 3. **Open the dashboard:**  
-   Visit [http://localhost:8000](http://localhost:8000) to access all tools and documentation.
+
+![Data Engineering Pipeline Dashboard](./dashboard.png)
+
+Wait for the page to display.  
+Visit [http://localhost:8000](http://localhost:8000) to access all tools.
 
 To shut down the environment:
 ```sh
@@ -207,7 +217,7 @@ Refer to the [ClickHouse documentation](https://clickhouse.com/docs/en/) for adv
 
 A set of hands-on, real-world challenges is provided to help you practice and demonstrate your data engineering skills using this environment. Each challenge is based on typical business requirements at Northwind Corp, leveraging the streaming, batch, and analytics capabilities of the stack.
 
-👉 **See [`Tasks.md`](./Tasks.md) for the full list of challenges and requirements.**
+**See [`Tasks.md`](./Tasks.md) for the full list of challenges and requirements.**
 
 ---
 
@@ -215,12 +225,7 @@ A set of hands-on, real-world challenges is provided to help you practice and de
 
 - Follow the dashboard instructions to complete data engineering challenges.
 - Use the provided sample data and scripts to build, orchestrate, and analyze pipelines.
-- Refer to the [Help & Documentation](https://github.com/marthala/databrick-local-simulator#readme) for setup, usage, and troubleshooting.
+- Refer to the [Help & Documentation](https://github.com/maarthala/databrick-local-simulator#readme) for setup, usage, and troubleshooting.
 
 ---
-
-
-
-
-
 
