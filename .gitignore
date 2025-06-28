@@ -83,3 +83,4 @@ instance/
 *.sage.py
 *.ipynb
 *.ipynb_checkpoints/
+*/*/__pycache__
