@@ -37,9 +37,9 @@ http://localhost:8123/?query=SELECT+1+FORMAT+JSON
 | tabix            | 8005              | 80                  | Tabix                  | N/A                        |
 | clickhouse-ui    | 8006              | 8080                | Clickhouse UI          | default / default          |
 | trino            | 8007              | 8080                | Trino                  | N/A                        |
-| jupyter          | 8008              | 8888                | Jupyter                | 123456                     |
+| jupyter          | 8008              | 8888                | Jupyter                |                      |
 | kafka            | 9092, 29092       | 9092, 29092         | Kafka                  | N/A                        |
-| clickhouse       | 8123, 9000        | 8123, 9000          | Clickhouse             | default / default          |
+| clickhouse       | 8123, 9000        | 8123, 9000          | Clickhouse             | default / default / default|
 | localstack       | 4566              | 4566                | LocalStack             | N/A                        |
 | postgres         | 5432              | 5432                | Postgres               | postgres / postgres        |
 | redis            |                   | 6379                | Redis                  | N/A                        |
