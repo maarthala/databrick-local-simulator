@@ -1,0 +1,41 @@
+FROM apache/airflow:3.0.1-python3.10
+
+USER root
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        openjdk-17-jre-headless \
+        wget \
+        curl \
+        unzip \
+        procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Spark
+RUN wget https://archive.apache.org/dist/spark/spark-4.0.0/spark-4.0.0-bin-hadoop3.tgz && \
+    tar -xzf spark-4.0.0-bin-hadoop3.tgz -C /opt && \
+    ln -s /opt/spark-4.0.0-bin-hadoop3 /opt/spark && \
+    rm spark-4.0.0-bin-hadoop3.tgz
+
+
+ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar /opt/spark/jars/
+ADD https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar /opt/spark/jars/
+ADD https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.24.6/bundle-2.24.6.jar /opt/spark/jars/
+ADD https://repo1.maven.org/maven2/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0.jar /opt/spark/jars/
+ADD https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.3.1/jaxb-api-2.3.1.jar /opt/spark/jars/
+ADD https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-impl/2.3.1/jaxb-impl-2.3.1.jar /opt/spark/jars/
+
+RUN chmod 777 /opt/spark/jars/*.jar
+
+# Set environment variables
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV SPARK_HOME=/opt/spark
+ENV PATH=$SPARK_HOME/bin:$JAVA_HOME/bin:$PATH
+
+
+USER airflow
+ADD ./add/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Register the python3 kernel
+RUN python -m ipykernel install --name python3 --display-name "Python 3" --user

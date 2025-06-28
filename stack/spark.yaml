@@ -1,0 +1,44 @@
+version: '3.8'
+
+x-spark-common:
+  &spark-common
+    restart: always
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.spark
+    environment:
+      - SPARK_CONF_DIR=/opt/spark/conf/
+    volumes:
+      - ./code:/code
+      - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+      - ./configs/spark/conf/hive-site.xml:/opt/spark/conf/hive-site.xml
+    networks:
+      - sparknet
+
+services:
+  spark-master:
+    <<: *spark-common
+    hostname: spark-master
+    container_name: spark-master
+    ports:
+      - "7077:7077"
+      - "8002:8080"
+    entrypoint: ["/bin/bash", "-c", "/opt/spark/sbin/start-master.sh  --host spark-master && tail -f /dev/null"]
+
+
+  spark-worker-1:
+    <<: *spark-common
+    hostname: worker-1
+    container_name: spark-worker-1
+    depends_on:
+      - spark-master
+    entrypoint: ["/bin/bash", "-c", "/opt/spark/sbin/start-worker.sh spark://spark-master:7077 && tail -f /dev/null"]
+
+# # Enable additional workers as needed
+#   spark-worker-2:
+#     <<: *spark-common
+#     hostname: worker-2
+#     container_name: spark-worker-2
+#     depends_on:
+#       - spark-master
+#     entrypoint: ["/bin/bash", "-c", "/opt/spark/sbin/start-worker.sh spark://spark-master:7077 && tail -f /dev/null"]

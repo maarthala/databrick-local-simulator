@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  jupyter:
+    container_name: juypter
+    restart: always
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.juypter
+    ports:
+      - "8008:8888"
+    volumes:
+      - ./code:/code
+      - ./code/notebook:/home/jovyan/work
+      - ./configs/jupyter.py:/home/jovyan/.jupyter/jupyter_notebook_config.py
+      - ./configs/spark/spark-defaults.conf:/usr/local/spark/conf/spark-defaults.conf
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=123456
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+    networks:
+      - sparknet

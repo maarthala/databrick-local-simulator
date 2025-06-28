@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: home
+    ports:
+      - "8000:80"
+    restart: always
+    volumes:
+      - ./home:/usr/share/nginx/html:ro
+    depends_on:
+      - airflow-apiserver
+      - kafka-ui
+      - superset
+      - clickhouse
+      - trino
+      - juypter
+      - spark
+      - localstack
+    networks:
+      - sparknet

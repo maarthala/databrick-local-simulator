@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+*.log
+docker-compose.override.yml
+.env
+.env.*
+
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+
+# General
+*.swp
+*.swo
+*.bak
+*.tmp
+.idea/
+.vscode/
+node_modules/
+dist/
+build/
+coverage/
+deleted/
+.venv
+metastore_db
+*.ipynb_checkpoints/
+artifacts/
+notebooks
+.cache/

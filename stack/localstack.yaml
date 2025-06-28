@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+
+  localstack:
+    container_name: localstack
+    image: localstack/localstack
+    restart: always
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - PERSISTENCE=1
+    volumes:
+      - ./code:/code
+      - ./init_scripts/localstack:/etc/localstack/init/ready.d
+    networks:
+      - sparknet
+
+  trino:
+    image: trinodb/trino:latest
+    restart: always
+    container_name: trino
+    ports:
+      - "8007:8080"
+    volumes:
+      - ./configs/trino:/etc/trino
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - localstack
+    networks:
+      - sparknet
+
+
+  # trino-bootstrap:
+  #     image: trinodb/trino:latest
+  #     depends_on:
+  #       trino:
+  #         condition: service_healthy
+  #       hive-metastore:
+  #         condition: service_healthy
+  #     entrypoint: >
+  #       /bin/sh -c "
+  #         sleep 10;
+  #         trino --server http://trino:8080 --catalog hive --execute \"
+  #         CREATE SCHEMA IF NOT EXISTS hive.default
+  #         WITH (location = 's3a://demo-bucket/hive/default/');
+  #         \"
+  #       "
+  #     networks:
+  #       - sparknet
+
+  hive-metastore:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.hive
+    container_name: hive-metastore
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: metastore
+      DB_USER: hive
+      DB_PASSWORD: hive
+      S3_ENDPOINT: http://localstack:4566
+    ports:
+      - "9083:9083"
+    volumes:
+      - ./configs/hive/hive-site.xml:/opt/hive/conf/hive-site.xml
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9083"]
+      interval: 10s
+      retries: 10
+    networks:
+        - sparknet

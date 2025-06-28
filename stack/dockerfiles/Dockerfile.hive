@@ -1,0 +1,29 @@
+# Use an official Hive base image or build from scratch
+FROM apache/hive:3.1.3
+
+USER root
+RUN apt-get update && apt-get install -y netcat curl && apt-get clean
+
+# Set environment variables
+ENV HIVE_HOME=/opt/hive
+ENV PATH=$HIVE_HOME/bin:$PATH
+
+# Add the entrypoint script
+COPY ./add/hive_entrypoint.sh /entrypoint.sh
+# RUN chmod +x /entrypoint.sh
+
+# Optionally install JDBC drivers (PostgreSQL example)
+ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar $HIVE_HOME/lib/
+ADD https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.1.0/hadoop-aws-3.1.0.jar $HIVE_HOME/lib/
+ADD https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.11.271/aws-java-sdk-bundle-1.11.271.jar $HIVE_HOME/lib/
+
+
+# ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar $HIVE_HOME/lib/
+# ADD https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar $HIVE_HOME/lib/
+# ADD https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.24.6/bundle-2.24.6.jar $HIVE_HOME/lib/
+# ADD https://repo1.maven.org/maven2/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0.jar $HIVE_HOME/lib/
+# ADD https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.3.1/jaxb-api-2.3.1.jar $HIVE_HOME/lib/
+# ADD https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-impl/2.3.1/jaxb-impl-2.3.1.jar $HIVE_HOME/lib/
+
+# Start the Hive metastore
+CMD ["/entrypoint.sh"]

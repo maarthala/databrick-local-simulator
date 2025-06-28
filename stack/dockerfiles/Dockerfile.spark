@@ -1,0 +1,19 @@
+FROM spark:4.0.0-python3
+
+USER root
+
+RUN apt-get update && \
+    apt-get install -y rsync && \
+    apt-get clean
+
+
+ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar /opt/spark/jars/
+ADD https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.24.6/bundle-2.24.6.jar /opt/spark/jars/ 
+ADD https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar /opt/spark/jars/
+ADD https://repo1.maven.org/maven2/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0.jar /opt/spark/jars/
+ADD https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.3.1/jaxb-api-2.3.1.jar /opt/spark/jars/
+ADD https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-impl/2.3.1/jaxb-impl-2.3.1.jar /opt/spark/jars/
+
+RUN chown spark:spark /opt/spark/jars/*.jar && chmod 644 /opt/spark/jars/*.jar
+
+USER spark

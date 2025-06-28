@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app-orders:
+    container_name: app-orders
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.app
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_BROKER: kafka:9092
+      TOPIC_NAME: test-topic
+      DB_HOST: postgres
+    command: python /code/northwind/orders-generator.py
+    restart: always
+    volumes:
+      - ./code:/code
+    networks:
+      - sparknet
+  
+  app-price-updates:
+    container_name: app-price-updates
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.app
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_BROKER: kafka:9092
+      TOPIC_NAME: test-topic
+      DB_HOST: postgres
+    command: python /code/northwind/product-price-generator.py
+    restart: always
+    volumes:
+      - ./code:/code
+    networks:
+      - sparknet

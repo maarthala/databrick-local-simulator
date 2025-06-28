@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse
+    restart: always
+    ports:
+      - "8123:8123"   # HTTP interface
+      - "9000:9000"   # Native client 
+    volumes:
+      - ./code:/code
+      - ./init_scripts/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - CLICKHOUSE_DB=default
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=default
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123 || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - sparknet
+
+  tabix:
+    image: spoonest/clickhouse-tabix-web-client
+    container_name: tabix
+    restart: always
+    ports:
+      - "8005:80"
+    depends_on:
+     clickhouse:
+        condition: service_healthy
+    networks:
+      - sparknet
+
+  clickhouse-ui:
+    image: ghcr.io/fulgerx2007/clickhouse-schemaflow-visualizer:latest
+    container_name: clickhouse-ui
+    ports:
+      - "8006:8080"
+    restart: always
+    environment:
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=9000
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=default
+      - CLICKHOUSE_DATABASE=default
+    depends_on:
+     clickhouse:
+        condition: service_healthy
+    networks:
+      - sparknet

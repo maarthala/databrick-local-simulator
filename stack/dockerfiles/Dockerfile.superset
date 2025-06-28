@@ -1,0 +1,14 @@
+FROM apache/superset:4.0.0
+
+USER root
+
+# RUN pip install clickhouse-connect sqlalchemy-trino
+
+RUN pip install \
+    "SQLAlchemy==1.4.54" \
+    "clickhouse-sqlalchemy==0.2.2" \
+    "clickhouse-connect==0.8.18" \
+    "sqlalchemy-trino==0.5.0"
+
+USER superset
+COPY ./add/connections.py /extras/connections.py
