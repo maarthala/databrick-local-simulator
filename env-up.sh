@@ -6,7 +6,7 @@ docker compose \
     -f stack/clickhouse.yaml  \
     -f stack/spark.yaml  \
     -f stack/airflow.yaml  \
-    -f stack/juypter.yaml  \
+    -f stack/jupyter.yaml  \
     -f stack/localstack.yaml  \
     -f stack/app.yaml \
     -f stack/nginx.yaml \
