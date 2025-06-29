@@ -32,12 +32,22 @@ RUN chmod 777 /usr/local/spark/jars/*.jar
 # Set environment variables for Spark 4.0.0
 ENV SPARK_HOME=/usr/local/spark
 ENV PATH=$SPARK_HOME/bin:$PATH
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+# ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
-RUN JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java)))) && \
-echo "export JAVA_HOME=$JAVA_HOME" | sudo tee /etc/profile.d/java_home.sh && \
-echo "JAVA_HOME=$JAVA_HOME"
+
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+        JAVA_HOME="/usr/lib/jvm/java-17-openjdk-arm64"; \
+    else \
+        JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"; \
+    fi && \
+    echo "export JAVA_HOME=$JAVA_HOME" > /etc/profile.d/java_home.sh && \
+    echo "JAVA_HOME=$JAVA_HOME" >> /etc/environment
+
+# Set a default; useful if the above file isn't sourced
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
 
 
 USER $NB_UID
