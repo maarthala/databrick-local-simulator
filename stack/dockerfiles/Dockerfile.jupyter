@@ -13,21 +13,21 @@ RUN apt-get update && \
 # Remove old Spark
 RUN rm -rf /usr/local/spark
 
-# Download and install Spark 4.0.0
-RUN cd /tmp && \
-    wget https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
-    tar xzf spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz -C /usr/local && \
-    rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
-    ln -s /usr/local/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /usr/local/spark
+# # Download and install Spark 4.0.0
+# RUN cd /tmp && \
+#     wget https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
+#     tar xzf spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz -C /usr/local && \
+#     rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
+#     ln -s /usr/local/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /usr/local/spark
 
-ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar /usr/local/spark/jars/
-ADD https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar /usr/local/spark/jars/
-ADD https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.24.6/bundle-2.24.6.jar /usr/local/spark/jars/
-ADD https://repo1.maven.org/maven2/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0.jar /usr/local/spark/jars/
-ADD https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.3.1/jaxb-api-2.3.1.jar /usr/local/spark/jars/
-ADD https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-impl/2.3.1/jaxb-impl-2.3.1.jar /usr/local/spark/jars/
+# ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar /usr/local/spark/jars/
+# ADD https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar /usr/local/spark/jars/
+# ADD https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.24.6/bundle-2.24.6.jar /usr/local/spark/jars/
+# ADD https://repo1.maven.org/maven2/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0.jar /usr/local/spark/jars/
+# ADD https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.3.1/jaxb-api-2.3.1.jar /usr/local/spark/jars/
+# ADD https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-impl/2.3.1/jaxb-impl-2.3.1.jar /usr/local/spark/jars/
 
-RUN chmod 777 /usr/local/spark/jars/*.jar
+# RUN chmod 777 /usr/local/spark/jars/*.jar
 
 # Set environment variables for Spark 4.0.0
 ENV SPARK_HOME=/usr/local/spark
@@ -35,25 +35,16 @@ ENV PATH=$SPARK_HOME/bin:$PATH
 # ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
 
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "aarch64" ]; then \
-        JAVA_HOME="/usr/lib/jvm/java-17-openjdk-arm64"; \
-    else \
-        JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"; \
-    fi && \
-    echo "export JAVA_HOME=$JAVA_HOME" > /etc/profile.d/java_home.sh && \
-    echo "JAVA_HOME=$JAVA_HOME" >> /etc/environment
+RUN ln -s /usr/lib/jvm/java-17-openjdk-arm64 /usr/lib/jvm/java-17 && \
+    ln -s /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17 || true
 
-# Set a default; useful if the above file isn't sourced
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
-
-
+ENV JAVA_HOME=/usr/lib/jvm/java-17
+ENV PATH="$JAVA_HOME/bin:$PATH"
 
 USER $NB_UID
 
 # (Optional) Upgrade pyspark pip package to match Spark version
-RUN pip install --upgrade pyspark==4.0.0
+# RUN pip install --upgrade pyspark==4.0.0
 
 # Expose Jupyter port (already set in base image)
 EXPOSE 8888
