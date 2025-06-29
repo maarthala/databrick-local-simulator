@@ -14,6 +14,7 @@ A ready-to-use, containerized Data Engineering learning environment inspired by 
 - **Notebook Development:** Experiment and document your work in Jupyter.
 
 ---
+## Architecture & Components
 
 <p align="center">
   <img src="./flow.png" alt="Data Engineering Pipeline Flow" width="700"/>
@@ -34,8 +35,9 @@ A ready-to-use, containerized Data Engineering learning environment inspired by 
 
 ![Data Engineering Pipeline Dashboard](./dashboard.png)
 
-Wait for the page to display.  
 Visit [http://localhost:8000](http://localhost:8000) to access all tools.
+Wait for above dashboard page to display.  
+
 
 To shut down the environment:
 ```sh
