@@ -1,7 +1,7 @@
 
 services:
   jupyter:
-    container_name: juypter
+    container_name: jupyter
     restart: always
     build:
       context: ./dockerfiles
