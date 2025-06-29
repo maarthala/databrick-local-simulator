@@ -25,6 +25,22 @@ This repository simulates the data flow of a fictional Northwind company. In a t
   <img src="./flow.png" alt="Data Engineering Pipeline Flow" width="700"/>
 </p>
 
+
+## Components Comparision with Other Cloud solutions
+
+| Northwind Solution           | AWS Equivalent                       | Azure Equivalent                                               | GCP Equivalent                                         |
+| ------------------- | ------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------ |
+| **Airflow**         | Managed Workflows for Apache Airflow | Azure Data Factory (with Data Flow) or Apache Airflow in Azure | Cloud Composer (Managed Airflow)                       |
+| **Spark**           | Amazon EMR (Spark on EC2/EKS)        | Azure Synapse / HDInsight (Spark)                              | Dataproc (Managed Spark)                               |
+| **Kafka**           | Amazon MSK (Managed Kafka)           | Azure Event Hubs (Kafka-compatible)                            | Pub/Sub (Kafka-like) or Confluent Cloud (Kafka on GCP) |
+| **Trino** (Presto)  | Presto on EMR / Trino on EC2         | Trino on HDInsight / AKS                                       | Trino on Dataproc or GKE                               |
+| **Hive**            | Hive on EMR                          | Hive on HDInsight                                              | Hive on Dataproc                                       |
+| **ClickHouse**      | ClickHouse on EC2 / Altinity.Cloud   | ClickHouse on Azure VMs / Altinity.Cloud                       | ClickHouse on GCE / Altinity.Cloud                     |
+| **Superset**        | Superset on EC2                      | Superset on Azure VMs / App Service                            | Superset on GCE / App Engine                           |
+| **Jupyter**         | SageMaker Studio / EMR Notebooks     | Azure Machine Learning Notebooks                               | AI Platform Notebooks / Vertex AI Workbench            |
+| **LocalStack (S3)** | Amazon S3                            | Azure Blob Storage                                             | Cloud Storage (GCS)                                    |
+
+
 ## Quick Start
 
 1. **Clone the repository**
