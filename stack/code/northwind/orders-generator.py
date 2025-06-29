@@ -11,6 +11,10 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+
+# --- Configuration ---
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
+TOPIC_NAME = os.getenv("TOPIC", "orders")
 bootstrap_servers=os.getenv("DB_HOST", "localhost:5432")
 
 engine = create_engine(f"postgresql+psycopg2://postgres:postgres@{bootstrap_servers}/northwind")
@@ -97,7 +101,7 @@ producer = KafkaProducer(
 while True:
     start_order_id += 1
     event = generate_order(start_order_id)
-    producer.send("orders", value=event)
+    producer.send(TOPIC_NAME, value=event)
     print(f"Sent: {event}")
     time.sleep(3)
 
