@@ -85,3 +85,4 @@ instance/
 *.ipynb_checkpoints/
 */*/__pycache__
 notes.txt
+stack/jars
