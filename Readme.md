@@ -4,6 +4,11 @@
 
 A ready-to-use, containerized Data Engineering learning environment inspired by real-world data pipelines. This project brings together popular open-source tools—such as Airflow, Spark, Kafka, ClickHouse, Superset, Trino, Jupyter, and LocalStack—using Docker Compose for seamless orchestration and hands-on practice.
 
+
+## Whats inside ?
+
+This repository simulates the data flow of a fictional Northwind company. In a typical scenario, users interact with the Northwind UI to purchase products, generating order events and user activity logs. These events are streamed into a Kafka queue, while product catalog prices are periodically updated to reflect business changes. As a learner, your task is to address real-world business requirements by completing the challenges described in the [`Tasks.md`](./Tasks.md) file. These challenges will guide you through building and orchestrating data pipelines using the provided stack.
+
 ## Key Features
 
 - **All-in-one Data Engineering Stack:** Pre-configured services for orchestration, processing, analytics, and cloud simulation.
