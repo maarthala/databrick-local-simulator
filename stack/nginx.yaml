@@ -16,7 +16,7 @@ services:
       - clickhouse
       - trino
       - juypter
-      - spark
+      - spark-master
       - localstack
     networks:
       - sparknet
