@@ -41,6 +41,17 @@ This repository simulates the data flow of a fictional Northwind company. In a t
 | **LocalStack (S3)** | Amazon S3                            | Azure Blob Storage                                             | Cloud Storage (GCS)                                    |
 
 
+## Prerequisites
+
+- **Docker:** Version 20.10.11 or higher  
+- **Docker Compose:** Version v2.2.1 or higher  
+- **Tested on:**  
+  - macOS sequoia (Intel)  
+  - Ubuntu 22.04 (Intel)
+
+Ensure Docker and Docker Compose are installed and running before starting the environment.
+
+
 ## Quick Start
 
 1. **Clone the repository**
@@ -52,6 +63,7 @@ This repository simulates the data flow of a fictional Northwind company. In a t
    # containes docker compose yaml files
    sh env-up.sh
    ```
+   Depending on the network speed, it might take 5 to 10 minutes to prepare the environment
 3. **Open the dashboard:**  
 
 ![Data Engineering Pipeline Dashboard](./dashboard.png)

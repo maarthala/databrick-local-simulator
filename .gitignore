@@ -84,3 +84,4 @@ instance/
 *.ipynb
 *.ipynb_checkpoints/
 */*/__pycache__
+notes.txt
