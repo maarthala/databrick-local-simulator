@@ -57,7 +57,8 @@ docker system prune -a --volumes
 ## Included Services
 
 | Tool/Service   | Purpose                | Default URL/Port         | Credentials (if any)      |
-|---------------|------------------------|--------------------------|---------------------------|
+|----------------|------------------------|--------------------------|---------------------------|
+| Home           | Home Dashbaord         | http://localhost:8000    | N/A                       |
 | Airflow        | Workflow Orchestration | http://localhost:8001    | airflow / airflow         |
 | Spark          | Distributed Processing | http://localhost:8002    | N/A                       |
 | Kafka UI       | Messaging/Streaming    | http://localhost:8003    | admin / admin             |
