@@ -5,7 +5,7 @@ services:
     restart: always
     build:
       context: ./dockerfiles
-      dockerfile: Dockerfile.juypter
+      dockerfile: Dockerfile.jupyter
     ports:
       - "8008:8888"
     volumes:

@@ -14,7 +14,7 @@ services:
       - superset
       - clickhouse
       - trino
-      - juypter
+      - jupyter
       - spark-master
       - localstack
     networks:
