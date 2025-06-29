@@ -36,6 +36,14 @@ Welcome to the Northwind Data Engineering Simulation! As a Data Engineer at Nort
 - Set up an alert (e.g., email or log) if data quality checks fail.
 - Document your approach and results in a Jupyter notebook.
 
+## Challenge 6: Clickstream Analytics from User Flow Events
+**Requirement:**
+- Ingest user-flow-click events from the Kafka topic into a ClickHouse table (`user_clickstream`).
+- Build a pipeline to process and store clickstream data, capturing fields such as user ID, timestamp, page, and action.
+- Analyze user navigation patterns: most visited pages, average session length, and common user journeys.
+- Create a Superset dashboard to visualize clickstream metrics and trends.
+- Document your ETL and analysis process in a Jupyter notebook.
+
 ---
 
 **Tips:**
