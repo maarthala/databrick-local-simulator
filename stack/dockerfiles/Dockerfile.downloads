@@ -1,0 +1,17 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y wget && \
+    rm -rf /var/lib/apt/lists/*
+
+
+# RUN cd /tmp && \
+#     wget https://archive.apache.org/dist/spark/spark-4.0.0/spark-4.0.0-bin-hadoop3.tgz && \
+#     tar xzf spark-4.0.0-bin-hadoop3.tgz -C /extras && \
+#     rm spark-4.0.0-bin-hadoop3.tgz
+
+# ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar /extras/spark/jars/
+
+# RUN chmod 777 /extras/spark/jars/*.jar
+
+

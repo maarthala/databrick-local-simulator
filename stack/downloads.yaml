@@ -1,0 +1,15 @@
+
+services:
+
+  downloads:
+    container_name: downloads
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.downloads
+    working_dir: /downloads
+    entrypoint: ["/bin/sh", "/download.sh"]
+    volumes:
+      - ./tmp:/downloads
+      - ./init_scripts/downloads/download.sh:/download.sh
+    networks:
+     - sparknet

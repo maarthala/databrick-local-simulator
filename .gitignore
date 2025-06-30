@@ -86,3 +86,4 @@ instance/
 */*/__pycache__
 notes.txt
 stack/jars
+tmp

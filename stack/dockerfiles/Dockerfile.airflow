@@ -12,7 +12,7 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Spark
-RUN wget https://archive.apache.org/dist/spark/spark-4.0.0/spark-4.0.0-bin-hadoop3.tgz && \
+RUN wget https://downloads.apache.org/spark/spark-4.0.0/spark-4.0.0-bin-hadoop3.tgz && \
     tar -xzf spark-4.0.0-bin-hadoop3.tgz -C /opt && \
     ln -s /opt/spark-4.0.0-bin-hadoop3 /opt/spark && \
     rm spark-4.0.0-bin-hadoop3.tgz
@@ -28,7 +28,17 @@ ADD https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-impl/2.3.1/jaxb-impl-2.
 RUN chmod 777 /opt/spark/jars/*.jar
 
 # Set environment variables
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+
+RUN [ -L /usr/lib/jvm/java-17 ] && rm /usr/lib/jvm/java-17 || true
+
+RUN if [ -d /usr/lib/jvm/java-17-openjdk-amd64 ]; then \
+        ln -sf /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17; \
+    elif [ -d /usr/lib/jvm/java-17-openjdk-arm64 ]; then \
+        ln -sf /usr/lib/jvm/java-17-openjdk-arm64 /usr/lib/jvm/java-17; \
+    fi
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17
+
 ENV SPARK_HOME=/opt/spark
 ENV PATH=$SPARK_HOME/bin:$JAVA_HOME/bin:$PATH
 

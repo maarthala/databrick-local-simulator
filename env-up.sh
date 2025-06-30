@@ -10,4 +10,4 @@ docker compose \
     -f stack/localstack.yaml  \
     -f stack/app.yaml \
     -f stack/nginx.yaml \
-up -d --build
+up -d

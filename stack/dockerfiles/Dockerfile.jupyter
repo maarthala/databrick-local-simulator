@@ -15,10 +15,10 @@ RUN rm -rf /usr/local/spark
 
 # Download and install Spark 4.0.0
 RUN cd /tmp && \
-    wget https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
-    tar xzf spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz -C /usr/local && \
-    rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz && \
-    ln -s /usr/local/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /usr/local/spark
+    wget https://downloads.apache.org/spark/spark-4.0.0/spark-4.0.0-bin-hadoop3.tgz && \
+    tar xzf spark-4.0.0-bin-hadoop3.tgz -C /usr/local && \
+    rm spark-4.0.0-bin-hadoop3.tgz && \
+    ln -s /usr/local/spark-4.0.0-bin-hadoop3 /usr/local/spark
 
 ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar /usr/local/spark/jars/
 ADD https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar /usr/local/spark/jars/
