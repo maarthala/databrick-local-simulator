@@ -23,32 +23,30 @@ services:
     networks:
       - sparknet
 
-  tabix:
-    image: spoonest/clickhouse-tabix-web-client
-    container_name: tabix
-    restart: always
-    ports:
-      - "8005:80"
-    depends_on:
-     clickhouse:
-        condition: service_healthy
-    networks:
-      - sparknet
+  # tabix:
+  #   image: spoonest/clickhouse-tabix-web-client
+  #   container_name: tabix
+  #   restart: always
+  #   ports:
+  #     - "8005:80"
+  #   depends_on:
+  #    clickhouse:
+  #       condition: service_healthy
+  #   networks:
+  #     - sparknet
 
   clickhouse-ui:
-    image: ghcr.io/fulgerx2007/clickhouse-schemaflow-visualizer:latest
     container_name: clickhouse-ui
-    ports:
-      - "8006:8080"
-    restart: always
-    environment:
-      - CLICKHOUSE_HOST=clickhouse
-      - CLICKHOUSE_PORT=9000
-      - CLICKHOUSE_USER=default
-      - CLICKHOUSE_PASSWORD=default
-      - CLICKHOUSE_DATABASE=default
     depends_on:
-     clickhouse:
+      clickhouse:
         condition: service_healthy
+    image: ghcr.io/caioricciuti/ch-ui:latest
+    restart: always
+    ports:
+      - "8006:5521"
+    environment:
+      VITE_CLICKHOUSE_URL: "http://localhost:8123"
+      VITE_CLICKHOUSE_USER: "default"
+      VITE_CLICKHOUSE_PASS: "default"
     networks:
-      - sparknet
+     - sparknet

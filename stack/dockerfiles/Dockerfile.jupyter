@@ -34,9 +34,13 @@ ENV SPARK_HOME=/usr/local/spark
 ENV PATH=$SPARK_HOME/bin:$PATH
 # ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
+RUN [ -L /usr/lib/jvm/java-17 ] && rm /usr/lib/jvm/java-17 || true
 
-RUN ln -s /usr/lib/jvm/java-17-openjdk-arm64 /usr/lib/jvm/java-17 && \
-    ln -s /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17 || true
+RUN if [ -d /usr/lib/jvm/java-17-openjdk-amd64 ]; then \
+        ln -sf /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17; \
+    elif [ -d /usr/lib/jvm/java-17-openjdk-arm64 ]; then \
+        ln -sf /usr/lib/jvm/java-17-openjdk-arm64 /usr/lib/jvm/java-17; \
+    fi
 
 ENV JAVA_HOME=/usr/lib/jvm/java-17
 ENV PATH="$JAVA_HOME/bin:$PATH"
