@@ -17,5 +17,6 @@ services:
       - jupyter
       - spark-master
       - localstack
+      - db-ui
     networks:
       - sparknet

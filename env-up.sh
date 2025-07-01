@@ -9,5 +9,6 @@ docker compose \
     -f stack/jupyter.yaml  \
     -f stack/localstack.yaml  \
     -f stack/app.yaml \
-    -f stack/nginx.yaml \
+    -f stack/hue.yaml \
+    -f stack/home.yaml \
 up -d

@@ -25,20 +25,20 @@ This repository simulates the data flow of a fictional Northwind company. In a t
   <img src="./flow.png" alt="Data Engineering Pipeline Flow" width="700"/>
 </p>
 
-
-## Components Comparision with Other Cloud solutions
+## Components Comparison with Other Cloud Solutions
 
 | Northwind Solution           | AWS Equivalent                       | Azure Equivalent                                               | GCP Equivalent                                         |
-| ------------------- | ------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------ |
-| **Airflow**         | Managed Workflows for Apache Airflow | Azure Data Factory (with Data Flow) or Apache Airflow in Azure | Cloud Composer (Managed Airflow)                       |
-| **Spark**           | Amazon EMR (Spark on EC2/EKS)        | Azure Synapse / HDInsight (Spark)                              | Dataproc (Managed Spark)                               |
-| **Kafka**           | Amazon MSK (Managed Kafka)           | Azure Event Hubs (Kafka-compatible)                            | Pub/Sub (Kafka-like) or Confluent Cloud (Kafka on GCP) |
-| **Trino** (Presto)  | Presto on EMR / Trino on EC2         | Trino on HDInsight / AKS                                       | Trino on Dataproc or GKE                               |
-| **Hive**            | Hive on EMR                          | Hive on HDInsight                                              | Hive on Dataproc                                       |
-| **ClickHouse**      | ClickHouse on EC2 / Altinity.Cloud   | ClickHouse on Azure VMs / Altinity.Cloud                       | ClickHouse on GCE / Altinity.Cloud                     |
-| **Superset**        | Superset on EC2                      | Superset on Azure VMs / App Service                            | Superset on GCE / App Engine                           |
-| **Jupyter**         | SageMaker Studio / EMR Notebooks     | Azure Machine Learning Notebooks                               | AI Platform Notebooks / Vertex AI Workbench            |
-| **LocalStack (S3)** | Amazon S3                            | Azure Blob Storage                                             | Cloud Storage (GCS)                                    |
+|-----------------------------|--------------------------------------|---------------------------------------------------------------|--------------------------------------------------------|
+| **Airflow**                 | Managed Workflows for Apache Airflow | Azure Data Factory (with Data Flow) or Apache Airflow in Azure | Cloud Composer (Managed Airflow)                       |
+| **Spark**                   | Amazon EMR (Spark on EC2/EKS)        | Azure Synapse / HDInsight (Spark)                              | Dataproc (Managed Spark)                               |
+| **Kafka**                   | Amazon MSK (Managed Kafka)           | Azure Event Hubs (Kafka-compatible)                            | Pub/Sub (Kafka-like) or Confluent Cloud (Kafka on GCP) |
+| **Trino** (Presto)          | Presto on EMR / Trino on EC2         | Trino on HDInsight / AKS                                       | Trino on Dataproc or GKE                               |
+| **Hive**                    | Hive on EMR                          | Hive on HDInsight                                              | Hive on Dataproc                                       |
+| **ClickHouse**              | ClickHouse on EC2 / Altinity.Cloud   | ClickHouse on Azure VMs / Altinity.Cloud                       | ClickHouse on GCE / Altinity.Cloud                     |
+| **Superset**                | Superset on EC2                      | Superset on Azure VMs / App Service                            | Superset on GCE / App Engine                           |
+| **Jupyter**                 | SageMaker Studio / EMR Notebooks     | Azure Machine Learning Notebooks                               | AI Platform Notebooks / Vertex AI Workbench            |
+| **Hue**                     | AWS Glue DataBrew / EMR Hue          | Azure Synapse Studio / HDInsight Hue                           | Dataproc Hue / Cloud Dataprep                          |
+| **LocalStack (S3)**         | Amazon S3                            | Azure Blob Storage                                             | Cloud Storage (GCS)                                    |
 
 
 ## Prerequisites
@@ -99,6 +99,7 @@ docker system prune -a --volumes
 | ClickHouse     | OLAP Database          | http://localhost:8005    | default / default         |
 | Trino          | SQL Query Engine       | http://localhost:8007    | N/A                       |
 | Jupyter        | Notebooks              | http://localhost:8008    | Token: 123456             |
+| Hue Ui         | Common SQl interface   | http://localhost:8009    | admin / admin             |
 | LocalStack     | AWS Cloud Simulation   | http://localhost:4566    | N/A                       |
 
 See the full port mapping and credentials table below for more details.
@@ -165,13 +166,22 @@ parquet-tools show --endpoint-url=http://localhost:4566 s3://demo-bucket/northwi
 
 ---
 
-### Querying S3 Data with Trino (Athena-like Queries)
+### Querying S3 Data with Hue (Athena/Glue AWS-like Queries)
 
-To query S3 data in a way similar to AWS Athena, use Trino, which is available at [http://localhost:8007](http://localhost:8007).
+Hue is commong Query solution to query Hive, Postgres, Clickhouse etc
+
+To query S3 data in a way similar to AWS Athena, use Hue, which is available at [http://localhost:8009](http://localhost:8009).
+
+Start browsing to the requried DB.
+
+Example: S3 using Hive metastore
+
+Hue->Editor->Trino->hive.default.northwind_orders and run sql `SELECT * FROM  "hive"."default".northwind_orders`
 
 - **Running Queries with Trino CLI**
   ```sh
   ./trino --server localhost:8007 --catalog hive --schema default
+  SELECT * FROM  "hive"."default".northwind_orders
   ```
   This connects to the `hive` catalog and the `default` schema, allowing you to query data stored in S3 via LocalStack.
 
@@ -236,6 +246,8 @@ This notebook serves as both a quick environment check and a hands-on learning r
 ### ClickHouse
 
 You can interact with ClickHouse using the command line client or through Superset for analytics and visualization.
+
+You can also use Hue to query clickhouse at [http://localhost:8009](http://localhost:8009)
 
 - **Command Line Access:**
   ```sh

@@ -35,18 +35,16 @@ services:
   #   networks:
   #     - sparknet
 
-  clickhouse-ui:
-    container_name: clickhouse-ui
-    depends_on:
-      clickhouse:
-        condition: service_healthy
-    image: ghcr.io/caioricciuti/ch-ui:latest
-    restart: always
-    ports:
-      - "8006:5521"
-    environment:
-      VITE_CLICKHOUSE_URL: "http://localhost:8123"
-      VITE_CLICKHOUSE_USER: "default"
-      VITE_CLICKHOUSE_PASS: "default"
-    networks:
-     - sparknet
+  # clickhouse-ui:
+  #   container_name: clickhouse-ui
+  #   depends_on:
+  #     clickhouse:
+  #       condition: service_healthy
+  #   image: ghcr.io/caioricciuti/ch-ui:latest
+  #   restart: always
+  #   ports:
+  #     - "8006:5521"
+  #   volumes:
+  #     - ./configs/hue.ini:/usr/share/hue/desktop/conf/hue.ini
+  #   networks:
+  #    - sparknet

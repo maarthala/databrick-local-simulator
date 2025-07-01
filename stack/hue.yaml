@@ -1,0 +1,21 @@
+
+services:
+  db-ui:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.hue
+    container_name: db-ui
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8009:8888"
+    volumes:
+      - ./configs/hue.ini:/usr/share/hue/desktop/conf/hue.ini
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8888"]
+      interval: 10s
+      retries: 10
+    networks:
+        - sparknet
+
