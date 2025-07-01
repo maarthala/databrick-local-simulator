@@ -46,7 +46,7 @@ This repository simulates the data flow of a fictional Northwind company. In a t
 - **Docker:** Version 20.10.11 or higher  
 - **Docker Compose:** Version v2.2.1 or higher  
 - **Tested on:**  
-  - macOS sequoia (Intel)  
+  - macOS sequoia (Intel, M2)  
   - Ubuntu 22.04 Virtual Machine (Intel)
 
 Ensure Docker and Docker Compose are installed and running before starting the environment.
