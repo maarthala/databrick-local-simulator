@@ -12,6 +12,9 @@ CREATE DATABASE superset OWNER superset;
 CREATE USER hive WITH PASSWORD 'hive';
 CREATE DATABASE metastore OWNER hive;
 
+-- create hue user
+CREATE USER hue WITH PASSWORD 'hue';
+CREATE DATABASE hue OWNER hue;
 
 -- Optional: Connect to the new database and create schema
 -- \connect airflow
