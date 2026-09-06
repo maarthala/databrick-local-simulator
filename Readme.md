@@ -4,6 +4,16 @@ A hands-on Data Engineering learning environment — a **governed lakehouse**
 (MinIO, Iceberg, Unity Catalog, Keycloak SSO, Spark, Trino, Superset, Airflow,
 Jupyter) that you can run two ways with the **same stack**:
 
+## 📚 Training course
+
+Read the hands-on **Data Engineering course** online — build the ShopFlow
+Bronze→Silver→Gold lakehouse and map every skill to Databricks, Snowflake & Fabric:
+
+**→ [maarthala.github.io/databrick-local-simulator](https://maarthala.github.io/databrick-local-simulator/)**
+
+Start with **Prerequisites & setup** and **Bring up the stack**, then work through the units.
+(The same course is also served by the running stack at `http://localhost:8000/training/`.)
+
 ## Setup — pick your environment
 
 ### 🖥️ [Local (Docker Compose)](./local/README.md)
