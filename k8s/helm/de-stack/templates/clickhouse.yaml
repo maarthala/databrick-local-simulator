@@ -1,0 +1,70 @@
+{{- if .Values.clickhouse.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-init
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+  init.sql: |
+{{ .Files.Get "files/clickhouse/init.sql" | indent 4 }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: clickhouse-data
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.global.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.clickhouse.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clickhouse
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "clickhouse") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "clickhouse") | nindent 8 }}
+    spec:
+      containers:
+        - name: clickhouse
+          image: {{ .Values.clickhouse.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: CLICKHOUSE_DB, value: "default" }
+            - { name: CLICKHOUSE_USER, value: "{{ .Values.clickhouse.user }}" }
+            - { name: CLICKHOUSE_PASSWORD, value: "{{ .Values.clickhouse.password }}" }
+          ports:
+            - { name: http, containerPort: 8123 }
+            - { name: native, containerPort: 9000 }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/clickhouse }
+            - { name: init, mountPath: /docker-entrypoint-initdb.d }
+          readinessProbe:
+            httpGet: { path: /ping, port: 8123 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - { name: data, persistentVolumeClaim: { claimName: clickhouse-data } }
+        - { name: init, configMap: { name: clickhouse-init } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickhouse
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "clickhouse") | nindent 4 }}
+  ports:
+    - { name: http, port: 8123, targetPort: 8123 }
+    - { name: native, port: 9000, targetPort: 9000 }
+{{- end }}

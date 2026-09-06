@@ -1,0 +1,5 @@
+# Copy to vault.yml and encrypt:  ansible-vault encrypt vault.yml
+# Run with:  ansible-playbook site.yml --ask-become-pass --ask-vault-pass
+---
+# Fine-grained, read-only GitHub PAT for git-sync (de-lab repo). See de-lab-git-workflow.
+git_pat_token: "github_pat_xxxxxxxxxxxxxxxxxxxxxxxx"

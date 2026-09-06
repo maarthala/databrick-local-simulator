@@ -1,0 +1,44 @@
+FROM spark:4.0.0-python3
+
+USER root
+
+RUN apt-get update && \
+    apt-get install -y rsync zip && \
+    apt-get clean
+
+# postgres JDBC, AWS SDK v2 bundle + hadoop-aws (for s3a:// to MinIO),
+# JAXB (Hive metastore client on Java 11+), and Apache Iceberg (REST catalog).
+COPY ./tmp/postgresql-42.6.0.jar /opt/spark/jars/
+COPY ./tmp/bundle-2.24.6.jar /opt/spark/jars/
+COPY ./tmp/hadoop-aws-3.4.1.jar /opt/spark/jars/
+COPY ./tmp/javax.activation-api-1.2.0.jar /opt/spark/jars/
+COPY ./tmp/jaxb-api-2.3.1.jar /opt/spark/jars/
+COPY ./tmp/jaxb-impl-2.3.1.jar /opt/spark/jars/
+COPY ./tmp/iceberg-spark-runtime-4.0_2.13-1.11.0.jar /opt/spark/jars/
+COPY ./tmp/iceberg-aws-bundle-1.11.0.jar /opt/spark/jars/
+
+# The AWS SDK v2 "bundle" ships an *unrelocated, older* io.netty that lacks
+# PlatformDependent.newFixedMpscUnpaddedQueue(int). Because it sorts before
+# netty-common on the /opt/spark/jars/* classpath, that stale netty wins and
+# breaks Spark 4's netty RPC ("NoSuchMethodError ... newFixedMpscUnpaddedQueue"),
+# killing the executor<->worker handshake and, in turn, every Spark job.
+# Strip io.netty from the bundle so Spark's own netty-common-4.1.118 is
+# authoritative; S3A uses the Apache (sync) HTTP client, so it needs no netty.
+RUN zip -q -d /opt/spark/jars/bundle-2.24.6.jar 'io/netty/*' 'META-INF/native/libnetty*' || true
+
+# NOTE: hive-exec-3.1.3 / hive-hcatalog-core-3.1.2 are deliberately NOT added.
+# They shadow Spark 4's commons-lang3-3.17 (NoSuchFieldError JAVA_21) and were
+# only ever removed again at container startup. Spark 4 talks to the Hive
+# Metastore with its own bundled hive-2.3.10 client; Iceberg is accessed via the
+# REST catalog (see spark-defaults.conf), so these jars are pure conflict.
+
+# Unity Catalog Spark connector (0.7.0-SNAPSHOT, built for Spark 4.0 from source and
+# patched to accept permanent MinIO creds — no STS session token). Placed in
+# /opt/spark/jars (system classpath) so hadoop-aws's S3A can load UC's vended
+# credential provider. Lets Spark read/write GOVERNED Delta tables in UC's lakehouse
+# catalog. Delta itself is supplied per-job via --packages (see tools/uc-spark/).
+COPY ./uc-jars/*.jar /opt/spark/jars/
+
+RUN chown spark:spark /opt/spark/jars/*.jar && chmod 644 /opt/spark/jars/*.jar
+
+USER spark

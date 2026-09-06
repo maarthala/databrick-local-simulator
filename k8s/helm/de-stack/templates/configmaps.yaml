@@ -1,0 +1,18 @@
+{{- /* Shared config files, mounted by multiple components (spark, hive, jupyter, airflow). */ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-config
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+  spark-defaults.conf: |
+{{ .Files.Get "files/spark/spark-defaults.conf" | indent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hive-config
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+  hive-site.xml: |
+{{ .Files.Get "files/hive/hive-site.xml" | indent 4 }}

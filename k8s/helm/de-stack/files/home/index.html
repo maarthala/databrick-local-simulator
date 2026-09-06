@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShopFlow — Governed Lakehouse</title>
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#141b2e; --panel2:#1b2438; --line:#2a3550;
+      --ink:#e8edf7; --muted:#9aa8c7; --accent:#6d8bff; --accent2:#39d0c4;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(109,139,255,.18), transparent 60%),
+        radial-gradient(900px 500px at -10% 10%, rgba(57,208,196,.12), transparent 55%),
+        var(--bg);
+    }
+    a{color:inherit; text-decoration:none}
+    .wrap{max-width:1120px; margin:0 auto; padding:0 20px 64px}
+
+    header{padding:56px 20px 8px; text-align:center}
+    .brand{font-size:2.4rem; font-weight:800; letter-spacing:.5px}
+    .brand .dot{color:var(--accent)}
+    .tag{color:var(--muted); margin-top:10px; font-size:1.05rem}
+
+    /* hero: the course */
+    .hero{
+      display:flex; gap:20px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      background:linear-gradient(135deg,var(--panel2),var(--panel));
+      border:1px solid var(--line); border-radius:18px; padding:26px 28px;
+      margin:34px auto 8px; box-shadow:var(--shadow);
+    }
+    .hero-left{display:flex; gap:18px; align-items:center; min-width:280px}
+    .hero .ico{font-size:2.6rem; line-height:1}
+    .hero h2{margin:0 0 4px; font-size:1.5rem}
+    .hero p{margin:0; color:var(--muted); max-width:560px}
+    .cta{
+      background:linear-gradient(135deg,var(--accent),#8aa0ff); color:#0b1020;
+      font-weight:700; padding:13px 22px; border-radius:12px; white-space:nowrap;
+      box-shadow:0 6px 18px rgba(109,139,255,.4); transition:transform .15s, box-shadow .15s;
+    }
+    .cta:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(109,139,255,.55)}
+
+    .section-title{
+      margin:34px 4px 14px; font-size:.82rem; font-weight:700; letter-spacing:2px;
+      text-transform:uppercase; color:var(--muted);
+    }
+    .grid{display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+    .card{
+      background:var(--panel); border:1px solid var(--line); border-radius:14px;
+      padding:18px; display:flex; gap:14px; align-items:flex-start;
+      transition:transform .15s, border-color .15s, box-shadow .15s;
+    }
+    .card:hover{transform:translateY(-3px); border-color:var(--accent); box-shadow:var(--shadow)}
+    .card .ico{font-size:1.7rem; line-height:1; margin-top:2px}
+    .card h3{margin:0 0 3px; font-size:1.06rem}
+    .card p{margin:0; color:var(--muted); font-size:.9rem; line-height:1.35}
+    .card .cred{display:inline-block; margin-top:8px; font-size:.78rem; color:var(--accent2);
+      background:rgba(57,208,196,.1); border:1px solid rgba(57,208,196,.25);
+      padding:2px 8px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+    footer{margin-top:44px; text-align:center; color:var(--muted); font-size:.9rem}
+    footer a{color:var(--accent); font-weight:600}
+    @media (max-width:520px){ .brand{font-size:1.9rem} .hero{padding:20px} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">ShopFlow <span class="dot">·</span> Governed Lakehouse</div>
+      <div class="tag">A hands-on Data Engineering stack — object storage, a governed catalog, Spark, SQL, orchestration &amp; BI.</div>
+    </header>
+
+    <a class="hero" href="/training/">
+      <div class="hero-left">
+        <div class="ico">🎓</div>
+        <div>
+          <h2>Start here — the Data Engineering course</h2>
+          <p>Build the ShopFlow lakehouse end to end: SQL, Python, Spark medallion, Airflow, governance, and dashboards — every skill mapped to Databricks, Snowflake &amp; Fabric.</p>
+        </div>
+      </div>
+      <span class="cta">Open the course →</span>
+    </a>
+
+    <div class="section-title">Build &amp; explore</div>
+    <div class="grid">
+      <a class="card" href="http://localhost:8008" target="_blank">
+        <div class="ico">📓</div>
+        <div><h3>Jupyter</h3><p>Notebooks — Python, pandas &amp; Spark (Spark Connect).</p><span class="cred">token 123456</span></div>
+      </a>
+      <a class="card" href="http://localhost:8002" target="_blank">
+        <div class="ico">⚡</div>
+        <div><h3>Spark</h3><p>Cluster master UI — jobs, workers, executors.</p></div>
+      </a>
+    </div>
+
+    <div class="section-title">Query &amp; visualise</div>
+    <div class="grid">
+      <a class="card" href="http://localhost:8007/ui/" target="_blank">
+        <div class="ico">🔎</div>
+        <div><h3>Trino</h3><p>Distributed SQL over the lakehouse &amp; source.</p><span class="cred">any user · no password</span></div>
+      </a>
+      <a class="card" href="http://localhost:8004" target="_blank">
+        <div class="ico">📊</div>
+        <div><h3>Superset</h3><p>BI dashboards &amp; SQL Lab over the Gold layer.</p><span class="cred">admin / admin</span></div>
+      </a>
+    </div>
+
+    <div class="section-title">Orchestrate</div>
+    <div class="grid">
+      <a class="card" href="http://localhost:8001" target="_blank">
+        <div class="ico">🌬️</div>
+        <div><h3>Airflow</h3><p>Schedule the Bronze→Silver→Gold pipeline.</p><span class="cred">airflow / airflow</span></div>
+      </a>
+    </div>
+
+    <div class="section-title">Govern &amp; store</div>
+    <div class="grid">
+      <a class="card" href="http://localhost:3000" target="_blank">
+        <div class="ico">🗂️</div>
+        <div><h3>Unity Catalog</h3><p>Catalogs, schemas, tables &amp; per-user access.</p><span class="cred">analyst / analyst</span></div>
+      </a>
+      <a class="card" href="http://keycloak:8080" target="_blank">
+        <div class="ico">🔐</div>
+        <div><h3>Keycloak</h3><p>Single sign-on / identity — needs <code>keycloak</code> in /etc/hosts.</p><span class="cred">admin / admin</span></div>
+      </a>
+      <a class="card" href="http://localhost:9001" target="_blank">
+        <div class="ico">🪣</div>
+        <div><h3>MinIO</h3><p>S3-compatible object storage — the lake.</p><span class="cred">minioadmin / minioadmin</span></div>
+      </a>
+    </div>
+
+    <footer>
+      🎓 <a href="/training/">Data Engineering course</a>
+      &nbsp;·&nbsp;
+      📖 <a href="https://github.com/maarthala/databrick-local-simulator#readme" target="_blank">Docs &amp; GitHub</a>
+    </footer>
+  </div>
+</body>
+</html>

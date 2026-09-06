@@ -1,0 +1,34 @@
+---
+- name: Ensure image staging dir on the node
+  ansible.builtin.file:
+    path: "{{ stage_dir_node }}"
+    state: directory
+  become: false
+
+- name: Copy image tarballs to the node
+  ansible.builtin.copy:
+    src: "{{ stage_dir_local }}/{{ item | regex_replace('[/:]', '_') }}.tar.gz"
+    dest: "{{ stage_dir_node }}/{{ item | regex_replace('[/:]', '_') }}.tar.gz"
+    mode: "0644"
+  loop: "{{ load_images }}"
+  loop_control: { label: "{{ item }}" }
+  # For multi-GB images this is the slow step; swap to ansible.posix.synchronize
+  # (rsync) if you have the collection installed.
+
+- name: Import images into the node's containerd (root)
+  become: true
+  ansible.builtin.shell: >
+    set -o pipefail;
+    gunzip -c {{ stage_dir_node }}/{{ item | regex_replace('[/:]', '_') }}.tar.gz
+    | microk8s ctr images import -
+  args:
+    executable: /bin/bash
+  loop: "{{ load_images }}"
+  loop_control: { label: "{{ item }}" }
+
+- name: Remove tarballs from the node
+  ansible.builtin.file:
+    path: "{{ stage_dir_node }}/{{ item | regex_replace('[/:]', '_') }}.tar.gz"
+    state: absent
+  loop: "{{ load_images }}"
+  loop_control: { label: "{{ item }}" }

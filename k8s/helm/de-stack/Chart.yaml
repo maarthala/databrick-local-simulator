@@ -1,0 +1,10 @@
+apiVersion: v2
+name: de-stack
+description: Databricks-local simulator — full data-engineering stack on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+# Custom templates use the same official images as the compose stack, so k8s
+# Services are named identically to compose services and the existing config
+# files (spark-defaults.conf, hive-site.xml, trino catalogs, connector JSON)
+# work unchanged. Airflow/Superset can be layered in as subchart deps later.

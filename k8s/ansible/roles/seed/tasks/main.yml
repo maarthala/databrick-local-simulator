@@ -1,0 +1,54 @@
+---
+- name: Wait for Unity Catalog to be ready
+  ansible.builtin.command: "kubectl -n {{ namespace }} rollout status deploy/unity-catalog --timeout=240s"
+  changed_when: false
+
+- name: Read the UC admin token from the pod
+  ansible.builtin.command: "kubectl -n {{ namespace }} exec deploy/unity-catalog -- cat etc/conf/token.txt"
+  register: uc_admin
+  changed_when: false
+  no_log: true
+
+- name: Create UC users (idempotent)
+  ansible.builtin.shell: >
+    kubectl -n {{ namespace }} exec deploy/unity-catalog --
+    bin/uc --auth_token '{{ uc_admin.stdout }}'
+    user create --name '{{ item.name }}' --email '{{ item.email }}' || true
+  loop: "{{ seed_users }}"
+  loop_control: { label: "{{ item.email }}" }
+  changed_when: false
+  no_log: true
+
+- name: Create the catalog (idempotent)
+  ansible.builtin.shell: >
+    kubectl -n {{ namespace }} exec deploy/unity-catalog --
+    bin/uc --auth_token '{{ uc_admin.stdout }}'
+    catalog create --name {{ seed_catalog }} || true
+  changed_when: false
+  no_log: true
+
+- name: Create the schema (idempotent)
+  ansible.builtin.shell: >
+    kubectl -n {{ namespace }} exec deploy/unity-catalog --
+    bin/uc --auth_token '{{ uc_admin.stdout }}'
+    schema create --catalog {{ seed_catalog }} --name {{ seed_schema }} || true
+  changed_when: false
+  no_log: true
+
+- name: Apply grants (idempotent)
+  ansible.builtin.shell: >
+    kubectl -n {{ namespace }} exec deploy/unity-catalog --
+    bin/uc --auth_token '{{ uc_admin.stdout }}'
+    permission create --securable_type {{ item.securable }} --name '{{ item.name }}'
+    --privilege '{{ item.privilege }}' --principal '{{ item.principal }}' || true
+  loop: "{{ seed_grants }}"
+  loop_control: { label: "{{ item.principal }} :: {{ item.privilege }} on {{ item.name }}" }
+  changed_when: false
+  no_log: true
+
+- name: Seed complete
+  ansible.builtin.debug:
+    msg: >-
+      UC seeded: users {{ seed_users | map(attribute='email') | join(', ') }};
+      catalog {{ seed_catalog }}.{{ seed_schema }} + grants applied. Create the demo
+      table with tools/uc-spark (see tools/uc-spark/README.md).

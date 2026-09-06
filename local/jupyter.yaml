@@ -1,0 +1,26 @@
+
+services:
+  jupyter:
+    container_name: jupyter
+    restart: always
+    build:
+      context: ../common/dockerfiles
+      dockerfile: Dockerfile.jupyter
+    ports:
+      - "8008:8888"
+    volumes:
+      - ./code:/code
+      - ./code/notebook:/home/jovyan/work
+      # NOTE: do NOT mount a file into /home/jovyan/.jupyter — it makes that dir root-owned
+      # and jupyter-core's config migration then crashes on a PermissionError. Token/CORS are
+      # already set via the container's CLI flags.
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=123456
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_REGION=us-east-1
+      - AWS_S3_ENDPOINT=http://minio:9000
+    networks:
+      - sparknet

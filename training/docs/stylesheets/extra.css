@@ -1,0 +1,22 @@
+/* Make Mermaid diagrams render large instead of shrinking to their
+   natural pixel size. Mermaid writes an inline `max-width:<Npx>` onto the
+   SVG at render time, so we must use !important to override it. */
+.mermaid {
+  text-align: center;
+  margin: 1.4rem 0;
+}
+
+.mermaid svg {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  /* larger floor so simple/wide flowcharts don't render tiny */
+  min-height: 320px;
+}
+
+/* Slightly bigger, more legible node text in diagrams */
+.mermaid .nodeLabel,
+.mermaid .edgeLabel,
+.mermaid span {
+  font-size: 15px;
+}

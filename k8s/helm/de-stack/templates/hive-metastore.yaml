@@ -1,0 +1,68 @@
+{{- if .Values.hiveMetastore.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hive-metastore
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "hive-metastore") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "hive-metastore") | nindent 8 }}
+    spec:
+      containers:
+        - name: hive
+          image: {{ include "de-stack.image" (dict "root" $ "repo" .Values.hiveMetastore.repo "tag" .Values.hiveMetastore.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: DB_TYPE, value: "postgres" }
+            - { name: DB_HOST, value: "postgres" }
+            - { name: DB_PORT, value: "5432" }
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+            - { name: AWS_REGION, value: "us-east-1" }
+          ports:
+            - { name: metastore, containerPort: 9083 }
+            - { name: hiveserver2, containerPort: 10000 }
+            - { name: hs2-ui, containerPort: 10002 }
+          volumeMounts:
+            - { name: hive-site, mountPath: /opt/hive/conf/hive-site.xml, subPath: hive-site.xml }
+          readinessProbe:
+            tcpSocket: { port: 9083 }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+      volumes:
+        - { name: hive-site, configMap: { name: hive-config } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hive-metastore
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "hive-metastore") | nindent 4 }}
+  ports:
+    - { name: metastore, port: 9083, targetPort: 9083 }
+    - { name: hiveserver2, port: 10000, targetPort: 10000 }
+    - { name: hs2-ui, port: 10002, targetPort: 10002 }
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hiveserver2-ui
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: hiveserver2.{{ .Values.ingress.baseHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: hive-metastore, port: { number: 10002 } }
+{{- end }}
+{{- end }}

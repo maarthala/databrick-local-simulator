@@ -1,0 +1,91 @@
+{{- if .Values.keycloak.enabled }}
+# Keycloak — OIDC identity provider for Unity Catalog per-user access control.
+# Runs in dev mode (start-dev) and re-imports the de-stack realm on every start,
+# so users/clients are declarative (defined in files/keycloak/de-stack-realm.json).
+# Reachable from the Mac at http://auth.de.lan; the UC pod resolves auth.de.lan
+# in-cluster via the Pi-hole wildcard and reaches it back through the ingress
+# (nginx hairpin), so the token issuer is identical inside and outside the cluster.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+  de-stack-realm.json: |-
+{{ .Files.Get "files/keycloak/de-stack-realm.json" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "keycloak") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "keycloak") | nindent 8 }}
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: keycloak
+          image: {{ .Values.keycloak.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          args: ["start-dev", "--import-realm"]
+          env:
+            - { name: KC_BOOTSTRAP_ADMIN_USERNAME, value: "{{ .Values.keycloak.adminUser }}" }
+            - { name: KC_BOOTSTRAP_ADMIN_PASSWORD, value: "{{ .Values.keycloak.adminPassword }}" }
+            # Behind the nginx ingress: serve http, honor X-Forwarded-* so issued
+            # URLs (issuer, redirects) use the external host, and pin the hostname
+            # so the token issuer is stable (http://auth.de.lan/realms/de-stack).
+            - { name: KC_HTTP_ENABLED, value: "true" }
+            - { name: KC_PROXY_HEADERS, value: "xforwarded" }
+            - { name: KC_HOSTNAME, value: "http://auth.{{ .Values.ingress.baseHost }}" }
+            - { name: KC_HOSTNAME_STRICT, value: "false" }
+          ports:
+            - { name: http, containerPort: 8080 }
+          volumeMounts:
+            - { name: realm, mountPath: /opt/keycloak/data/import/de-stack-realm.json, subPath: de-stack-realm.json }
+          readinessProbe:
+            tcpSocket: { port: 8080 }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 20
+      volumes:
+        - { name: realm, configMap: { name: keycloak-realm } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  # Pinned so the UC pod's hostAlias (auth.de.lan -> this IP) is stable across restarts.
+  clusterIP: {{ .Values.keycloak.clusterIP }}
+  selector: {{- include "de-stack.selector" (dict "app" "keycloak") | nindent 4 }}
+  # Port 80 -> 8080 so the UC pod reaches Keycloak (via the hostAlias) on the same
+  # port the external issuer URL uses, bypassing the nginx ingress.
+  ports:
+    - { name: http, port: 80, targetPort: 8080 }
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: auth.{{ .Values.ingress.baseHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: keycloak, port: { number: 80 } }
+{{- end }}
+{{- end }}

@@ -1,0 +1,87 @@
+
+services:
+  # S3-compatible object storage (replaces LocalStack). Console UI at :9001.
+  minio:
+    container_name: minio
+    image: minio/minio:latest
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9002:9000"   # S3 API  (9000 is taken by ClickHouse on the host)
+      - "9001:9001"   # Web console
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sparknet
+
+  # One-shot: waits for MinIO, then creates the demo buckets and uploads the
+  # sample Northwind parquet files (parity with the old LocalStack init script).
+  minio-init:
+    container_name: minio-init
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh", "/init_scripts/setup.sh"]
+    volumes:
+      - ./code:/code
+      - ./init_scripts/minio:/init_scripts
+    restart: "no"
+    networks:
+      - sparknet
+
+  # Apache Iceberg REST catalog. Spark and Trino both talk to it over HTTP (:8181).
+  # Catalog metadata is persisted in a SQLite file on a volume; table data lives
+  # in MinIO (s3://demo-bucket/iceberg/). Runs as root so it can write /persist.
+  iceberg-rest:
+    image: apache/iceberg-rest-fixture:latest
+    container_name: iceberg-rest
+    restart: always
+    user: "0:0"
+    depends_on:
+      - minio
+    environment:
+      CATALOG_URI: jdbc:sqlite:file:/persist/catalog.db
+      CATALOG_WAREHOUSE: s3://demo-bucket/iceberg/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://minio:9000
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_REGION: us-east-1
+    ports:
+      - "8181:8181"
+    volumes:
+      - iceberg-rest-data:/persist
+    networks:
+      - sparknet
+
+  trino:
+    image: trinodb/trino:473
+    restart: always
+    container_name: trino
+    ports:
+      - "8007:8080"
+    volumes:
+      - ./configs/trino:/etc/trino
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - minio
+      - iceberg-rest
+    networks:
+      - sparknet
+
+volumes:
+  minio-data:
+  iceberg-rest-data:

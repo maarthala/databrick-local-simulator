@@ -1,0 +1,85 @@
+{
+  "realm": "de-stack",
+  "enabled": true,
+  "sslRequired": "none",
+  "loginWithEmailAllowed": true,
+  "registrationAllowed": false,
+  "clients": [
+    {
+      "clientId": "unity-catalog",
+      "name": "Unity Catalog",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "unity-catalog-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "http://localhost:8989",
+        "http://localhost:8989/*",
+        "http://127.0.0.1:8989",
+        "http://127.0.0.1:8989/*",
+        "http://localhost:3000/*",
+        "http://uc-ui.de.lan/*"
+      ],
+      "webOrigins": ["+"]
+    },
+    {
+      "clientId": "unity-catalog-ui",
+      "name": "Unity Catalog Web UI",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "https://uc-ui.de.lan/*",
+        "http://uc-ui.de.lan/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": ["+"],
+      "attributes": {
+        "post.logout.redirect.uris": "+"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "analyst",
+      "enabled": true,
+      "email": "analyst@dev-epireum.com",
+      "emailVerified": true,
+      "firstName": "Ava",
+      "lastName": "Analyst",
+      "credentials": [
+        { "type": "password", "value": "analyst", "temporary": false }
+      ]
+    },
+    {
+      "username": "engineer",
+      "enabled": true,
+      "email": "engineer@dev-epireum.com",
+      "emailVerified": true,
+      "firstName": "Eddie",
+      "lastName": "Engineer",
+      "credentials": [
+        { "type": "password", "value": "engineer", "temporary": false }
+      ]
+    },
+    {
+      "username": "lead",
+      "enabled": true,
+      "email": "lead@dev-epireum.com",
+      "emailVerified": true,
+      "firstName": "Lena",
+      "lastName": "Lead",
+      "credentials": [
+        { "type": "password", "value": "lead", "temporary": false }
+      ]
+    }
+  ]
+}

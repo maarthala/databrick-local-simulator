@@ -1,0 +1,38 @@
+{{- if .Values.generators.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: northwind-scripts
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+{{- range $path, $_ := .Files.Glob "files/northwind/*.py" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-generators
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "app-generators") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "app-generators") | nindent 8 }}
+    spec:
+      containers:
+        - name: generators
+          image: {{ include "de-stack.image" (dict "root" $ "repo" .Values.generators.repo "tag" .Values.generators.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["python", "/code/northwind/run-all.py"]
+          env:
+            - { name: KAFKA_BROKER, value: "kafka:9092" }
+            - { name: DB_HOST, value: "postgres" }
+          volumeMounts:
+            - { name: scripts, mountPath: /code/northwind }
+      volumes:
+        - { name: scripts, configMap: { name: northwind-scripts } }
+{{- end }}

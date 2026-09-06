@@ -1,0 +1,21 @@
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: home
+    ports:
+      - "8000:80"
+    restart: always
+    volumes:
+      - ./home:/usr/share/nginx/html:ro
+      # Training site (built by `make docs`) served at http://localhost:8000/training/
+      - ../training/site:/usr/share/nginx/html/training:ro
+    depends_on:
+      - airflow-apiserver
+      - superset
+      - trino
+      - jupyter
+      - spark-master
+      - minio
+    networks:
+      - sparknet

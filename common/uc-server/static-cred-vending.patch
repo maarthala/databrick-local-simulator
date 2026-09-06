@@ -1,0 +1,39 @@
+diff --git a/server/src/main/java/io/unitycatalog/server/service/credential/aws/AwsCredentialVendor.java b/server/src/main/java/io/unitycatalog/server/service/credential/aws/AwsCredentialVendor.java
+index 10d0340..f78b030 100644
+--- a/server/src/main/java/io/unitycatalog/server/service/credential/aws/AwsCredentialVendor.java
++++ b/server/src/main/java/io/unitycatalog/server/service/credential/aws/AwsCredentialVendor.java
+@@ -116,6 +116,14 @@ public class AwsCredentialVendor {
+       return new AwsCredentialGenerator.StaticAwsCredentialGenerator(config);
+     }
+ 
++    // No role to assume (e.g. MinIO, which can't do STS AssumeRole) but static
++    // access/secret keys are configured: vend those permanent keys directly.
++    if ((config.getAwsRoleArn() == null || config.getAwsRoleArn().isEmpty())
++        && config.getAccessKey() != null
++        && !config.getAccessKey().isEmpty()) {
++      return new AwsCredentialGenerator.StaticAwsCredentialGenerator(config);
++    }
++
+     return createStsCredentialGenerator(config);
+   }
+ 
+diff --git a/server/src/main/java/io/unitycatalog/server/utils/ServerProperties.java b/server/src/main/java/io/unitycatalog/server/utils/ServerProperties.java
+index 64c1f45..071d150 100644
+--- a/server/src/main/java/io/unitycatalog/server/utils/ServerProperties.java
++++ b/server/src/main/java/io/unitycatalog/server/utils/ServerProperties.java
+@@ -348,8 +348,13 @@ public class ServerProperties {
+       String secretKey = getProperty("s3.secretKey." + i);
+       String sessionToken = getProperty("s3.sessionToken." + i);
+       String credentialGenerator = getProperty("s3.credentialGenerator." + i);
+-      if ((bucketPath == null || region == null || awsRoleArn == null)
+-          && (accessKey == null || secretKey == null || sessionToken == null)) {
++      boolean stsConfig = bucketPath != null && region != null && awsRoleArn != null;
++      boolean tempConfig = accessKey != null && secretKey != null && sessionToken != null;
++      // Static permanent creds (e.g. MinIO, which can't do STS AssumeRole): a
++      // bucket with region + access/secret keys and no role/session token.
++      boolean staticConfig =
++          bucketPath != null && region != null && accessKey != null && secretKey != null;
++      if (!stsConfig && !tempConfig && !staticConfig) {
+         break;
+       }
+       S3StorageConfig s3StorageConfig =

@@ -1,0 +1,55 @@
+{{- if .Values.kafkaConnect.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-connect
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "kafka-connect") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "kafka-connect") | nindent 8 }}
+    spec:
+      # Avoid KAFKA_* / KAFKA_CONNECT_* link env vars being misread by the image scripts.
+      enableServiceLinks: false
+      containers:
+        - name: kafka-connect
+          image: {{ include "de-stack.image" (dict "root" $ "repo" .Values.kafkaConnect.repo "tag" .Values.kafkaConnect.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: CONNECT_BOOTSTRAP_SERVERS, value: "kafka:9092" }
+            - { name: CONNECT_REST_PORT, value: "8083" }
+            - { name: CONNECT_GROUP_ID, value: "connect-cluster" }
+            - { name: CONNECT_CONFIG_STORAGE_TOPIC, value: "connect-configs" }
+            - { name: CONNECT_OFFSET_STORAGE_TOPIC, value: "connect-offsets" }
+            - { name: CONNECT_STATUS_STORAGE_TOPIC, value: "connect-status" }
+            - { name: CONNECT_KEY_CONVERTER, value: "org.apache.kafka.connect.json.JsonConverter" }
+            - { name: CONNECT_VALUE_CONVERTER, value: "org.apache.kafka.connect.json.JsonConverter" }
+            - { name: CONNECT_INTERNAL_KEY_CONVERTER, value: "org.apache.kafka.connect.json.JsonConverter" }
+            - { name: CONNECT_INTERNAL_VALUE_CONVERTER, value: "org.apache.kafka.connect.json.JsonConverter" }
+            - { name: CONNECT_PLUGIN_PATH, value: "/usr/share/java,/usr/share/confluent-hub-components" }
+            - { name: CONNECT_REST_ADVERTISED_HOST_NAME, value: "kafka-connect" }
+            - { name: CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR, value: "1" }
+            - { name: CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR, value: "1" }
+            - { name: CONNECT_STATUS_STORAGE_REPLICATION_FACTOR, value: "1" }
+            - { name: CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE, value: "false" }
+            - { name: CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE, value: "false" }
+          ports:
+            - { name: rest, containerPort: 8083 }
+          readinessProbe:
+            httpGet: { path: /connectors, port: 8083 }
+            initialDelaySeconds: 40
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-connect
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "kafka-connect") | nindent 4 }}
+  ports:
+    - { name: rest, port: 8083, targetPort: 8083 }
+{{- end }}

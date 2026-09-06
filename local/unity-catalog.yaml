@@ -1,0 +1,44 @@
+services:
+  # Unity Catalog server (patched image: static MinIO credential vending). Governs
+  # catalogs/schemas/tables + RBAC; validates Keycloak tokens. CLI/API on host :8081.
+  unity-catalog:
+    container_name: unity-catalog
+    image: unitycatalog/unitycatalog:vendflat
+    depends_on:
+      minio:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
+    environment:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+    volumes:
+      - ./configs/unity-catalog/server.properties:/home/unitycatalog/etc/conf/server.properties:ro
+      - uc-data:/home/unitycatalog/etc/db
+    ports:
+      - "8081:8080"     # uc --server http://localhost:8081
+    networks:
+      - sparknet
+
+  # Unity Catalog web UI (patched: Keycloak login over http). Proxies /api to the
+  # unity-catalog service (PROXY_HOST baked at build). Browse at http://localhost:3000.
+  unity-catalog-ui:
+    container_name: unity-catalog-ui
+    image: unitycatalog/unitycatalog-ui:kcflat
+    depends_on:
+      - unity-catalog
+    environment:
+      DANGEROUSLY_DISABLE_HOST_CHECK: "true"
+      WDS_SOCKET_PORT: "0"
+      REACT_APP_KEYCLOAK_AUTH_ENABLED: "true"
+      REACT_APP_KEYCLOAK_URL: http://keycloak:8080
+      REACT_APP_KEYCLOAK_REALM_ID: de-stack
+      REACT_APP_KEYCLOAK_CLIENT_ID: unity-catalog-ui
+    ports:
+      - "3000:3000"
+    networks:
+      - sparknet
+
+volumes:
+  uc-data:
