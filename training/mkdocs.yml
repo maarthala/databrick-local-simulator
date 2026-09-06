@@ -5,6 +5,7 @@ repo_url: https://github.com/maarthala/databrick-local-simulator
 repo_name: maarthala/databrick-local-simulator
 copyright: >
   <a href="https://github.com/maarthala/databrick-local-simulator" target="_blank" rel="noopener">⭐ View this project on GitHub</a>
+  &nbsp;·&nbsp; reach <a href="mailto:contact@epireum.com">contact@epireum.com</a> for more information
 docs_dir: docs
 site_dir: site
 use_directory_urls: true
@@ -53,6 +54,7 @@ extra_css:
   - stylesheets/extra.css
 
 extra:
+  generator: false          # remove the "Made with Material for MkDocs" footer notice
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/maarthala/databrick-local-simulator
