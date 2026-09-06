@@ -9,42 +9,43 @@ Icon?
 ehthumbs.db
 Thumbs.db
 
-# Docker
+# Docker / env
 *.log
 docker-compose.override.yml
 .env
 .env.*
 
-# Terraform
+# Terraform (local state must never be committed)
 *.tfstate
 *.tfstate.*
 *.tfvars
+tfplan
 .terraform/
+.terraform.lock.hcl
 crash.log
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
-.terraform.lock.hcl
 
-# General
+# Editors / OS
 *.swp
 *.swo
 *.bak
 *.tmp
 .idea/
 .vscode/
+
+# Build / deps
 node_modules/
 dist/
 build/
 coverage/
 deleted/
-.venv
-metastore_db
-*.ipynb_checkpoints/
-artifacts/
-notebooks
 .cache/
+htmlcov/
+
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
@@ -52,38 +53,35 @@ __pycache__/
 *.egg
 *.egg-info/
 .eggs/
-pip-log.txt
-pip-delete-this-directory.txt
 .tox/
 .pytest_cache/
 .mypy_cache/
 .pyre/
 .coverage
-htmlcov/
-.cache/
 *.cover
-*.pyc
-*.pkl
-*.db
-*.sqlite3
-*.pot
-*.mo
-*.log
-*.spec
-*.manifest
-*.lock
-*.wsgi
-*.env
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtualenvs
+.venv
 *.venv/
 env/
 ENV/
 venv/
 instance/
-.scrapy/
-*.sage.py
-*.ipynb
-*.ipynb_checkpoints/
-*/*/__pycache__
-notes.txt
+
+# Data / local databases (regenerated at runtime)
+*.pkl
+*.db
+*.sqlite3
+metastore_db
 stack/jars
 tmp
+
+# Jupyter — sample notebooks under stack/code/notebook ARE tracked as teaching
+# material. Only checkpoints and papermill-generated output are ignored.
+**/.ipynb_checkpoints/
+stack/code/notebook/output.ipynb
+
+# Misc
+notes.txt

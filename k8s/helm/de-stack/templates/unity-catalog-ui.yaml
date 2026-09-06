@@ -1,0 +1,68 @@
+{{- if and .Values.unityCatalog.enabled .Values.unityCatalog.ui.enabled }}
+# Unity Catalog web UI — React dev server on :3000, proxies /api to the
+# unity-catalog server (PROXY_HOST baked at build time). Flattened single-layer
+# image to survive this node's overlayfs snapshotter.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unity-catalog-ui
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "unity-catalog-ui") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "unity-catalog-ui") | nindent 8 }}
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: unity-catalog-ui
+          image: {{ .Values.unityCatalog.ui.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          # React dev server rejects unknown Host headers behind an ingress; disable that.
+          # REACT_APP_* are read at dev-server start (runtime), so they need no rebuild.
+          env:
+            - { name: DANGEROUSLY_DISABLE_HOST_CHECK, value: "true" }
+            - { name: WDS_SOCKET_PORT, value: "0" }
+            {{- if .Values.keycloak.enabled }}
+            - { name: REACT_APP_KEYCLOAK_AUTH_ENABLED, value: "true" }
+            - { name: REACT_APP_KEYCLOAK_URL, value: "http://auth.{{ .Values.ingress.baseHost }}" }
+            - { name: REACT_APP_KEYCLOAK_REALM_ID, value: "de-stack" }
+            - { name: REACT_APP_KEYCLOAK_CLIENT_ID, value: "{{ .Values.keycloak.clientId }}-ui" }
+            {{- end }}
+          ports:
+            - { name: http, containerPort: 3000 }
+          readinessProbe:
+            tcpSocket: { port: 3000 }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unity-catalog-ui
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "unity-catalog-ui") | nindent 4 }}
+  ports:
+    - { name: http, port: 3000, targetPort: 3000 }
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: unity-catalog-ui
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: uc-ui.{{ .Values.ingress.baseHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: unity-catalog-ui, port: { number: 3000 } }
+{{- end }}
+{{- end }}

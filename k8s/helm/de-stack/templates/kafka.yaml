@@ -1,0 +1,64 @@
+{{- if .Values.kafka.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "kafka") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "kafka") | nindent 8 }}
+    spec:
+      # A Service named "kafka" makes k8s inject KAFKA_PORT=tcp://... link env vars,
+      # which the Confluent script misreads as a `port` config and crashes. Disable them.
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: kafka
+          image: {{ .Values.kafka.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: KAFKA_NODE_ID, value: "1" }
+            - { name: KAFKA_PROCESS_ROLES, value: "broker,controller" }
+            # Single combined node: the controller talks to itself. Use localhost so it
+            # doesn't depend on the Service ClusterIP/kube-proxy during startup.
+            - { name: KAFKA_CONTROLLER_QUORUM_VOTERS, value: "1@localhost:9093" }
+            - { name: KAFKA_CONTROLLER_LISTENER_NAMES, value: "CONTROLLER" }
+            - { name: KAFKA_LISTENERS, value: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093" }
+            - { name: KAFKA_ADVERTISED_LISTENERS, value: "PLAINTEXT://kafka:9092" }
+            - { name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP, value: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT" }
+            - { name: KAFKA_INTER_BROKER_LISTENER_NAME, value: "PLAINTEXT" }
+            - { name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR, value: "1" }
+            - { name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR, value: "1" }
+            - { name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR, value: "1" }
+            - { name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS, value: "0" }
+            - { name: KAFKA_LOG_DIRS, value: "/var/lib/kafka/data" }
+            - { name: CLUSTER_ID, value: "MkU3OEVBNTcwNTJENDM2Qk" }
+          ports:
+            - { name: broker, containerPort: 9092 }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/kafka/data }
+          readinessProbe:
+            tcpSocket: { port: 9092 }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+      volumes:
+        - { name: data, emptyDir: {} }   # ephemeral (matches compose); avoids KRaft re-format issues
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "kafka") | nindent 4 }}
+  ports:
+    - { name: broker, port: 9092, targetPort: 9092 }
+    - { name: controller, port: 9093, targetPort: 9093 }
+{{- end }}

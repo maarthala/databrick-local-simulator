@@ -1,0 +1,23 @@
+---
+- name: "Wave '{{ wave.name }}' — render + apply {{ wave.templates | join(', ') }}"
+  ansible.builtin.shell: >
+    helm template {{ helm_release }} {{ chart_dir }}
+    {% if global_image_registry is defined %}--set global.imageRegistry={{ global_image_registry }} {% endif %}
+    {% if uc_image is defined %}--set unityCatalog.image={{ uc_image }} {% endif %}
+    {% if uc_ui_image is defined %}--set unityCatalog.ui.image={{ uc_ui_image }} {% endif %}
+    {% for t in wave.templates %}-s templates/{{ t }} {% endfor %}
+    | kubectl -n {{ namespace }} apply -f -
+  changed_when: true
+
+- name: "Wave '{{ wave.name }}' — wait for all deployments to be ready"
+  ansible.builtin.shell: |
+    rc=0
+    for d in $(kubectl -n {{ namespace }} get deploy -o name 2>/dev/null); do
+      kubectl -n {{ namespace }} rollout status "$d" --timeout=240s || rc=1
+    done
+    exit $rc
+  register: wave_wait
+  changed_when: false
+  failed_when: false
+  # Best-effort ordering: a slow/large image (first CreateContainer) may need a
+  # containerd restart on this node; re-run with --tags deploy to resume.

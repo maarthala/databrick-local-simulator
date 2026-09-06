@@ -1,0 +1,34 @@
+# Thin Jupyter for Spark Connect. No Spark/JVM/conda baked in — notebooks talk to
+# the spark-connect server pod over gRPC (sc://spark-connect:15002). This keeps the
+# image small and, crucially, avoids the huge conda layer set that made containerd's
+# overlayfs snapshotter spin on the LXC node. The heavy Spark lives in the reusable
+# spark image (spark-connect deployment); this is just the client + notebooks.
+FROM python:3.11-slim
+
+RUN pip install --no-cache-dir \
+      jupyterlab \
+      pyspark-client==4.0.0 \
+      pandas \
+      numpy \
+      pyarrow \
+      grpcio \
+      grpcio-status \
+      requests \
+      sqlalchemy \
+      psycopg2-binary \
+      trino
+
+# Non-root notebook user (uid 1000, "jovyan" to match convention).
+RUN useradd -m -u 1000 -s /bin/bash jovyan
+
+# pyspark's Connect client auto-uses SPARK_REMOTE, so notebooks can just do
+# SparkSession.builder.getOrCreate() and land on the remote engine.
+ENV SPARK_REMOTE=sc://spark-connect:15002
+
+USER jovyan
+WORKDIR /home/jovyan
+EXPOSE 8888
+
+CMD ["sh","-c","jupyter lab --ip=0.0.0.0 --port=8888 --no-browser \
+     --IdentityProvider.token=${JUPYTER_TOKEN:-123456} \
+     --ServerApp.root_dir=/home/jovyan --ServerApp.allow_origin='*'"]

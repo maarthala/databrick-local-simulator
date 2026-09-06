@@ -1,0 +1,48 @@
+---
+# Build one patched-from-source image ({{ img.ref }}). Skipped entirely if the
+# image already exists locally (the sbt/UI builds are slow — build once, cache).
+- name: "{{ img.ref }} — already built?"
+  ansible.builtin.command: "docker image inspect {{ img.ref }}"
+  register: img_check
+  changed_when: false
+  failed_when: false
+
+- name: "Build {{ img.ref }} from source"
+  when: img_check.rc != 0
+  block:
+    - name: "{{ img.ref }} — reset UC source to a clean tree (idempotent re-patch)"
+      ansible.builtin.command: "git checkout -- ."
+      args:
+        chdir: "{{ uc_build_dir }}"
+      changed_when: false
+
+    - name: "{{ img.ref }} — apply patches"
+      ansible.builtin.command: "git apply {{ patch }}"
+      args:
+        chdir: "{{ uc_build_dir }}"
+      loop: "{{ img.patches }}"
+      loop_control:
+        loop_var: patch
+
+    - name: "{{ img.ref }} — docker build (pre-flatten)"
+      ansible.builtin.command: >
+        docker build --platform linux/amd64
+        {% for k, v in (img.build_args | default({})).items() %}--build-arg {{ k }}={{ v }} {% endfor %}
+        -f {{ img.build_context }}/{{ img.dockerfile }}
+        -t {{ img.ref }}-pre {{ img.build_context }}
+
+    - name: "{{ img.ref }} — flatten to a single layer"
+      when: img.flatten | default(false)
+      ansible.builtin.shell: |
+        set -e
+        docker rm -f de_stack_flatten 2>/dev/null || true
+        docker create --name de_stack_flatten {{ img.ref }}-pre
+        docker export de_stack_flatten | docker import \
+          {% for c in img.flatten_changes %}--change '{{ c }}' {% endfor %} - {{ img.ref }}
+        docker rm de_stack_flatten
+      args:
+        executable: /bin/bash
+
+    - name: "{{ img.ref }} — tag (no flatten)"
+      when: not (img.flatten | default(false))
+      ansible.builtin.command: "docker tag {{ img.ref }}-pre {{ img.ref }}"

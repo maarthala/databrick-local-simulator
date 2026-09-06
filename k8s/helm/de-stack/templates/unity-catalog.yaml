@@ -1,0 +1,123 @@
+{{- if .Values.unityCatalog.enabled }}
+# Unity Catalog OSS — governed catalog + RBAC. Server API on :8080, driven by the
+# bundled `uc` CLI. Metadata (H2) persisted on a PVC; server.authorization toggles
+# grant enforcement. Custom server.properties patches only the settings we change
+# (the token-signing keys / other conf files stay from the image).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unity-catalog-config
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+  server.properties: |
+    server.env=dev
+    server.authorization={{ .Values.unityCatalog.authorization }}
+    {{- if .Values.keycloak.enabled }}
+    # External OIDC (Keycloak) for per-user authentication. Tokens are validated
+    # against this issuer's JWKS; the token's email claim maps to a UC user. The
+    # admin token in etc/conf/token.txt (INTERNAL issuer) keeps working alongside.
+    server.authorization-url=http://auth.{{ .Values.ingress.baseHost }}/realms/de-stack/protocol/openid-connect/auth
+    server.token-url=http://auth.{{ .Values.ingress.baseHost }}/realms/de-stack/protocol/openid-connect/token
+    server.client-id={{ .Values.keycloak.clientId }}
+    server.client-secret={{ .Values.keycloak.clientSecret }}
+    server.allowed-issuers=http://auth.{{ .Values.ingress.baseHost }}/realms/de-stack
+    # CLI/API token aud = unity-catalog; the web UI's public client aud = unity-catalog-ui.
+    server.audiences={{ .Values.keycloak.clientId }},{{ .Values.keycloak.clientId }}-ui
+    {{- end }}
+    # MinIO (S3) for managed/external table storage + credential vending. No
+    # awsRoleArn -> our patched UC vends these static keys directly (MinIO can't
+    # do STS AssumeRole, and UC OSS otherwise only vends via STS/session tokens).
+    s3.bucketPath.0=s3://demo-bucket
+    s3.region.0=us-east-1
+    s3.accessKey.0={{ .Values.minio.rootUser }}
+    s3.secretKey.0={{ .Values.minio.rootPassword }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: unity-catalog-data
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.global.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.unityCatalog.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unity-catalog
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "unity-catalog") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "unity-catalog") | nindent 8 }}
+    spec:
+      enableServiceLinks: false
+      {{- if .Values.keycloak.enabled }}
+      # Resolve the Keycloak issuer host straight to the keycloak Service, bypassing
+      # the nginx ingress (whose chunked responses UC's Armeria JWKS client rejects).
+      hostAliases:
+        - ip: {{ .Values.keycloak.clusterIP | quote }}
+          hostnames: ["auth.{{ .Values.ingress.baseHost }}"]
+      {{- end }}
+      securityContext:
+        fsGroup: 101            # unitycatalog gid — makes the PVC writable
+      containers:
+        - name: unity-catalog
+          image: {{ .Values.unityCatalog.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: AWS_REGION, value: "us-east-1" }
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+          volumeMounts:
+            - { name: cfg, mountPath: /home/unitycatalog/etc/conf/server.properties, subPath: server.properties }
+            - { name: data, mountPath: /home/unitycatalog/etc/db }
+          readinessProbe:
+            tcpSocket: { port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+      volumes:
+        - { name: cfg, configMap: { name: unity-catalog-config } }
+        - { name: data, persistentVolumeClaim: { claimName: unity-catalog-data } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unity-catalog
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  # NodePort: keeps the ClusterIP (used internally by the UI proxy) AND exposes the
+  # server on the node so the `uc` CLI can reach it directly at uc.de.lan:<nodePort>.
+  type: NodePort
+  selector: {{- include "de-stack.selector" (dict "app" "unity-catalog") | nindent 4 }}
+  ports:
+    - { name: http, port: 8080, targetPort: 8080, nodePort: {{ .Values.unityCatalog.nodePort }} }
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: unity-catalog
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: uc.{{ .Values.ingress.baseHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: unity-catalog, port: { number: 8080 } }
+{{- end }}
+{{- end }}

@@ -1,0 +1,50 @@
+name: Deploy docs to GitHub Pages
+
+# Builds the MkDocs Material course (training/) and publishes it to GitHub Pages.
+# Publishes on pushes to main that touch the docs, or manually via the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "training/**"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+# Least privilege needed for the GitHub Pages deployment.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; don't cancel an in-flight publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install MkDocs Material
+        run: pip install "mkdocs-material>=9,<10"
+      - name: Build site (strict — fails on broken links)
+        run: mkdocs build --strict -f training/mkdocs.yml
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: training/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

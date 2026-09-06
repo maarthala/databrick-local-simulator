@@ -1,0 +1,7 @@
+---
+- name: Deploy the chart in ordered waves (each waits for readiness)
+  ansible.builtin.include_tasks: wave.yml
+  loop: "{{ deploy_waves }}"
+  loop_control:
+    loop_var: wave
+    label: "{{ wave.name }}"

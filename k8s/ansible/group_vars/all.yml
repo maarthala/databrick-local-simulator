@@ -1,0 +1,122 @@
+---
+# ============================================================================
+# de-stack bootstrap config. Build images on the Mac, ctr-import them onto the
+# MicroK8s node, then deploy the Helm chart in ordered waves + seed Unity Catalog.
+# ============================================================================
+
+# Repo root (this ansible/ dir lives at <repo>/k8s/ansible).
+repo_root: "{{ playbook_dir }}/../.."
+kubeconfig: "{{ lookup('env','HOME') }}/.kube/config-de-node"
+namespace: de-stack
+helm_release: de-stack
+chart_dir: "{{ repo_root }}/k8s/helm/de-stack"
+
+# Where image tarballs are staged (Mac) and shipped (node).
+stage_dir_local: "/tmp/de-stack-images"
+stage_dir_node: "/tmp/de-stack-images"
+
+# Unity Catalog source (pinned) — the patched server + UI are built from here.
+uc_repo: "https://github.com/unitycatalog/unitycatalog.git"
+uc_commit: "58d5c7b2867d76801dc991b055d6ea2c70d2d811"    # v0.7.0-SNAPSHOT
+uc_build_dir: "/tmp/de-stack-uc-src"
+
+# ---------------------------------------------------------------------------
+# Custom images built directly from stack/dockerfiles (context = that dir), then
+# tagged to the refs the Helm chart expects. (spark bakes the UC connector jars.)
+# ---------------------------------------------------------------------------
+dockerfiles_dir: "{{ repo_root }}/common/dockerfiles"
+build_images:
+  - { dockerfile: "Dockerfile.spark",        ref: "ghcr.io/maarthala/de-stack/spark:latest",       flatten: false }
+  - { dockerfile: "Dockerfile.jupyter",      ref: "ghcr.io/maarthala/de-stack/jupyter:latest",      flatten: false }
+  - { dockerfile: "Dockerfile.superset",     ref: "ghcr.io/maarthala/de-stack/superset:latest",     flatten: false }
+  - { dockerfile: "Dockerfile.airflow-slim", ref: "ghcr.io/maarthala/de-stack/airflow-slim:latest", flatten: false }
+
+# ---------------------------------------------------------------------------
+# Patched images built from the UC source + the tools/* patches, then flattened
+# (single layer) so this node's overlayfs snapshotter imports them cleanly.
+# ---------------------------------------------------------------------------
+source_images:
+  - name: unity-catalog
+    ref: "unitycatalog/unitycatalog:vendflat"
+    patches:
+      - "{{ repo_root }}/common/uc-server/static-cred-vending.patch"
+      - "{{ repo_root }}/common/uc-server/hadoop-connector-permanent-creds.patch"
+    build_context: "{{ uc_build_dir }}"          # whole repo (server Dockerfile)
+    dockerfile: "Dockerfile"
+    flatten: true
+    flatten_changes:
+      - 'ENV PATH=/usr/lib/jvm/default-jvm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+      - 'ENV HOME=/home/unitycatalog'
+      - 'ENV JAVA_HOME=/usr/lib/jvm/default-jvm'
+      - 'WORKDIR /home/unitycatalog'
+      - 'USER unitycatalog'
+      - 'CMD ["./bin/start-uc-server"]'
+  - name: unity-catalog-ui
+    ref: "unitycatalog/unitycatalog-ui:kcflat"
+    patches:
+      - "{{ repo_root }}/common/uc-ui/keycloak-login.patch"
+    build_context: "{{ uc_build_dir }}/ui"
+    dockerfile: "Dockerfile"
+    build_args: { PROXY_HOST: "unity-catalog" }
+    flatten: true
+    flatten_changes:
+      - 'ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+      - 'ENV NODE_VERSION=18.20.8'
+      - 'WORKDIR /ui'
+      - 'ENTRYPOINT ["docker-entrypoint.sh"]'
+      - 'CMD ["bun","run","start"]'
+
+# The home image bakes the built training site (context = training/, not the
+# shared dockerfiles dir), so it's built by its own task rather than the loop.
+home_image: "ghcr.io/maarthala/de-stack/home:latest"
+
+# All image refs to save on the Mac + import on the node.
+load_images: >-
+  {{ (build_images | map(attribute='ref') | list)
+     + (source_images | map(attribute='ref') | list)
+     + [home_image] }}
+
+# ---------------------------------------------------------------------------
+# Deploy waves — applied in order; each waits for readiness before the next.
+# (Only templates for enabled services; disabled ones render to nothing.)
+# ---------------------------------------------------------------------------
+deploy_waves:
+  - name: "commodity"
+    templates: [postgres.yaml, redis.yaml, minio.yaml]
+  - name: "catalog-and-identity"
+    templates: [keycloak.yaml, iceberg-rest.yaml, unity-catalog.yaml, unity-catalog-ui.yaml]
+  - name: "compute"
+    templates: [spark.yaml, spark-connect.yaml, trino.yaml]
+  - name: "apps"
+    templates: [airflow.yaml, jupyter.yaml, superset.yaml, home.yaml, configmaps.yaml]
+
+# ---------------------------------------------------------------------------
+# Unity Catalog seed (run once UC is up). Keycloak users are declarative (realm),
+# but the UC-side users, grants, catalog/schema must be created here.
+# ---------------------------------------------------------------------------
+uc_nodeport_url: "http://uc.de.lan:30808"
+# Fixed learner personas (see training/docs/setup/personas.md). Usernames = roles.
+seed_users:
+  - { name: "Ava Analyst",   email: "analyst@dev-epireum.com" }
+  - { name: "Eddie Engineer", email: "engineer@dev-epireum.com" }
+  - { name: "Lena Lead",     email: "lead@dev-epireum.com" }
+seed_catalog: lakehouse
+seed_schema: sales
+seed_grants:
+  # analyst: read only
+  - { securable: catalog, name: "lakehouse",       privilege: "USE CATALOG",  principal: "analyst@dev-epireum.com" }
+  - { securable: schema,  name: "lakehouse.sales", privilege: "USE SCHEMA",   principal: "analyst@dev-epireum.com" }
+  - { securable: schema,  name: "lakehouse.sales", privilege: "SELECT",       principal: "analyst@dev-epireum.com" }
+  # engineer: read + create
+  - { securable: catalog, name: "lakehouse",       privilege: "USE CATALOG",  principal: "engineer@dev-epireum.com" }
+  - { securable: schema,  name: "lakehouse.sales", privilege: "USE SCHEMA",   principal: "engineer@dev-epireum.com" }
+  - { securable: schema,  name: "lakehouse.sales", privilege: "SELECT",       principal: "engineer@dev-epireum.com" }
+  - { securable: schema,  name: "lakehouse.sales", privilege: "CREATE TABLE", principal: "engineer@dev-epireum.com" }
+  # lead: full access (owner)
+  - { securable: catalog, name: "lakehouse",       privilege: "USE CATALOG",  principal: "lead@dev-epireum.com" }
+  - { securable: schema,  name: "lakehouse.sales", privilege: "USE SCHEMA",   principal: "lead@dev-epireum.com" }
+  - { securable: schema,  name: "lakehouse.sales", privilege: "SELECT",       principal: "lead@dev-epireum.com" }
+  - { securable: schema,  name: "lakehouse.sales", privilege: "CREATE TABLE", principal: "lead@dev-epireum.com" }
+
+# Secrets live in vault.yml (see vault.example.yml). Referenced by the secrets role:
+#   git_pat_token: <fine-grained read-only GitHub PAT>

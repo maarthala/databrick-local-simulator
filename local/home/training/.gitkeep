@@ -1,0 +1,2 @@
+Placeholder so the /training mountpoint exists inside the read-only ./home mount.
+The built MkDocs site (../training/site) is bind-mounted over this dir. Run `make docs` to build.

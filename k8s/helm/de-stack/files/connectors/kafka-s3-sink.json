@@ -1,0 +1,24 @@
+{
+  "name": "clickstream-s3-sink",
+  "config": {
+    "connector.class": "io.confluent.connect.s3.S3SinkConnector",
+    "tasks.max": "1",
+    "topics": "user_clickstream",
+    "s3.bucket.name": "clickstream-bucket",
+    "s3.region": "us-east-1",
+    "aws.region": "us-east-1",
+    "store.url": "http://minio:9000",
+    "s3.path.style.access": "true",
+    "s3.ssl.enabled": "false",
+    "aws.access.key.id": "minioadmin",
+    "aws.secret.access.key": "minioadmin",
+    "format.class": "io.confluent.connect.s3.format.json.JsonFormat",
+    "partitioner.class": "io.confluent.connect.storage.partitioner.DefaultPartitioner",
+    "flush.size": "10",
+    "storage.class": "io.confluent.connect.s3.storage.S3Storage",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false"
+  }
+}

@@ -1,0 +1,19 @@
+---
+# PLAYBOOK 1 of 2 — LOCAL image path (for nodes that can't pull large images, e.g.
+# this MicroK8s-on-LXC box). Build custom + patched images on the Mac and import
+# them straight into the node's containerd. Skip this entirely for registry-based
+# environments (use push-images.sh instead, then run 02-deploy.yml).
+#
+#   ansible-playbook build-load.yml --ask-become-pass [--ask-vault-pass]
+
+- name: Build custom + patched images (on the Mac)
+  hosts: build_host
+  gather_facts: false
+  roles:
+    - { role: images, tags: [images, build] }
+
+- name: Import image tarballs into the MicroK8s node's containerd
+  hosts: k8s_node
+  gather_facts: false
+  roles:
+    - { role: load, tags: [load] }

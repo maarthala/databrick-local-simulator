@@ -1,0 +1,18 @@
+# Home landing page + the training site, for Kubernetes.
+#
+# In compose the home nginx serves ./home and bind-mounts ../training/site, so
+# no image is needed. On k8s we can't bind-mount, so we bake the built training
+# site into the image. The home ConfigMap still supplies index.html (rewritten
+# to the ingress hosts), subPath-mounted over the image's default index.
+#
+# Build context = the training/ directory:
+#   docker build -f common/dockerfiles/Dockerfile.home -t <ref> training
+
+# Stage 1 — render the MkDocs Material site from docs/ + mkdocs.yml.
+FROM squidfunk/mkdocs-material:9 AS docs
+COPY . /docs/
+RUN mkdocs build
+
+# Stage 2 — nginx serving the training site under /training/.
+FROM nginx:latest
+COPY --from=docs /docs/site /usr/share/nginx/html/training

@@ -1,0 +1,185 @@
+# =============================================================================
+# de-stack — values
+# Service names intentionally match the compose service names so the embedded
+# config files resolve (minio, hive-metastore, trino, iceberg-rest, ...).
+# =============================================================================
+global:
+  # Registry holding our custom images (push with helm/de-stack/push-images.sh).
+  imageRegistry: ghcr.io/maarthala/de-stack
+  storageClass: microk8s-hostpath
+  imagePullPolicy: IfNotPresent
+
+# Git integration — read-only git-sync of ONE shared repo into Airflow (DAGs + src)
+# and Jupyter (workspace). Devs clone/edit/push locally with their own creds; the
+# cluster only READS via HTTPS + a read-only token (deploy keys are disabled by the
+# org policy, so we use a fine-grained PAT / GitHub App token instead).
+# Create the token Secret with:
+#   kubectl -n de-stack create secret generic de-stack-git-token --from-literal=token=<PAT>
+git:
+  enabled: true              # requires the tokenSecret to exist (see below)
+  repoUrl: "https://github.com/dev-epireum-com/de-lab.git"  # HTTPS
+  branch: main
+  dagsPath: dags             # subdir in the repo holding Airflow DAGs
+  srcPath: src               # subdir added to PYTHONPATH (shared library code)
+  syncPeriodSeconds: 30
+  username: x-access-token   # GitHub PAT: any non-empty value; App token: x-access-token
+  tokenSecret: de-stack-git-token  # Secret with the read-only token under key "token"
+  image: registry.k8s.io/git-sync/git-sync:v4.4.0
+
+ingress:
+  enabled: true
+  className: public          # MicroK8s nginx ingress addon IngressClass
+  # UIs are exposed as <service>.<baseHost>. A Pi-hole wildcard
+  # (address=/de.lan/<node-ip>) resolves them all with no per-service records.
+  baseHost: de.lan
+
+# ------------------------------------------------------------------ commodity
+postgres:
+  enabled: true
+  # Point the "postgres" Service at an external DB (IP) instead of running one
+  # in-cluster. Empty string = run the in-cluster Deployment (default: self-contained).
+  # Set to an IP (e.g. "192.168.1.3") to use an external Postgres instead.
+  external: ""
+  image: postgres:15
+  storage: 5Gi
+  user: postgres
+  password: postgres
+
+redis:
+  enabled: true
+  image: redis:7
+
+minio:
+  enabled: true
+  image: minio/minio:latest
+  mcImage: minio/mc:latest
+  storage: 10Gi
+  rootUser: minioadmin
+  rootPassword: minioadmin
+
+clickhouse:
+  enabled: false             # dropped — Trino queries the lake; ClickHouse not needed
+  image: clickhouse/clickhouse-server:latest
+  storage: 5Gi
+  user: default
+  password: default
+
+# ------------------------------------------------------------------ streaming
+# (dropped — enable these only to practice streaming/CDC pipelines)
+kafka:
+  enabled: false
+  image: confluentinc/cp-kafka:7.5.0
+  storage: 5Gi
+kafkaConnect:
+  enabled: false
+  repo: kafka-connect          # <registry>/kafka-connect
+  tag: latest
+kafkaUi:
+  enabled: false
+  image: provectuslabs/kafka-ui:latest
+
+# ------------------------------------------------------------------ lakehouse
+hiveMetastore:
+  enabled: false             # dropped — Iceberg REST is the catalog; enable for Hive tables
+  repo: hive
+  tag: latest
+icebergRest:
+  enabled: true
+  image: apache/iceberg-rest-fixture:latest
+  storage: 2Gi
+# Unity Catalog OSS — governed catalog + RBAC. The stock 3.1GB image spins this
+# node's overlayfs snapshotter; we use a FLATTENED single-layer build (1.7GB) that
+# imports/creates cleanly. Loaded onto the node via `ctr images import`.
+unityCatalog:
+  enabled: true
+  # Patched build: vends static permanent S3 keys (MinIO can't do STS AssumeRole,
+  # and stock UC only vends via STS/session tokens). See tools/uc-server/.
+  image: unitycatalog/unitycatalog:vendflat
+  storage: 2Gi
+  authorization: "enable"
+  # NodePort so the `uc` CLI can hit the server directly (the nginx ingress chunks
+  # responses in a way the CLI's HTTP client rejects). Use: uc --server http://uc.de.lan:30808
+  nodePort: 30808
+  # Web UI (React dev server, port 3000) — proxies /api to the unity-catalog
+  # Service. Built from ui/ with PROXY_HOST=unity-catalog, flattened to 1 layer.
+  ui:
+    enabled: true
+    # Patched build: adds a working "Continue with Keycloak" login (implicit OIDC)
+    # and Bearer-token auth so the UI works over plain http. Built from the pinned
+    # ui/ source + flattened; see docs. Rebuild: docker build --build-arg
+    # PROXY_HOST=unity-catalog -t unitycatalog/unitycatalog-ui:kc ui/ then flatten.
+    image: unitycatalog/unitycatalog-ui:kcflat
+trino:
+  enabled: true
+  image: trinodb/trino:473
+
+# Keycloak — OIDC provider for Unity Catalog per-user access control. Dev mode,
+# realm re-imported from files/keycloak/de-stack-realm.json on every start (users
+# analyst/engineer/lead, confidential client "unity-catalog"). Issuer: http://auth.de.lan/realms/de-stack.
+keycloak:
+  enabled: true
+  image: quay.io/keycloak/keycloak:26.0
+  adminUser: admin
+  adminPassword: admin
+  # OIDC client the UC server + `uc` CLI use (must match the realm JSON).
+  clientId: unity-catalog
+  clientSecret: unity-catalog-secret
+  # Pinned ClusterIP for the keycloak Service. The UC pod gets a hostAlias mapping
+  # auth.de.lan -> this IP so its JWKS fetch hits Keycloak directly (nginx mangles
+  # the chunked response and UC's Armeria client rejects it). Must be free in the
+  # service CIDR (10.152.183.0/24 on this MicroK8s node).
+  clusterIP: 10.152.183.249
+
+# ------------------------------------------------------------------ compute
+spark:
+  enabled: true
+  repo: spark
+  tag: latest
+  workers: 1
+  # Pin spark-master/worker to specific node(s). Empty = schedule anywhere.
+  # e.g. { de-stack/spark: "true" } after labelling a dedicated node.
+  nodeSelector: {}
+
+# Spark Connect server (reuses the spark image) — the gRPC engine that the thin
+# Jupyter client drives at sc://spark-connect:15002.
+sparkConnect:
+  enabled: true
+
+# ------------------------------------------------------------------ orchestration / apps
+airflow:
+  enabled: true
+  # Slim image (no baked-in Spark); Spark jobs run in separate pods via
+  # KubernetesPodOperator. Much smaller/faster to schedule than the fat image.
+  repo: airflow-slim
+  tag: latest
+  adminUser: airflow
+  adminPassword: airflow
+  # Shared keys so apiserver/scheduler/dag-processor agree (from the compose cfg).
+  fernetKey: "gZg3prHNcfcl0KS9NH_Sane7PLxC0crWcoruuuBdfp4="
+  secretKey: "l7sViEv3ImrPg7KW5fwwvA=="
+jupyter:
+  enabled: true
+  repo: jupyter
+  tag: latest
+  token: "123456"
+generators:
+  enabled: false             # dropped — sample-data generators (were for Kafka streaming)
+  repo: app
+  tag: latest
+
+# ------------------------------------------------------------------ UIs
+superset:
+  enabled: true
+  repo: superset
+  tag: latest
+  adminUser: admin
+  adminPassword: admin
+hue:
+  enabled: false             # dropped — Superset's SQL Lab covers ad-hoc SQL
+  repo: hue
+  tag: latest
+home:
+  enabled: true
+  # Bakes the built training site under /training/ (see common/dockerfiles/Dockerfile.home).
+  # The home-html ConfigMap still supplies index.html, rewritten to the ingress hosts.
+  image: ghcr.io/maarthala/de-stack/home:latest

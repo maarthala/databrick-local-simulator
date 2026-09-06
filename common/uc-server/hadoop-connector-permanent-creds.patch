@@ -1,0 +1,50 @@
+diff --git a/connectors/hadoop/src/main/java/io/unitycatalog/hadoop/internal/auth/AwsCredential.java b/connectors/hadoop/src/main/java/io/unitycatalog/hadoop/internal/auth/AwsCredential.java
+index bf1e3c7..d8c481b 100644
+--- a/connectors/hadoop/src/main/java/io/unitycatalog/hadoop/internal/auth/AwsCredential.java
++++ b/connectors/hadoop/src/main/java/io/unitycatalog/hadoop/internal/auth/AwsCredential.java
+@@ -19,8 +19,7 @@ public final class AwsCredential extends GenericCredential {
+         accessKeyId != null && !accessKeyId.isEmpty(), "AWS access key is missing");
+     Preconditions.checkArgument(
+         secretAccessKey != null && !secretAccessKey.isEmpty(), "AWS secret key is missing");
+-    Preconditions.checkArgument(
+-        sessionToken != null && !sessionToken.isEmpty(), "AWS session token is missing");
++    // Session token is optional: UC may vend permanent keys (e.g. MinIO).
+     this.accessKeyId = accessKeyId;
+     this.secretAccessKey = secretAccessKey;
+     this.sessionToken = sessionToken;
+diff --git a/connectors/hadoop/src/main/java/io/unitycatalog/hadoop/internal/auth/AwsVendedTokenProvider.java b/connectors/hadoop/src/main/java/io/unitycatalog/hadoop/internal/auth/AwsVendedTokenProvider.java
+index 13a8068..abcb697 100644
+--- a/connectors/hadoop/src/main/java/io/unitycatalog/hadoop/internal/auth/AwsVendedTokenProvider.java
++++ b/connectors/hadoop/src/main/java/io/unitycatalog/hadoop/internal/auth/AwsVendedTokenProvider.java
+@@ -3,6 +3,7 @@ package io.unitycatalog.hadoop.internal.auth;
+ import io.unitycatalog.hadoop.internal.UCHadoopConfConstants;
+ import org.apache.hadoop.conf.Configuration;
+ import org.apache.hadoop.util.Preconditions;
++import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+ import software.amazon.awssdk.auth.credentials.AwsCredentials;
+ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+ import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+@@ -20,9 +21,10 @@ public class AwsVendedTokenProvider extends GenericCredentialProvider
+ 
+   @Override
+   public GenericCredential initGenericCredential(Configuration conf) {
++    // Session token is optional: UC may vend permanent keys (e.g. MinIO, which
++    // can't issue STS session tokens).
+     if (conf.get(UCHadoopConfConstants.S3A_INIT_ACCESS_KEY) != null
+-        && conf.get(UCHadoopConfConstants.S3A_INIT_SECRET_KEY) != null
+-        && conf.get(UCHadoopConfConstants.S3A_INIT_SESSION_TOKEN) != null) {
++        && conf.get(UCHadoopConfConstants.S3A_INIT_SECRET_KEY) != null) {
+ 
+       String accessKey = conf.get(UCHadoopConfConstants.S3A_INIT_ACCESS_KEY);
+       String secretKey = conf.get(UCHadoopConfConstants.S3A_INIT_SECRET_KEY);
+@@ -51,6 +53,10 @@ public class AwsVendedTokenProvider extends GenericCredentialProvider
+   public AwsCredentials resolveCredentials() {
+     AwsCredential aws = (AwsCredential) accessCredentials();
+ 
++    // Permanent keys (no session token) -> basic credentials; otherwise session creds.
++    if (aws.sessionToken() == null || aws.sessionToken().isEmpty()) {
++      return AwsBasicCredentials.create(aws.accessKeyId(), aws.secretAccessKey());
++    }
+     return AwsSessionCredentials.builder()
+         .accessKeyId(aws.accessKeyId())
+         .secretAccessKey(aws.secretAccessKey())

@@ -1,0 +1,89 @@
+{{- if .Values.jupyter.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jupyter
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "jupyter") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "jupyter") | nindent 8 }}
+    spec:
+      # A Service named "jupyter" injects JUPYTER_PORT=tcp://... which jupyter_server
+      # parses as its port number and crashes. Disable service links.
+      enableServiceLinks: false
+{{- if .Values.git.enabled }}
+      initContainers:
+{{ include "de-stack.gitsync.init" . | indent 8 }}
+{{- end }}
+      containers:
+        - name: jupyter
+          image: {{ include "de-stack.image" (dict "root" $ "repo" .Values.jupyter.repo "tag" .Values.jupyter.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: JUPYTER_TOKEN, value: "{{ .Values.jupyter.token }}" }
+            # Thin Connect client: notebooks do SparkSession.builder.getOrCreate()
+            # and land on the spark-connect server (which holds the Iceberg/S3 config).
+            - { name: SPARK_REMOTE, value: "sc://spark-connect:15002" }
+            # AWS creds for direct object access from notebooks (e.g. boto3) if wanted.
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+            - { name: AWS_DEFAULT_REGION, value: "us-east-1" }
+            - { name: AWS_S3_ENDPOINT, value: "http://minio:9000" }
+{{- if .Values.git.enabled }}
+            # shared library code from the repo, importable in notebooks
+            - { name: PYTHONPATH, value: "/home/jovyan/work/repo/{{ .Values.git.srcPath }}" }
+{{- end }}
+          ports:
+            - { name: http, containerPort: 8888 }
+          readinessProbe:
+            httpGet: { path: /api, port: 8888 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+{{- if .Values.git.enabled }}
+          volumeMounts:
+            # the synced repo appears at /home/jovyan/work/repo (read-only; devs
+            # edit & push locally, the cluster only reads).
+            - { name: git-repo, mountPath: /home/jovyan/work, readOnly: true }
+{{- end }}
+{{- if .Values.git.enabled }}
+{{ include "de-stack.gitsync.sidecar" . | indent 8 }}
+{{- end }}
+      volumes:
+{{- if .Values.git.enabled }}
+{{ include "de-stack.gitsync.volumes" . | indent 8 }}
+{{- else }}
+        []
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyter
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "jupyter") | nindent 4 }}
+  ports:
+    - { name: http, port: 8888, targetPort: 8888 }
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jupyter
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: jupyter.{{ .Values.ingress.baseHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: jupyter, port: { number: 8888 } }
+{{- end }}
+{{- end }}

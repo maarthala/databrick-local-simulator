@@ -1,0 +1,261 @@
+diff --git a/ui/src/App.tsx b/ui/src/App.tsx
+index 1a21173..697b7ce 100644
+--- a/ui/src/App.tsx
++++ b/ui/src/App.tsx
+@@ -35,7 +35,10 @@ import ModelVersionDetails from './pages/ModelVersionDetails';
+ // As of [19/02/2025], this implementation should be updated once the following PR are merged.
+ // SEE:
+ // https://github.com/unitycatalog/unitycatalog/pull/809
+-const authEnabled = process.env.REACT_APP_GOOGLE_AUTH_ENABLED === 'true';
++const authEnabled =
++  process.env.REACT_APP_GOOGLE_AUTH_ENABLED === 'true' ||
++  process.env.REACT_APP_OKTA_AUTH_ENABLED === 'true' ||
++  process.env.REACT_APP_KEYCLOAK_AUTH_ENABLED === 'true';
+ 
+ const router = createBrowserRouter([
+   {
+diff --git a/ui/src/components/login/KeycloakAuthButton.tsx b/ui/src/components/login/KeycloakAuthButton.tsx
+index 0c8d465..9e03c82 100644
+--- a/ui/src/components/login/KeycloakAuthButton.tsx
++++ b/ui/src/components/login/KeycloakAuthButton.tsx
+@@ -1,47 +1,74 @@
+-import { Avatar, Button } from 'antd';
+-// getting errors with node version in jwt-decode dependency, removed package for now
+-// import Keycloak from 'keycloak-js';
+-// import { useState } from 'react';
++import { Button } from 'antd';
++import { KeyOutlined } from '@ant-design/icons';
++import { useEffect, useRef } from 'react';
++import { useNavigate } from 'react-router-dom';
++import { useAuth } from '../../context/auth-context';
++
++// Generic OIDC (Keycloak) login using the implicit flow (response_type=id_token).
++// The implicit flow needs no client secret, no PKCE (crypto.subtle is unavailable
++// on this insecure http origin) and no extra deps — Keycloak returns the id_token
++// in the URL fragment, which we hand to UC's token-exchange via loginWithToken().
++const KC_URL = process.env.REACT_APP_KEYCLOAK_URL || '';
++const KC_REALM = process.env.REACT_APP_KEYCLOAK_REALM_ID || '';
++const KC_CLIENT = process.env.REACT_APP_KEYCLOAK_CLIENT_ID || '';
++
++function randHex(bytes = 16): string {
++  const a = new Uint8Array(bytes);
++  window.crypto.getRandomValues(a);
++  return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
++}
+ 
+ export default function KeycloakAuthButton() {
+-  // const [keycloak, setKeycloak] = useState<Keycloak | null>(null);
++  const { loginWithToken } = useAuth();
++  const navigate = useNavigate();
++  const handled = useRef(false);
+ 
+-  // const initKeycloak = () => {
+-  //   const kc = new Keycloak({
+-  //     url: process.env.REACT_APP_KEYCLOAK_URL || '',
+-  //     realm: process.env.REACT_APP_KEYCLOAK_REALM_ID || '',
+-  //     clientId: process.env.REACT_APP_KEYCLOAK_CLIENT_ID || '',
+-  //   });
+-  //
+-  //   kc.init({ onLoad: 'check-sso' })
+-  //     .then((auth) => {
+-  //       setKeycloak(kc);
+-  //     })
+-  //     .catch((error) => {
+-  //       console.error('Failed to initialize Keycloak:', error);
+-  //     });
+-  // };
++  // On return from Keycloak the id_token is in the URL fragment. Exchange it once.
++  useEffect(() => {
++    if (handled.current) return;
++    const hash = window.location.hash.startsWith('#')
++      ? window.location.hash.slice(1)
++      : '';
++    if (!hash) return;
++    const params = new URLSearchParams(hash);
++    const idToken = params.get('id_token');
++    const state = params.get('state');
++    const expected = sessionStorage.getItem('kc_state');
++    if (idToken && state && state === expected) {
++      handled.current = true;
++      sessionStorage.removeItem('kc_state');
++      // Strip the token fragment from the address bar.
++      window.history.replaceState(
++        {},
++        document.title,
++        window.location.pathname + window.location.search,
++      );
++      loginWithToken(idToken).then(() => navigate('/', { replace: true }));
++    }
++  }, [loginWithToken, navigate]);
+ 
+-  // const handleLogin = () => {
+-  //   if (keycloak) {
+-  //     keycloak.login();
+-  //   } else {
+-  //     initKeycloak();
+-  //   }
+-  // };
++  const handleLogin = () => {
++    const state = randHex();
++    const nonce = randHex();
++    sessionStorage.setItem('kc_state', state);
++    const redirectUri = window.location.origin + '/';
++    const url =
++      `${KC_URL}/realms/${KC_REALM}/protocol/openid-connect/auth` +
++      `?client_id=${encodeURIComponent(KC_CLIENT)}` +
++      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
++      `&response_type=${encodeURIComponent('id_token')}` +
++      `&scope=${encodeURIComponent('openid profile email')}` +
++      `&state=${encodeURIComponent(state)}` +
++      `&nonce=${encodeURIComponent(nonce)}`;
++    window.location.assign(url);
++  };
+ 
+   return (
+     <Button
+-      icon={
+-        <Avatar
+-          shape={'square'}
+-          src={'/keycloak-logo.svg'}
+-          style={{ width: 20, height: 20, marginRight: 16 }}
+-        />
+-      }
++      icon={<KeyOutlined />}
+       iconPosition={'start'}
+       style={{ width: 240, height: 40, justifyContent: 'flex-start' }}
+-      // onClick={() => handleLogin()}
++      onClick={handleLogin}
+     >
+       Continue with Keycloak
+     </Button>
+diff --git a/ui/src/context/auth-context.tsx b/ui/src/context/auth-context.tsx
+index 8a82511..6579fae 100644
+--- a/ui/src/context/auth-context.tsx
++++ b/ui/src/context/auth-context.tsx
+@@ -7,6 +7,7 @@ import {
+ } from '../hooks/user';
+ import { GrantType, TokenType } from '../types/api/control.gen';
+ import { useNotification } from '../utils/NotificationContext';
++import { UC_TOKEN_STORAGE_KEY } from './client';
+ 
+ interface AuthContextProps {
+   accessToken: any;
+@@ -39,7 +40,12 @@ function AuthProvider(props: any) {
+           subject_token: idToken,
+         },
+         {
+-          onSuccess: () => {
++          onSuccess: (data: any) => {
++            // Persist the UC token for the Bearer interceptor (Secure cookie is
++            // dropped on http), then refresh the current user.
++            if (data?.access_token) {
++              localStorage.setItem(UC_TOKEN_STORAGE_KEY, data.access_token);
++            }
+             refetch();
+           },
+           onError: () => {
+@@ -59,9 +65,11 @@ function AuthProvider(props: any) {
+       {},
+       {
+         onSuccess: () => {
++          localStorage.removeItem(UC_TOKEN_STORAGE_KEY);
+           refetch();
+         },
+         onError: () => {
++          localStorage.removeItem(UC_TOKEN_STORAGE_KEY);
+           setNotification(
+             'Logout failed. Please contact your system administrator.',
+             'error',
+diff --git a/ui/src/context/client.ts b/ui/src/context/client.ts
+index 3596825..1f1b436 100644
+--- a/ui/src/context/client.ts
++++ b/ui/src/context/client.ts
+@@ -1,6 +1,9 @@
+ import axios from 'axios';
+ import { UC_API_PREFIX } from '../utils/constants';
+ 
++// Where the UC access token from the OIDC exchange is kept.
++export const UC_TOKEN_STORAGE_KEY = 'uc_token';
++
+ /**
+  * The singleton client instance with `baseURL`.
+  */
+@@ -10,3 +13,15 @@ export const CLIENT = axios.create({
+     'Content-type': 'application/json',
+   },
+ });
++
++// Authenticate every request with the stored UC token as a Bearer header. UC's
++// session cookie is set Secure-only, which the browser drops on a plain-http
++// origin, so a header (not the cookie) is what keeps the UI authenticated here.
++CLIENT.interceptors.request.use((config) => {
++  const token = localStorage.getItem(UC_TOKEN_STORAGE_KEY);
++  if (token) {
++    config.headers = config.headers ?? {};
++    (config.headers as any).Authorization = `Bearer ${token}`;
++  }
++  return config;
++});
+diff --git a/ui/src/hooks/user.ts b/ui/src/hooks/user.ts
+index c473c05..0a7ad04 100644
+--- a/ui/src/hooks/user.ts
++++ b/ui/src/hooks/user.ts
+@@ -1,5 +1,5 @@
+-import { useMutation, useQuery } from '@tanstack/react-query';
+-import { CLIENT } from '../context/client';
++import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
++import { CLIENT, UC_TOKEN_STORAGE_KEY } from '../context/client';
+ import { TokenEndpointExtensionType } from '../types/api/control.gen';
+ import { UC_AUTH_API_PREFIX } from '../utils/constants';
+ import { route, isError, assertNever } from '../utils/openapi';
+@@ -27,11 +27,19 @@ export interface LoginWithTokenMutationParams
+   > {}
+ 
+ export function useLoginWithToken() {
++  const queryClient = useQueryClient();
+   return useMutation<
+     OAuthTokenExchangeInterface,
+     Error,
+     LoginWithTokenMutationParams
+   >({
++    // Persist the token in the mutationFn so it is stored even if the calling
++    // component unmounts before the mutation settles (mutate()-level callbacks
++    // are dropped in that case; this and the mutation-level onSuccess below are
++    // bound to the provider, so they always run).
++    onSuccess: () => {
++      queryClient.invalidateQueries({ queryKey: ['getUser'] });
++    },
+     mutationFn: async (params: LoginWithTokenMutationParams) => {
+       const response = await (route as Route<ControlApi>)({
+         client: CLIENT,
+@@ -57,6 +65,12 @@ export function useLoginWithToken() {
+         // be executed. This block serves as a placeholder for expected errors.
+         return assertNever(response.data.status);
+       } else {
++        if (response.data?.access_token) {
++          localStorage.setItem(
++            UC_TOKEN_STORAGE_KEY,
++            response.data.access_token,
++          );
++        }
+         return response.data;
+       }
+     },
+@@ -66,11 +80,17 @@ export function useLoginWithToken() {
+ export interface LogoutCurrentUserMutationParams {}
+ 
+ export function useLogoutCurrentUser() {
++  const queryClient = useQueryClient();
+   return useMutation<
+     SuccessResponseBody<ControlApi, '/auth/logout', 'post'>,
+     Error,
+     LogoutCurrentUserMutationParams
+   >({
++    onSettled: () => {
++      // Drop the stored token regardless of the server response, then refresh.
++      localStorage.removeItem(UC_TOKEN_STORAGE_KEY);
++      queryClient.invalidateQueries({ queryKey: ['getUser'] });
++    },
+     mutationFn: async () => {
+       const response = await (route as Route<ControlApi>)({
+         client: CLIENT,

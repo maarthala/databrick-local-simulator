@@ -1,0 +1,71 @@
+{{- if .Values.superset.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superset
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "superset") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "superset") | nindent 8 }}
+    spec:
+      containers:
+        - name: superset
+          image: {{ include "de-stack.image" (dict "root" $ "repo" .Values.superset.repo "tag" .Values.superset.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: SUPERSET_SECRET_KEY, value: "your_secret_key" }
+            - { name: DATABASE_URL, value: "postgresql+psycopg2://superset:superset@postgres:5432/superset" }
+            - { name: REDIS_URL, value: "redis://redis:6379/0" }
+            - { name: CELERY_BROKER_URL, value: "redis://redis:6379/0" }
+            - { name: CELERY_RESULT_BACKEND, value: "redis://redis:6379/0" }
+            - { name: CSRF_ENABLED, value: "False" }
+            - { name: WTF_CSRF_ENABLED, value: "False" }
+            - { name: TALISMAN_ENABLED, value: "False" }
+          command:
+            - /bin/bash
+            - -c
+            - >
+              pip install psycopg2-binary &&
+              superset db upgrade &&
+              superset fab create-admin --username {{ .Values.superset.adminUser }} --firstname Superset --lastname Admin --email admin@superset.com --password {{ .Values.superset.adminPassword }} &&
+              superset init && python /extras/connections.py &&
+              superset run -h 0.0.0.0 -p 8088 --with-threads --reload --debugger
+          ports:
+            - { name: http, containerPort: 8088 }
+          readinessProbe:
+            httpGet: { path: /health, port: 8088 }
+            initialDelaySeconds: 60
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: superset
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "superset") | nindent 4 }}
+  ports:
+    - { name: http, port: 8088, targetPort: 8088 }
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: superset
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: superset.{{ .Values.ingress.baseHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: superset, port: { number: 8088 } }
+{{- end }}
+{{- end }}

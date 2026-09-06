@@ -1,0 +1,10 @@
+---
+# Convenience wrapper for the LOCAL path: build+load then deploy in one run.
+#   ansible-playbook site.yml --ask-become-pass --ask-vault-pass
+#
+# The two playbooks are also usable independently:
+#   build-load.yml  — build on Mac + ctr-import to the node   (local/offline nodes)
+#   deploy.yml      — helm deploy + seed                       (any node; pulls from
+#                     registry when images aren't already local)
+- import_playbook: build-load.yml
+- import_playbook: deploy.yml

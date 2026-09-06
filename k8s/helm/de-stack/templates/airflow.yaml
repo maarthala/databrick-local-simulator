@@ -1,0 +1,167 @@
+{{- if .Values.airflow.enabled }}
+{{- $img := include "de-stack.image" (dict "root" $ "repo" .Values.airflow.repo "tag" .Values.airflow.tag) }}
+# RBAC so KubernetesPodOperator can launch/watch/delete Spark task pods.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: airflow
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: airflow-pod-launcher
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/exec"]
+    verbs: ["create", "get", "list", "watch", "delete", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: airflow-pod-launcher
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: airflow
+roleRef:
+  kind: Role
+  name: airflow-pod-launcher
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: airflow-dags
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+{{- range $path, $_ := .Files.Glob "files/airflow-dags/*.py" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+---
+# Single-pod Airflow: `airflow standalone` runs api-server + scheduler +
+# dag-processor + triggerer in one process (Airflow's built-in dev mode), and
+# handles db migrate itself. We pre-create a fixed admin (airflow/airflow) first.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "airflow") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "airflow") | nindent 8 }}
+    spec:
+      enableServiceLinks: false
+      serviceAccountName: airflow
+{{- if .Values.git.enabled }}
+      initContainers:
+{{ include "de-stack.gitsync.init" . | indent 8 }}
+{{- end }}
+      containers:
+        - name: airflow
+          image: {{ $img }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          args:
+            - bash
+            - -c
+            - >
+              airflow db migrate &&
+              printf '{"%s": "%s"}' "{{ .Values.airflow.adminUser }}" "{{ .Values.airflow.adminPassword }}"
+              > /opt/airflow/simple_auth_manager_passwords.json.generated &&
+              exec airflow standalone
+          env:
+            - { name: AIRFLOW__CORE__EXECUTOR, value: "LocalExecutor" }
+            # `airflow standalone` forces SimpleAuthManager (dev mode). Pin the
+            # admin username so login is a stable {{ .Values.airflow.adminUser }}/{{ .Values.airflow.adminPassword }}
+            # (paired with the pre-written passwords file in args above).
+            - { name: AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS, value: "{{ .Values.airflow.adminUser }}:admin" }
+            - { name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN, value: "postgresql+psycopg2://airflow:airflow@postgres:5432/airflow" }
+            - { name: AIRFLOW__CORE__FERNET_KEY, value: "{{ .Values.airflow.fernetKey }}" }
+            - { name: AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION, value: "true" }
+            # rescan the DAGs bundle every 30s so git-synced DAGs appear quickly
+            # (default 300s). Matches git-sync's pull period.
+            - { name: AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL, value: "30" }
+            - { name: AIRFLOW__CORE__LOAD_EXAMPLES, value: "false" }
+{{- if .Values.git.enabled }}
+            - { name: AIRFLOW__CORE__DAGS_FOLDER, value: "/git/repo/{{ .Values.git.dagsPath }}" }
+            # shared library code from the repo, importable by DAGs/tasks
+            - { name: PYTHONPATH, value: "/git/repo/{{ .Values.git.srcPath }}" }
+{{- else }}
+            - { name: AIRFLOW__CORE__DAGS_FOLDER, value: "/opt/airflow/dags" }
+{{- end }}
+            - { name: AIRFLOW__API__SECRET_KEY, value: "{{ .Values.airflow.secretKey }}" }
+            - { name: AIRFLOW__WEBSERVER__SECRET_KEY, value: "{{ .Values.airflow.secretKey }}" }
+            - { name: AIRFLOW_CONN_SPARK_DEFAULT, value: "spark://spark-master:7077" }
+            # Spark Connect endpoint so @task code can SparkSession.builder.getOrCreate()
+            - { name: SPARK_REMOTE, value: "sc://spark-connect:15002" }
+            - { name: AWS_REGION, value: "us-east-1" }
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+          ports:
+            - { name: http, containerPort: 8080 }
+          readinessProbe:
+            httpGet: { path: /api/v2/version, port: 8080 }
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          volumeMounts:
+{{- if .Values.git.enabled }}
+            - { name: git-repo, mountPath: /git, readOnly: true }
+{{- else }}
+            # subPath mounts each DAG as a plain file — avoids the ConfigMap
+            # atomic-symlink (..data) dirs that break Airflow 3's DAG walker
+            # ("Detected recursive loop when walking DAG directory").
+{{- range $path, $_ := .Files.Glob "files/airflow-dags/*.py" }}
+            - name: dags
+              mountPath: /opt/airflow/dags/{{ base $path }}
+              subPath: {{ base $path }}
+              readOnly: true
+{{- end }}
+{{- end }}
+            - { name: logs, mountPath: /opt/airflow/logs }
+{{- if .Values.git.enabled }}
+{{ include "de-stack.gitsync.sidecar" . | indent 8 }}
+{{- end }}
+      volumes:
+{{- if .Values.git.enabled }}
+{{ include "de-stack.gitsync.volumes" . | indent 8 }}
+{{- else }}
+        - { name: dags, configMap: { name: airflow-dags } }
+{{- end }}
+        - { name: logs, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-apiserver
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "airflow") | nindent 4 }}
+  ports:
+    - { name: http, port: 8080, targetPort: 8080 }
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: airflow
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: airflow.{{ .Values.ingress.baseHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: airflow-apiserver, port: { number: 8080 } }
+{{- end }}
+{{- end }}

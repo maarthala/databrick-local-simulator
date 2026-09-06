@@ -1,0 +1,64 @@
+{{- if .Values.icebergRest.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: iceberg-rest-data
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.global.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.icebergRest.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iceberg-rest
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "iceberg-rest") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "iceberg-rest") | nindent 8 }}
+    spec:
+      securityContext:
+        runAsUser: 0          # needs to write the sqlite catalog to /persist
+      containers:
+        - name: iceberg-rest
+          image: {{ .Values.icebergRest.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: CATALOG_URI, value: "jdbc:sqlite:file:/persist/catalog.db" }
+            - { name: CATALOG_WAREHOUSE, value: "s3://demo-bucket/iceberg/" }
+            - { name: CATALOG_IO__IMPL, value: "org.apache.iceberg.aws.s3.S3FileIO" }
+            - { name: CATALOG_S3_ENDPOINT, value: "http://minio:9000" }
+            - { name: CATALOG_S3_PATH__STYLE__ACCESS, value: "true" }
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+            - { name: AWS_REGION, value: "us-east-1" }
+          ports:
+            - { name: rest, containerPort: 8181 }
+          volumeMounts:
+            - { name: persist, mountPath: /persist }
+          readinessProbe:
+            httpGet: { path: /v1/config, port: 8181 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - { name: persist, persistentVolumeClaim: { claimName: iceberg-rest-data } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iceberg-rest
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "iceberg-rest") | nindent 4 }}
+  ports:
+    - { name: rest, port: 8181, targetPort: 8181 }
+{{- end }}

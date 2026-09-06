@@ -1,0 +1,98 @@
+{{- if .Values.postgres.enabled }}
+{{- if .Values.postgres.external }}
+# --- External Postgres: the "postgres" Service resolves to an off-cluster DB, so
+# every config that references postgres:5432 keeps working unchanged. ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  ports:
+    - { name: pg, port: 5432, targetPort: 5432 }
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: postgres
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+subsets:
+  - addresses:
+      - ip: {{ .Values.postgres.external | quote }}
+    ports:
+      - { name: pg, port: 5432 }
+{{- else }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+{{- range $path, $_ := .Files.Glob "files/postgres/*.sql" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.global.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.postgres.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "postgres") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "postgres") | nindent 8 }}
+    spec:
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: POSTGRES_USER, value: "{{ .Values.postgres.user }}" }
+            - { name: POSTGRES_PASSWORD, value: "{{ .Values.postgres.password }}" }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+            - { name: init, mountPath: /docker-entrypoint-initdb.d }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "{{ .Values.postgres.user }}"] }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            exec: { command: ["pg_isready", "-U", "{{ .Values.postgres.user }}"] }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+      volumes:
+        - { name: data, persistentVolumeClaim: { claimName: postgres-data } }
+        - { name: init, configMap: { name: postgres-init } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "postgres") | nindent 4 }}
+  ports:
+    - { name: pg, port: 5432, targetPort: 5432 }
+{{- end }}
+{{- end }}

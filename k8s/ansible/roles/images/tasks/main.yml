@@ -1,0 +1,52 @@
+---
+- name: Ensure local image staging dir exists
+  ansible.builtin.file:
+    path: "{{ stage_dir_local }}"
+    state: directory
+
+- name: Fetch base jars/tarballs (init.sh) — first run only
+  ansible.builtin.command: bash init.sh
+  args:
+    chdir: "{{ repo_root }}/local"
+    creates: "{{ dockerfiles_dir }}/tmp/hadoop-aws-3.4.1.jar"
+
+- name: Build custom images from stack/dockerfiles (docker layer cache keeps this fast)
+  ansible.builtin.command: >
+    docker build --platform linux/amd64
+    -f {{ dockerfiles_dir }}/{{ item.dockerfile }}
+    -t {{ item.ref }} {{ dockerfiles_dir }}
+  loop: "{{ build_images }}"
+  loop_control: { label: "{{ item.ref }}" }
+
+- name: Clone Unity Catalog source (if absent)
+  ansible.builtin.command: "git clone {{ uc_repo }} {{ uc_build_dir }}"
+  args:
+    creates: "{{ uc_build_dir }}/.git"
+
+- name: Check out the pinned UC commit
+  ansible.builtin.command: "git checkout {{ uc_commit }}"
+  args:
+    chdir: "{{ uc_build_dir }}"
+  changed_when: false
+
+- name: Build patched images from source (skips if the image already exists)
+  ansible.builtin.include_tasks: build_source_image.yml
+  loop: "{{ source_images }}"
+  loop_control:
+    loop_var: img
+    label: "{{ img.ref }}"
+
+- name: Build the home image (nginx + baked training site; context = training/)
+  ansible.builtin.command: >
+    docker build --platform linux/amd64
+    -f {{ dockerfiles_dir }}/Dockerfile.home
+    -t {{ home_image }} {{ repo_root }}/training
+
+- name: Save all images to gzipped tarballs for shipping to the node
+  ansible.builtin.shell: >
+    set -o pipefail;
+    docker save {{ item }} | gzip > {{ stage_dir_local }}/{{ item | regex_replace('[/:]', '_') }}.tar.gz
+  args:
+    executable: /bin/bash
+  loop: "{{ load_images }}"
+  loop_control: { label: "{{ item }}" }

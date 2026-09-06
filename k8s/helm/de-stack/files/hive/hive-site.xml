@@ -1,0 +1,125 @@
+<configuration>
+  <property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:postgresql://postgres:5432/metastore</value>
+  </property>
+
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>org.postgresql.Driver</value>
+  </property>
+
+  <property>
+    <name>javax.jdo.option.ConnectionUserName</name>
+    <value>hive</value>
+  </property>
+
+  <property>
+    <name>javax.jdo.option.ConnectionPassword</name>
+    <value>hive</value>
+  </property>
+
+  <property>
+    <name>hive.metastore.uris</name>
+    <value>thrift://hive-metastore:9083</value>
+  </property>
+
+  <property>
+    <name>datanucleus.schema.autoCreateAll</name>
+    <value>false</value>
+  </property>
+
+  <property>
+    <name>hive.metastore.warehouse.dir</name>
+    <value>s3a://demo-bucket/warehouse/</value>
+  </property>
+
+  <property>
+  <name>fs.s3a.access.key</name>
+  <value>minioadmin</value>
+</property>
+<property>
+  <name>fs.s3a.secret.key</name>
+  <value>minioadmin</value>
+</property>
+<property>
+  <name>fs.s3a.endpoint</name>
+  <value>http://minio:9000</value>
+</property>
+<property>
+  <name>fs.s3a.path.style.access</name>
+  <value>true</value>
+</property>
+<property>
+  <name>fs.s3a.connection.ssl.enabled</name>
+  <value>false</value>
+</property>
+<property>
+  <name>fs.s3a.impl</name>
+  <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+</property>
+
+<property>
+  <name>hive.server2.thrift.port</name>
+  <value>10000</value>
+</property>
+
+<property>
+  <name>hive.server2.thrift.bind.host</name>
+  <value>0.0.0.0</value>
+</property>
+
+<property>
+  <name>hive.server2.transport.mode</name>
+  <value>binary</value>
+</property>
+
+<property>
+  <name>hive.server2.authentication</name>
+  <value>NONE</value>
+</property>
+
+<!-- Run Hive/Tez locally (no YARN in this stack). Without tez.local.mode=true
+     HiveServer2 hangs on startup trying to reach a ResourceManager. -->
+<property>
+  <name>hive.execution.engine</name>
+  <value>tez</value>
+</property>
+<property>
+  <name>tez.local.mode</name>
+  <value>true</value>
+</property>
+<property>
+  <name>mapreduce.framework.name</name>
+  <value>local</value>
+</property>
+<property>
+  <name>tez.runtime.optimize.local.fetch</name>
+  <value>true</value>
+</property>
+<property>
+  <name>hive.exec.submit.local.task.via.child</name>
+  <value>false</value>
+</property>
+<property>
+  <name>hive.tez.exec.inplace.progress</name>
+  <value>false</value>
+</property>
+<property>
+  <name>hive.server2.enable.doAs</name>
+  <value>false</value>
+</property>
+<property>
+  <name>hive.exec.scratchdir</name>
+  <value>/opt/hive/scratch_dir</value>
+</property>
+<property>
+  <name>hive.user.install.directory</name>
+  <value>/opt/hive/install_dir</value>
+</property>
+<property>
+  <name>metastore.metastore.event.db.notification.api.auth</name>
+  <value>false</value>
+</property>
+
+</configuration>

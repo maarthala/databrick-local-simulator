@@ -1,0 +1,16 @@
+# Slim Airflow for Kubernetes: no baked-in Spark. Spark jobs are run in separate
+# pods via KubernetesPodOperator (the cncf.kubernetes provider), so this image
+# stays small and mounts fast.
+FROM apache/airflow:3.0.1-python3.10
+
+# cncf.kubernetes = KubernetesPodOperator; papermill for the notebook DAG.
+# pyspark-client = thin Spark Connect client (no JVM), so an Airflow @task can
+# import shared src/mylib and drive sc://spark-connect:15002 in-process.
+# (Login uses SimpleAuthManager with a pinned airflow/airflow password, set in
+# the k8s Deployment startup — so the FAB provider isn't needed here.)
+RUN pip install --no-cache-dir \
+      apache-airflow-providers-cncf-kubernetes \
+      papermill \
+      pyspark-client==4.0.0 \
+      ipykernel \
+ && python -m ipykernel install --user --name python3 --display-name "Python 3"

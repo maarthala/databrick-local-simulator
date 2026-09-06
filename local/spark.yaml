@@ -1,0 +1,63 @@
+
+x-spark-common:
+  &spark-common
+    restart: always
+    build:
+      context: ../common/dockerfiles
+      dockerfile: Dockerfile.spark
+    environment:
+      - SPARK_CONF_DIR=/opt/spark/conf/
+      # Region for the AWS SDK v2 used by Iceberg's S3FileIO (MinIO).
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+    volumes:
+      - ./code:/code
+      - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+      - ./configs/hive/hive-site.xml:/opt/spark/conf/hive-site.xml
+    networks:
+      - sparknet
+
+services:
+  spark-master:
+    <<: *spark-common
+    hostname: spark-master
+    container_name: spark-master
+    ports:
+      - "7077:7077"
+      - "8002:8080"
+    entrypoint: ["/bin/bash", "-c", "/opt/spark/sbin/start-master.sh  --host spark-master && tail -f /dev/null"]
+
+
+  spark-worker-1:
+    <<: *spark-common
+    hostname: worker-1
+    container_name: spark-worker-1
+    depends_on:
+      - spark-master
+    entrypoint: ["/bin/bash", "-c", "/opt/spark/sbin/start-worker.sh spark://spark-master:7077 && tail -f /dev/null"]
+
+  # Spark Connect server — the gRPC endpoint the Jupyter client (sc://spark-connect:15002)
+  # talks to. Runs the driver on the standalone cluster; carries the iceberg catalog config
+  # from spark-defaults.conf. catalogImplementation=in-memory because this stack has no Hive Metastore.
+  spark-connect:
+    <<: *spark-common
+    hostname: spark-connect
+    container_name: spark-connect
+    depends_on:
+      - spark-master
+      - spark-worker-1
+    ports:
+      - "15002:15002"
+    # cap cores so notebook (Connect) work leaves room for Airflow spark-submit jobs
+    # on the shared standalone cluster (otherwise one app grabs all cores).
+    entrypoint: ["/bin/bash", "-c", "/opt/spark/sbin/start-connect-server.sh --master spark://spark-master:7077 --conf spark.sql.catalogImplementation=in-memory --conf spark.connect.grpc.binding.port=15002 --conf spark.cores.max=2 --conf spark.executor.cores=1 && tail -f /dev/null"]
+
+# # Enable additional workers as needed
+#   spark-worker-2:
+#     <<: *spark-common
+#     hostname: worker-2
+#     container_name: spark-worker-2
+#     depends_on:
+#       - spark-master
+#     entrypoint: ["/bin/bash", "-c", "/opt/spark/sbin/start-worker.sh spark://spark-master:7077 && tail -f /dev/null"]

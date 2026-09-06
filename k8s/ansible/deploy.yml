@@ -1,0 +1,23 @@
+---
+# PLAYBOOK 2 of 2 — deploy the stack + seed Unity Catalog. Engine-agnostic about
+# how images got there: with imagePullPolicy=IfNotPresent, the kubelet uses a
+# locally-present image (ctr-imported by build-load.yml) if it exists, otherwise
+# pulls it from the registry (public images always; custom images if you ran
+# push-images.sh and pointed the chart at your registry).
+#
+#   ansible-playbook deploy.yml --ask-vault-pass
+#
+# Registry-based environments: set the chart's registry + patched-image refs, e.g.
+#   ansible-playbook deploy.yml -e global_image_registry=<REGISTRY> \
+#     -e uc_image=<REGISTRY>/unity-catalog:vendflat \
+#     -e uc_ui_image=<REGISTRY>/unity-catalog-ui:kcflat
+
+- name: Deploy the stack + seed Unity Catalog (from the Mac)
+  hosts: build_host
+  gather_facts: false
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  roles:
+    - { role: secrets, tags: [secrets, deploy] }
+    - { role: deploy,  tags: [deploy] }
+    - { role: seed,    tags: [seed] }
