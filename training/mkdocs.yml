@@ -62,6 +62,7 @@ nav:
   - Home: index.md
   - Getting started:
       - "Prerequisites & setup": setup/prerequisites.md
+      - "Bring up the stack": setup/deploy.md
       - "Personas & roles": setup/personas.md
       - The ShopFlow scenario: scenario.md
       - "0 · Technical architecture": unit0/architecture.md

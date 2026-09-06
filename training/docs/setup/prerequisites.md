@@ -202,22 +202,13 @@ To run it on your **own** laptop, you need Docker and the repo.
        `sudo usermod -aG docker $USER` (then log out/in).
     3. Install **Git** (`sudo apt-get install -y git`).
 
-Then, from the repo:
-
-```bash
-git clone https://github.com/maarthala/databrick-local-simulator.git
-cd databrick-local-simulator/local
-
-make init   # first run only: download base JARs
-make docs   # build this course site
-make up     # build images + start the whole stack
-make ps     # check status   ·   make down = stop
-```
-
 !!! warning "This stack is memory-hungry"
     You're running ~a dozen services (Spark, Trino, Superset, Airflow, Keycloak, Postgres, …).
     Give Docker at least **8 GB** of RAM — **12–16 GB** is comfortable. On Docker Desktop set this
     in **Settings → Resources → Memory**. Too little and containers get killed (`exit 137`).
+
+With Docker and Git installed, follow **[Bring up the stack](deploy.md)** for the exact `make`
+commands (Docker Compose) or the Ansible steps (Kubernetes).
 
 ---
 
