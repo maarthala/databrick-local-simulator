@@ -13,11 +13,14 @@ ShopFlow's data is born in two very different places:
    (searches, views, cart actions). This is *activity*, not state, and it never stops.
 
 !!! note "What the starter data actually contains"
-    The included data generator seeds the four **core** tables below — `customers`,
-    `products`, `orders`, `order_items`. The remaining tables and the event stream are
-    the **target schema the course grows into** (they're what the richer business
-    questions — margin, returns, fraud, real-time — actually require). Treat this page
-    as the full design; we add the extra sources as the lessons need them.
+    The data generator seeds **all 12 relational tables** below with realistic,
+    foreign-key-consistent data — the four **core** tables (`customers`, `products`,
+    `orders`, `order_items`) plus every **supporting** table (`suppliers`, `inventory`,
+    `payments`, `returns`, `promotions`, `marketing_campaigns`, `support_tickets`,
+    `reviews`). Payments, returns and reviews are generated *from* the real orders, so
+    margins, refunds, fraud scores and ratings all join up correctly. The one thing
+    that is **not** a Postgres table is the **event stream** (clickstream) — that's
+    covered as a streaming source later in the course.
 
 ## How the tables relate
 
@@ -44,7 +47,7 @@ tables with no duplication, ideal for fast transactions but awkward for analytic
 
 ---
 
-## Core tables (seeded today)
+## Core tables
 
 ### `customers` — who buys
 | Column | Type | Description |
@@ -98,7 +101,7 @@ metric ShopFlow cares about is built by aggregating this table.
 
 ---
 
-## Supporting tables (the fuller business)
+## Supporting tables (the fuller business — also seeded)
 
 ### `suppliers` — who ShopFlow buys from
 | Column | Type | Description |
