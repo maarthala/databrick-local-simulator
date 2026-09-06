@@ -1,6 +1,10 @@
 site_name: Data Engineering — Hands-on with a Governed Lakehouse
 site_description: Learn Data Engineering by building a real Bronze→Silver→Gold pipeline for the ShopFlow e-commerce company, then map every skill to Databricks, Snowflake, Fabric, and Azure.
 site_url: https://maarthala.github.io/databrick-local-simulator/
+repo_url: https://github.com/maarthala/databrick-local-simulator
+repo_name: maarthala/databrick-local-simulator
+copyright: >
+  <a href="https://github.com/maarthala/databrick-local-simulator" target="_blank" rel="noopener">⭐ View this project on GitHub</a>
 docs_dir: docs
 site_dir: site
 use_directory_urls: true
@@ -47,6 +51,12 @@ plugins:
 
 extra_css:
   - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/maarthala/databrick-local-simulator
+      name: Project on GitHub
 
 nav:
   - Home: index.md
