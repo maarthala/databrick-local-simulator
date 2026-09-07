@@ -165,37 +165,43 @@ pd.read_sql("SELECT * FROM country_revenue_scratch", pg)
 - **The final `read_sql`** — reads the table straight back so you can confirm the write landed.
 
 ### Query the lakehouse via Trino
-Here's the *"same Python, two homes"* payoff. The same `read_sql`, but through a **Trino**
-connection instead of a Postgres engine — so you can query the governed `iceberg` lakehouse tables
+Here's the *"same Python, two homes"* payoff. The **same `create_engine` + `read_sql`**, just a
+`trino://` URL instead of a Postgres one — so you can query the governed `iceberg` lakehouse tables
 (built in [Unit 4](../unit4/spark-sql-gold.md)) from Python:
 
 ```python
-from trino.dbapi import connect
+from sqlalchemy import create_engine
 
-trino_conn = connect(host="trino", port=8080, user="learner", catalog="iceberg")
+# same create_engine() as Postgres — only the URL changes (catalog = iceberg, no password)
+lake = create_engine("trino://learner@trino:8080/iceberg")
 
 # the Gold mart you'll build in Unit 4
 daily = pd.read_sql(
     "SELECT * FROM iceberg.gold.daily_sales ORDER BY order_date DESC LIMIT 14",
-    trino_conn,
+    lake,
 )
 daily
 ```
 
 **Read it step by step:**
 
-- **`from trino.dbapi import connect`** — import the Trino client's **`connect`** function. This
-  is the *driver* for the lakehouse, the counterpart to psycopg2 for Postgres.
-- **`connect(host="trino", port=8080, user="learner", catalog="iceberg")`** — open a connection.
-  Instead of a single URL string, Trino takes keyword arguments: the **`host`**/**`port`** of the
-  Trino service, the **`user`** to run as, and the default **`catalog`** (`iceberg`, our
-  lakehouse). The result is a **connection object**, not a SQLAlchemy engine — but `read_sql`
-  happily accepts either.
-- **`pd.read_sql("SELECT * FROM iceberg.gold.daily_sales ...", trino_conn)`** — the *identical*
-  pandas call as for Postgres. Only two things changed: the connection (`trino_conn` instead of
-  `pg`) and the fully-qualified table name (`iceberg.gold.daily_sales`).
+- **`create_engine("trino://learner@trino:8080/iceberg")`** — the *same* `create_engine` you used
+  for Postgres, just a **`trino://`** URL of the shape `trino://<user>@<host>:<port>/<catalog>`.
+  `learner` is the user (Trino needs no password), `trino:8080` is the query engine, and `iceberg`
+  is the default **catalog** (our lakehouse). The `trino` package ships the SQLAlchemy dialect that
+  makes this URL work — so pandas gets a real **engine**, exactly like Postgres.
+- **`pd.read_sql("SELECT * FROM iceberg.gold.daily_sales ...", lake)`** — the *identical* pandas
+  call as for Postgres. Only two things changed: the engine (`lake` instead of `pg`) and the
+  fully-qualified table name (`iceberg.gold.daily_sales`).
 - **What comes back** — again a plain DataFrame (the 14 most recent days of the Gold sales mart),
   indistinguishable from one read out of Postgres.
+
+!!! tip "Give pandas an *engine*, not a raw connection"
+    `pd.read_sql` officially supports a **SQLAlchemy engine** (or a URL string). If you instead pass
+    a raw DBAPI connection — e.g. `trino.dbapi.connect(...)` — it still returns the data, but pandas
+    prints `UserWarning: pandas only supports SQLAlchemy connectable…`. Using
+    `create_engine("trino://…")` keeps that warning away **and** keeps the Postgres and lakehouse
+    code identical.
 
 !!! tip "Postgres vs Trino from Python — which connection?"
     Use the **Postgres** engine to read the *raw source*; use the **Trino** connection to read
@@ -260,7 +266,7 @@ revenue. Sort by revenue, highest first.
 | **Parameterised query** | Placeholders (`%(c)s`) + `params={...}` — pass values as *data*, never string-format them in |
 | **SQL injection** | The attack a parameterised query prevents: user input changing the query's shape |
 | **Pushdown** | Do filter/aggregate in the DB; return only the small result |
-| **Trino DBAPI** | `trino.dbapi.connect(...)` — the driver/connection to query the lakehouse from Python |
+| **`trino://` engine** | `create_engine("trino://user@host:port/catalog")` — a SQLAlchemy engine for the lakehouse (the `trino` package ships the dialect) |
 
 ## You can now…
 - Run SQL against Postgres from Python and get a DataFrame (`pd.read_sql`)
