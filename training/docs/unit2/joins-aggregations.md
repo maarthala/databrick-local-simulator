@@ -24,6 +24,22 @@ flowchart LR
   OI --> AGG[[GROUP BY category<br/>SUM quantity × unit_price]]
 ```
 
+### How a join actually works
+A **join** matches each row of one table to rows in another using a **key** — a column they
+share. `orders.customer_id` points at `customers.customer_id`; that link is the *join key*. You
+tell SQL the rule in the **`ON`** clause (`ON o.customer_id = c.customer_id`), and it stitches the
+matching rows together into one wider row.
+
+Two ideas to hold onto before we start:
+
+- **Aliases** — writing `orders AS o` lets you refer to columns as `o.order_id` instead of the
+  full table name. With four tables in a query it keeps things short and unambiguous (both
+  `orders` and `order_items` have an `order_id`, so you *must* say which one you mean).
+- **Fan-out (one-to-many)** — one order has *many* line items. So when you join `orders` to
+  `order_items`, a single order becomes **several rows** — one per item. That's exactly what you
+  want *before* aggregating, but it's why you'll need `COUNT(DISTINCT …)` later to avoid
+  counting the same order many times.
+
 ## Lab
 These labs run on the raw ShopFlow source via the `shopflow` catalog. (After Unit 4, the
 same SQL works on `iceberg.silver.*` — just change the schema.)
@@ -35,7 +51,12 @@ same SQL works on `iceberg.silver.*` — just change the schema.)
 USE shopflow.public;
 ```
 
-Start with a two-table `INNER JOIN` — attach product info to each line item:
+`USE` sets the default catalog + schema so you can write `orders` instead of the full
+`shopflow.public.orders` every time.
+
+### 1 · Your first join — attach a product to each line item
+An `order_items` row only stores a `product_id` (a number). To see the product's *name* and
+*category*, join to the `products` table:
 
 ```sql
 SELECT oi.order_id,
@@ -50,7 +71,20 @@ INNER JOIN products AS p
 LIMIT 20;
 ```
 
-Now chain all four tables for a fully enriched line-item view:
+**Read it clause by clause:**
+
+- **`FROM order_items AS oi`** — start from the line items, nicknamed `oi`.
+- **`INNER JOIN products AS p ON oi.product_id = p.product_id`** — for each line item, find the
+  product whose `product_id` matches, and glue that product's columns onto the row.
+- **`INNER JOIN`** keeps a row **only if the match succeeds**. Every line item here has a valid
+  product, so none are dropped — but the word matters (see the `LEFT JOIN` at the end).
+- **`oi.quantity * oi.unit_price AS line_revenue`** — you can *compute* new columns with
+  arithmetic. **`AS line_revenue`** just gives that column a readable name (an **alias**).
+- **`LIMIT 20`** — return only the first 20 rows. Always sample a big table before running the
+  full thing.
+
+### 2 · Chain all four tables
+Revenue lives across four tables, so chain the joins — each one adds a table matched on its key:
 
 ```sql
 SELECT o.order_id,
@@ -68,7 +102,25 @@ WHERE o.status = 'delivered'
 LIMIT 20;
 ```
 
-**Aggregate** it — total revenue and order count per country:
+- **`JOIN`** with no keyword **means `INNER JOIN`** — they're the same thing.
+- The chain reads like a sentence: each **order** → its **line items** → each item's **product**
+  → the order's **customer**.
+- **`WHERE o.status = 'delivered'`** filters *rows* — keep only delivered orders. (`WHERE` runs
+  **before** any grouping; more on that next.)
+- Every output row is now **one enriched line item** — that's the **grain** of this result.
+
+!!! info "The order SQL *really* runs in"
+    You write `SELECT` first, but the engine evaluates clauses in this order:
+
+    **`FROM` / `JOIN`** → **`WHERE`** → **`GROUP BY`** → **`HAVING`** → **`SELECT`** →
+    **`ORDER BY`** → **`LIMIT`**
+
+    That's why `WHERE` can filter raw rows but can't use a `SELECT` alias yet, and why `HAVING`
+    (which comes after grouping) is the one that can filter on a `SUM`.
+
+### 3 · Aggregate — revenue & orders per country
+`GROUP BY` **collapses** many rows into one summary row per group, and **aggregate functions**
+compute a single value for each group:
 
 ```sql
 SELECT c.country,
@@ -83,7 +135,23 @@ GROUP BY c.country
 ORDER BY revenue DESC;
 ```
 
-**The headline metric — revenue by category:**
+- **`GROUP BY c.country`** — put every line-item row into a bucket by country. The result has
+  **one row per country** (that's the new grain).
+- **`SUM(oi.quantity * oi.unit_price)`** — add up line revenue across all rows in the bucket.
+- **`AVG(…)`** — the average line value in the bucket.
+- **`COUNT(DISTINCT o.order_id)`** — count the **unique** orders. This is the crucial one: because
+  the join fanned out to line items, one order appears on *several* rows. Plain
+  `COUNT(o.order_id)` would count line items, not orders — **`DISTINCT`** de-duplicates so you
+  count each order once.
+- **`ORDER BY revenue DESC`** — sort the result, biggest revenue first (`DESC` = descending).
+
+!!! note "The three faces of COUNT"
+    - **`COUNT(*)`** — how many rows are in the group (counts everything).
+    - **`COUNT(col)`** — how many rows where `col` is **not NULL**.
+    - **`COUNT(DISTINCT col)`** — how many **different** values of `col`.
+
+### 4 · The headline metric — revenue by category
+Same recipe, grouped by `category` instead — this *is* a Gold-layer business metric:
 
 ```sql
 SELECT p.category,
@@ -98,8 +166,15 @@ GROUP BY p.category
 ORDER BY revenue DESC;
 ```
 
-Use `LEFT JOIN` + `HAVING` to find **customers who have never had a delivered order** —
-notice the left table (customers) is preserved and unmatched rows show `NULL`:
+Three different aggregates over the same group: **`SUM(revenue)`** = money earned,
+**`SUM(quantity)`** = units sold, **`COUNT(DISTINCT order_id)`** = how many orders touched the
+category. Change the `GROUP BY` column and you get the same metric sliced a different way — that's
+the whole power of aggregation.
+
+### 5 · LEFT JOIN — find customers who *never* ordered
+An `INNER JOIN` would silently drop customers with no orders — but "who never buys?" is often the
+question. A **`LEFT JOIN`** keeps **every** row of the left table (`customers`); where there's no
+match, the right-side columns come back **`NULL`**:
 
 ```sql
 SELECT c.customer_id, c.full_name, COUNT(o.order_id) AS delivered_orders
@@ -113,15 +188,30 @@ ORDER BY c.customer_id
 LIMIT 20;
 ```
 
-!!! warning "INNER vs LEFT and dropped rows"
-    Putting `o.status = 'delivered'` in a `WHERE` clause on a `LEFT JOIN` silently turns it
-    back into an `INNER JOIN` (the `NULL` rows fail the filter). Keep such conditions in the
-    `ON` clause when you want to preserve unmatched left rows.
+- **`LEFT JOIN`** — keep all customers, matched or not.
+- **`COUNT(o.order_id)`** — remember `COUNT(col)` **ignores NULLs**. A customer with no delivered
+  order has only NULL `o.order_id`, so their count is **0**. (Using `COUNT(*)` here would wrongly
+  return 1, because the customer's own row still exists.)
+- **`HAVING COUNT(o.order_id) = 0`** — **`HAVING`** filters *groups* after aggregation, the way
+  `WHERE` filters rows before it. Here it keeps only customers whose delivered-order count is zero.
+- **`AND o.status = 'delivered'` lives in the `ON`**, on purpose — see the warning.
+
+!!! warning "The classic LEFT JOIN trap: `ON` vs `WHERE`"
+    Put `o.status = 'delivered'` in a **`WHERE`** clause instead, and you silently turn the
+    `LEFT JOIN` back into an `INNER JOIN`: the unmatched customers have `status = NULL`, `NULL`
+    fails the filter, and they vanish — the exact rows you were trying to find. **Rule of thumb:**
+    conditions that decide *how tables match* go in **`ON`**; conditions that filter the *final
+    rows* go in **`WHERE`**.
 
 ## Challenge
 Produce a **top-spending customers** report: for each customer show name, country, number
 of delivered orders, and total revenue — but only customers whose total delivered revenue
 exceeds **5000**. Sort by revenue descending, top 10.
+
+!!! tip "Which clauses do you need?"
+    Join `customers × orders × order_items`, filter delivered rows with **`WHERE`**, roll up with
+    **`GROUP BY`** the customer, keep only big spenders with **`HAVING SUM(…) > 5000`** (a group
+    filter, not a row filter), then **`ORDER BY revenue DESC`** and **`LIMIT 10`**.
 
 ??? note "Solution"
     ```sql
@@ -156,13 +246,20 @@ exceeds **5000**. Sort by revenue descending, top 10.
 ## Key terms, at a glance
 | Term | Plain meaning |
 |---|---|
-| **INNER JOIN** | Keep only rows that match on both sides |
+| **Join key** | The shared column two tables match on (e.g. `customer_id`) |
+| **`ON`** | The rule that decides which rows match in a join |
+| **Alias (`AS`)** | A short nickname for a table or a renamed output column |
+| **INNER JOIN** (`JOIN`) | Keep only rows that match on both sides |
 | **LEFT JOIN** | Keep all left rows; right side is `NULL` when unmatched |
+| **Fan-out** | One-to-many join → one order becomes many line-item rows |
+| **`WHERE`** | Filter *rows* — runs **before** grouping |
 | **GROUP BY** | Collapse rows into one summary row per group |
-| **SUM / COUNT / AVG** | Aggregate functions over each group |
-| **COUNT(DISTINCT …)** | Count unique values (e.g. distinct orders) |
-| **HAVING** | Filter *groups* after aggregation (vs `WHERE` on rows) |
+| **SUM / AVG** | Aggregate functions — add up / average a group |
+| **COUNT(*) / COUNT(col) / COUNT(DISTINCT col)** | Count rows / non-NULL values / unique values |
+| **HAVING** | Filter *groups* **after** aggregation (vs `WHERE` on rows) |
+| **ORDER BY … DESC / LIMIT** | Sort the result / cap how many rows come back |
 | **Grain** | What one output row represents (per country, per category…) |
+| **Execution order** | `FROM`→`WHERE`→`GROUP BY`→`HAVING`→`SELECT`→`ORDER BY`→`LIMIT` |
 
 ## You can now…
 - Join `orders × order_items × products × customers` with INNER and LEFT joins

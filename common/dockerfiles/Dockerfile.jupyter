@@ -16,7 +16,9 @@ RUN pip install --no-cache-dir \
       requests \
       sqlalchemy \
       psycopg2-binary \
-      trino
+      trino \
+      openpyxl \
+      s3fs
 
 # Non-root notebook user (uid 1000, "jovyan" to match convention).
 RUN useradd -m -u 1000 -s /bin/bash jovyan
