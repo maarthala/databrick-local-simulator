@@ -108,7 +108,7 @@ The Trino CLI is a single self-contained program. Once installed you connect wit
 trino --server http://localhost:8007
 
 # Kubernetes
-trino --server https://trino.de.lan
+trino --server http://trino.de.lan
 ```
 
 You'll get a `trino>` prompt — type SQL, end each statement with `;`, quit with `quit;`.

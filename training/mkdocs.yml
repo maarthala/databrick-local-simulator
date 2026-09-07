@@ -101,6 +101,12 @@ nav:
       - "5.1 Airflow basics": unit5/basics.md
       - "5.2 Build the medallion DAG": unit5/medallion-dag.md
       - "5.3 Schedule ingestion & Spark jobs": unit5/schedule.md
+  - "Real-world recipes":
+      - "Ingest Excel from object storage": recipes/excel.md
+      - "Run on file arrival (event trigger)": recipes/file-trigger.md
+      - "Slowly changing dimensions (SCD2)": recipes/scd2.md
+      - "Data quality checks & quarantine": recipes/data-quality.md
+      - "Reverse-ETL: publish Gold out": recipes/reverse-etl.md
   - "6 · Data governance (Unity Catalog)":
       - "6.1 Catalogs, schemas, tables": unit6/catalogs.md
       - "6.2 Users, roles & RBAC": unit6/rbac.md

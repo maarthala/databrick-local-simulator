@@ -63,6 +63,28 @@ spark = SparkSession.builder.getOrCreate()   # Connect client → the cluster; i
 print(spark.version)
 ```
 
+**Read it step by step:**
+
+- **`from pyspark.sql import SparkSession`** — imports the entry-point class. A
+  **`SparkSession`** is your handle to the cluster: every DataFrame, every `spark.sql(...)`,
+  every read and write goes through it. Think of it as the "connection object" for Spark.
+- **`SparkSession.builder.getOrCreate()`** — `.builder` starts configuring a session;
+  `.getOrCreate()` reuses one if it already exists, otherwise makes a new one. Normally you'd
+  pass a `.master(...)` or `.remote(...)` here to say *which* cluster — but this notebook is a
+  pre-wired **Spark Connect** client (a thin client that talks to a remote Spark cluster over
+  the `sc://spark-connect:15002` address the environment already set). So the address, the
+  `iceberg` catalog, and the storage credentials are all supplied by the server, and one line
+  is enough. Nothing is computed on the cluster yet — you've only opened the connection.
+- **`print(spark.version)`** — asks the cluster which Spark version it's running and prints it.
+  A quick "am I really connected?" check.
+
+!!! info "Driver, executors, partitions — the words behind the diagram"
+    When you call an action later, Spark runs your program in two roles. The **driver** is the
+    process holding `spark` — it builds the plan and hands out work. The **executors** are the
+    worker processes that actually crunch data, in parallel. Each executor works on
+    **partitions** — slices of your DataFrame. You write one script; Spark fans it across the
+    cluster so data far bigger than one machine's RAM still fits.
+
 !!! note "Where's all the config?"
     In Unit 2 you saw catalogs are **admin-configured**, not created by you. Same here: the
     cluster's Connect server already knows the **`iceberg`** catalog (object storage + Iceberg
@@ -97,12 +119,59 @@ print("delivered orders:", delivered.count())
 delivered.explain()
 ```
 
+**Read it step by step:**
+
+- **`spark.createDataFrame([...], [...])`** — builds a **DataFrame** (a distributed, typed
+  table) from a Python list of rows plus a list of column names. Here four rows and the columns
+  `order_id, customer_id, order_date, status`. A DataFrame looks like a pandas table, but it's
+  split into partitions and lives on the cluster, so the *same* code works whether it's 4 rows
+  or 4 billion. Building it is cheap — no data is scanned yet.
+- **`orders.filter("status = 'delivered'")`** — a **transformation** (lazy). It says "keep only
+  rows where `status` is `delivered`", but runs **nothing** — it just adds a step to the plan.
+  The filter is written as a SQL-like string here; you'll also see the column-object form
+  `F.col("status") == "delivered"` in the Challenge.
+- **`.select("customer_id", "order_date")`** — another **transformation** (lazy). It prunes the
+  DataFrame down to just those two columns. Still no execution; `delivered` is now a *recipe*
+  (read → filter → select), not a computed result.
+- **`delivered.show()`** — the first **action**. An action is what forces Spark to actually
+  run: it optimizes the whole chain, ships the work to executors, and — for `show()` — prints
+  the first ~20 rows as a table. This is the moment the lazy plan finally executes.
+- **`delivered.count()`** — another **action**. It re-runs the plan to count the rows and
+  returns a single number. (Each action triggers its own run; Spark doesn't cache results
+  unless you ask it to.)
+- **`delivered.explain()`** — prints the **physical plan** — the steps Spark *would* run — but
+  **without touching the data**. Great for seeing the optimizer at work (e.g. the filter pushed
+  down before the projection). Treat it as "show me the plan", not an action on the data.
+
+!!! info "Why lazy? Because Spark optimizes the *whole* plan"
+    Because transformations only build a plan, Spark sees the entire chain before running a
+    single row. That lets it push the `filter` down, drop columns you didn't `select`, and skip
+    reading data it doesn't need — the same warehouse-grade optimization Trino did in Unit 2,
+    now applied to your Python. The rule to memorize: **transformations are lazy; an action
+    (`show`, `count`, `collect`, `write`) triggers execution.**
+
 Peek at partitioning and a first aggregation:
 
 ```python
 print("partitions:", orders.rdd.getNumPartitions())
 orders.groupBy("status").count().show()
 ```
+
+**Read it step by step:**
+
+- **`orders.rdd.getNumPartitions()`** — reports how many **partitions** this DataFrame is split
+  into (its slices of parallelism). For a tiny in-memory sample it'll be small; on real lake
+  files Spark chooses this from the data size. You rarely tune it early — this is just to *see*
+  that a DataFrame is physically chunked.
+- **`orders.groupBy("status")`** — a **transformation** (lazy). It buckets rows by `status`,
+  the DataFrame equivalent of SQL's `GROUP BY`. Nothing runs yet.
+- **`.count()`** — here `count()` chained after `groupBy` is a **transformation**: it declares
+  "count the rows in each bucket" and returns a new DataFrame (one row per status). (Contrast
+  with the earlier `delivered.count()`, which was called on a plain DataFrame and returned a
+  number — *that* one is an action. Same word, two behaviours: on a grouping it's lazy; on a
+  DataFrame it's an action.)
+- **`.show()`** — the **action** that triggers the whole `groupBy → count` plan and prints the
+  per-status counts.
 
 ## Challenge
 Using the `orders` sample above, produce the **count of delivered orders per order_date**,
@@ -126,6 +195,23 @@ which steps are transformations vs the action.
     Only `show()` (and `explain`) force execution; every `.filter/.groupBy/.agg/.orderBy`
     just extended the lazy plan.
 
+    **Read it step by step:**
+
+    - **`from pyspark.sql import functions as F`** — imports Spark's column-function library
+      under the short alias `F`. This is where `F.col`, `F.count`, `F.sum`, etc. live — the
+      building blocks for expressing columns and aggregates in the DataFrame API.
+    - **`F.col("status") == "delivered"`** — the column-object way to write a filter. `F.col`
+      names a column; `==` builds a comparison expression. Same effect as the string
+      `"status = 'delivered'"` you used in the Lab — just typed rather than parsed. Still a
+      lazy **transformation**.
+    - **`.groupBy("order_date")`** — buckets rows by date. **Transformation** (lazy).
+    - **`.agg(F.count("*").alias("delivered"))`** — computes one aggregate per bucket:
+      `F.count("*")` counts rows in the group, and `.alias("delivered")` names the output
+      column. **Transformation** (lazy) — it describes the aggregation, runs nothing.
+    - **`.orderBy("order_date")`** — sorts the result by date. **Transformation** (lazy).
+    - **`result.explain()`** — prints the plan; no data computed.
+    - **`result.show()`** — the single **action** that finally runs the whole chain.
+
 !!! tip "🎯 This runs unchanged on Azure, Databricks, Snowflake & Fabric"
     **What you just did:** connected to a Spark cluster and ran lazy DataFrame transformations
     vs. actions across partitions.
@@ -144,13 +230,16 @@ which steps are transformations vs the action.
 ## Key terms, at a glance
 | Term | Plain meaning |
 |---|---|
+| **Spark** | A distributed compute engine — splits work across a cluster to process data bigger than one machine's RAM |
+| **Cluster** | The set of machines Spark runs on: one driver + many executors |
 | **Driver / executor** | Plans the work / does the work in parallel |
 | **Partition** | A slice of the data — the unit of parallelism |
-| **DataFrame** | A distributed, typed table you transform |
-| **Transformation** | A lazy step that only builds the plan (`filter`, `join`…) |
-| **Action** | Triggers execution (`show`, `count`, `write`) |
-| **Lazy evaluation** | Nothing runs until an action; Spark optimizes the whole plan |
-| **Spark Connect** | Lightweight client protocol to a remote Spark cluster |
+| **DataFrame** | A distributed, typed table you transform (like pandas, but scales out) |
+| **Transformation** | A lazy step that only builds the plan (`filter`, `select`, `groupBy`, `join`…) |
+| **Action** | Triggers execution (`show`, `count`, `collect`, `write`) |
+| **Lazy evaluation** | Nothing runs until an action; Spark optimizes the whole plan first |
+| **SparkSession** (`spark`) | Your entry point / handle to the cluster — every DataFrame and query goes through it |
+| **Spark Connect** (`sc://…`) | Lightweight client protocol to a remote Spark cluster |
 
 ## You can now…
 - Explain distributed compute: driver, executors, partitions

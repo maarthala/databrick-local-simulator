@@ -68,7 +68,7 @@ SQL two ways in this course — use whichever you prefer:
 trino --server http://localhost:8007
 
 # Kubernetes
-trino --server https://trino.de.lan
+trino --server http://trino.de.lan
 ```
 
 You'll get a `trino>` prompt; type SQL and end each statement with `;`. (Don't have the CLI yet?
@@ -96,6 +96,11 @@ SELECT 'Trino is working!' AS status;
 SELECT count(*) AS orders FROM shopflow.public.orders;
 ```
 
+The first query invents a one-row result out of thin air, so it proves *only* that Trino
+received your SQL and ran it — the engine is alive. The second actually reaches into the
+`shopflow` catalog and counts every row in the `orders` table (`count(*)` = "how many rows?");
+getting **40000** back proves Trino can find and read the real data, not just echo text.
+
 Expected result of the second query:
 
 | orders |
@@ -122,6 +127,12 @@ SHOW TABLES FROM shopflow.public;   -- customers, products, orders, order_items
 -- Peek at a table's columns
 DESCRIBE shopflow.public.orders;
 ```
+
+Read these top-down as a drill-in: **`SHOW CATALOGS`** lists every data source Trino is connected
+to; **`SHOW SCHEMAS FROM <catalog>`** lists the schemas (groups of tables) inside one of them; and
+**`SHOW TABLES FROM <catalog>.<schema>`** lists the tables inside one schema. Stack the answers and
+you get the **three-part name** `catalog.schema.table` — e.g. `shopflow` + `public` + `orders` =
+`shopflow.public.orders`, the full address of any one table.
 
 Set a default catalog + schema so you can drop the prefix:
 
@@ -160,6 +171,57 @@ SHOW SCHEMAS FROM iceberg;          -- expect: bronze, silver, gold
 SELECT * FROM iceberg.gold.daily_sales ORDER BY sales_date DESC LIMIT 14;
 ```
 
+### Make your own space in the lakehouse
+So far you've only **read** data. Before we start *writing* (from [2.6](merge.md) onward), carve out
+your own area to experiment in. Remember from the info box above: you can't create a **catalog** in
+SQL (that's admin config), but you **can** create your own **schema** inside the existing `iceberg`
+catalog, and real tables inside *that* — your personal corner of the lakehouse.
+
+Pick a name and create it (use your own, e.g. `iceberg.ravi_lab`):
+
+```sql
+CREATE SCHEMA IF NOT EXISTS iceberg.my_lab;
+
+CREATE TABLE iceberg.my_lab.first_table (
+  id     int,
+  item   varchar,
+  amount double
+);
+
+INSERT INTO iceberg.my_lab.first_table VALUES
+  (1, 'keyboard', 49.9),
+  (2, 'mouse',    19.5);
+
+SELECT * FROM iceberg.my_lab.first_table ORDER BY id;
+```
+
+**Read it step by step:**
+
+- **`CREATE SCHEMA … iceberg.my_lab`** — makes a new schema (a named folder for tables) *inside* the
+  `iceberg` lakehouse. `IF NOT EXISTS` means "skip if it's already there" — safe to re-run.
+- **`CREATE TABLE iceberg.my_lab.first_table (…)`** — defines a real **Iceberg table**: this writes
+  table metadata to the catalog, and future rows land as **Parquet files on MinIO** (the object
+  storage from [Unit 1.2](../unit1/lakehouse.md)).
+- **`INSERT INTO … VALUES …`** — your first **write** to the lakehouse. Each write appends a new
+  Parquet file and a new table **snapshot** (the ACID table-format magic from [1.3](../unit1/formats.md)).
+- **`SELECT * FROM …`** — reads it straight back with the same three-part name.
+
+!!! success "You just built a datalake"
+    That's the whole idea — a lakehouse is **one `iceberg` catalog holding many schemas**, one per
+    team or person. In [Unit 4](../unit4/read-bronze.md) you'll build a full **bronze → silver → gold**
+    exactly this way (with Spark instead of SQL). Clean up your experiment any time:
+
+    ```sql
+    DROP TABLE  iceberg.my_lab.first_table;
+    DROP SCHEMA iceberg.my_lab;
+    ```
+
+!!! note "Why writing works here without a login"
+    On this learning stack, Trino/Spark write to `iceberg` **freely** — the engines aren't wired to
+    Unity Catalog's per-user enforcement, so you can experiment without permission errors. On a
+    *governed* platform an admin would `GRANT` you `CREATE` on a schema first — the access model you'll
+    meet in [Unit 6](../unit6/rbac.md).
+
 ## Challenge
 Using only the `orders` table: list the **5 most recent cancelled orders placed on the
 `marketplace` channel** — show `order_id`, `customer_id`, and `order_ts`, newest first.
@@ -195,7 +257,9 @@ Using only the `orders` table: list the **5 most recent cancelled orders placed 
 |---|---|
 | **Distributed SQL engine** | Runs one SQL query over data across sources, in parallel |
 | **Catalog** | A named connection to a data source (its schemas + tables) |
+| **Schema** | A named group of tables inside a catalog (ShopFlow's live in `public`) |
 | **Three-part name** | `catalog.schema.table` — how you address any table |
+| **`SHOW CATALOGS` / `SCHEMAS` / `TABLES`** | Drill in: list sources → schemas in one → tables in one |
 | **Federation** | Querying a live source (like Postgres) *in place*, no copy |
 | **Predicate pushdown** | Trino sends `WHERE` filters down into the source to read less |
 

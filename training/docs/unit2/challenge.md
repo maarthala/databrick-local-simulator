@@ -12,6 +12,26 @@ Then, for every later month, we count how many of that cohort placed at least on
 order. Expressing the gap as a **month index** (0 = acquisition month, 1 = the next month,
 and so on) lets you line every cohort up on the same axis and compare retention curves.
 
+A few plain-language definitions before you start:
+
+- **Cohort** — a group of customers who share something in common. Here they share the *month
+  they first bought*. Everyone who placed their first delivered order in January 2024 is one
+  cohort; everyone whose first order was in February 2024 is another.
+- **Acquisition cohort** — a cohort defined specifically by *when the customer was acquired*
+  (their first purchase), as opposed to grouping by country, plan, or product. "Acquisition"
+  is just the moment the customer became a customer.
+- **Retention** — whether a customer keeps coming back after that first purchase. If 100
+  people bought in January and 30 of them bought again in March, the March retention for the
+  January cohort is 30 / 100 = **30%**. A business lives or dies on this number: it's far
+  cheaper to keep an existing customer than to acquire a new one, so the shape of the
+  retention curve tells you how "sticky" the product is.
+- **`month_index`** — the number of whole months between a customer's cohort month and the
+  month they were active. Month 0 is the acquisition month itself (so retention there is
+  always 100% — everyone bought in their own first month by definition). Month 1 is the next
+  month, month 2 the one after, and so on. Lining cohorts up by `month_index` instead of by
+  calendar date lets you compare a January cohort's "3 months later" directly against a June
+  cohort's "3 months later".
+
 This challenge combines everything from Unit 2: joins, aggregations, window functions, and
 chained CTEs. Build it step by step.
 
@@ -112,6 +132,51 @@ Bonus: filter to `month_index <= 6` for a clean 0–6 month retention curve.
     ORDER BY r.cohort_month, r.month_index;
     ```
 
+    **Walk through the CTE chain step by step.** Each `WITH` block is a named, throw-away
+    result the next block can read from — the report is built by stacking six small, readable
+    steps instead of one giant query.
+
+    - **`completed`** — the clean base. Keep only `status = 'delivered'` orders, and for each
+      one, compute `date_trunc('month', order_ts)` as `activity_month`.
+      `date_trunc('month', ts)` rounds a timestamp *down* to the first instant of its month, so
+      `2024-03-17 14:22` and `2024-03-02 09:00` both collapse to `2024-03-01`. One row here =
+      *one delivered order*, tagged with the month it happened in.
+    - **`first_order`** — each customer's cohort month. Group `completed` by `customer_id` and
+      take `MIN(activity_month)`. `MIN()` over the months returns the *earliest* one, which is
+      exactly the month of the customer's first delivered order. One row here = *one customer*
+      with the single value `cohort_month`.
+    - **`activity`** — the distinct months in which each customer was active.
+      `SELECT DISTINCT customer_id, activity_month` throws away duplicates, so a customer who
+      placed three delivered orders in March shows up as a *single* `(customer, March)` row.
+      That de-duplication is what makes "active in a month" a yes/no fact rather than an order
+      count. One row here = *one customer was active in one month*.
+    - **`cohort_activity`** — the join, and where the month index is born. Join `first_order`
+      (the cohort month) to `activity` (every active month) `ON a.customer_id = f.customer_id`,
+      so each active month now carries the customer's cohort month alongside it. Then compute
+      `date_diff('month', f.cohort_month, a.activity_month) AS month_index`.
+      `date_diff('month', a, b)` counts the whole months *from* `a` *to* `b`, so a customer
+      acquired in January who is active in April gets `month_index = 3`. Their own acquisition
+      month gives `date_diff = 0`. One row here = *one customer, active in one month, labelled
+      with how many months after acquisition that was*.
+    - **`cohort_size`** — how big each cohort was at the start. Group `first_order` by
+      `cohort_month` and `COUNT(DISTINCT customer_id)`. Because `first_order` already has one
+      row per customer, this is just "how many customers first bought in this month" — the
+      denominator for every retention percentage. One row here = *one cohort, with its total
+      size*.
+    - **`retention`** — the numerator. Group `cohort_activity` by `cohort_month` *and*
+      `month_index`, and `COUNT(DISTINCT customer_id)` gives `active_customers` — how many
+      distinct people from that cohort were active that many months out. `DISTINCT` matters:
+      even though `activity` was already de-duplicated, counting distinct customers here
+      guarantees each person is counted once per bucket. One row here = *for one cohort, at one
+      month-index, this many customers came back*.
+
+    **The final `SELECT`** joins `retention` (numerator) to `cohort_size` (denominator) on
+    `cohort_month`, then computes
+    `ROUND(100.0 * r.active_customers / s.cohort_size, 1) AS retention_pct`. The `100.0`
+    (a decimal, not `100`) forces floating-point division so you get `30.0`, not an integer
+    `0`. `WHERE r.month_index <= 6` trims to the 0–6 month window, and `ORDER BY` lays the grid
+    out cohort by cohort, month-index by month-index — the retention grid you set out to build.
+
     **How to read it:** at `month_index = 0`, `retention_pct` is always 100% (everyone is
     active in their acquisition month). Each later index shows what fraction of the cohort
     returned — a healthy business sees the curve flatten out rather than fall to zero.
@@ -153,6 +218,7 @@ Bonus: filter to `month_index <= 6` for a clean 0–6 month retention curve.
 | Term | Plain meaning |
 |---|---|
 | **Cohort** | A group of customers sharing an acquisition month |
+| **Acquisition cohort** | A cohort defined by *when* customers were first acquired (first purchase) |
 | **Month index** | Months elapsed since the cohort's first purchase (0, 1, 2…) |
 | **Retention rate** | Active customers ÷ original cohort size, as a % |
 | **`date_trunc`** | Round a timestamp down to month/day/etc. |
