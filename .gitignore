@@ -14,7 +14,7 @@ Thumbs.db
 docker-compose.override.yml
 .env
 .env.*
-
+temp/
 # Terraform (local state must never be committed)
 *.tfstate
 *.tfstate.*

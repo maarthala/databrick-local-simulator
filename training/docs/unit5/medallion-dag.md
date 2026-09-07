@@ -45,6 +45,19 @@ and easy to debug (the full command is right there in the logs). The three job s
 (`ingest_bronze.py`, `build_silver.py`, `build_gold.py`) are the Unit 4 medallion logic packaged
 as runnable files.
 
+!!! info "Where the medallion jobs live"
+    You edit these scripts in the repo at **`local/code/shared/jobs/`** —
+    `ingest_bronze.py`, `build_silver.py`, `build_gold.py` (plus `simulate_day.py`). Compose
+    **bind-mounts** `local/code/` to **`/code`** inside the Spark & Airflow containers, so the DAG
+    refers to them at **`/code/shared/jobs/…`** (that's the `JOBS` path in the code below). Edit on
+    the host in VS Code and the change is instantly live in the containers — no rebuild.
+
+    | | Path |
+    |---|---|
+    | Edit it (host) | `local/code/shared/jobs/ingest_bronze.py` |
+    | Compose runtime | `/code/shared/jobs/ingest_bronze.py` (bind mount) |
+    | Kubernetes runtime | git-synced from the **`de-lab`** repo, alongside the DAGs (`/git/repo/…`) |
+
 !!! note "Sharing the cluster: `spark.cores.max`"
     The standalone Spark cluster is shared between your notebooks (Spark Connect) and these
     Airflow jobs. By default one app grabs *all* cores, starving the others — so every submit

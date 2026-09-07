@@ -60,12 +60,113 @@ the Lab.
 
 ```mermaid
 flowchart LR
-  subgraph DAG["DAG (your pipeline as code)"]
-    A[Task A<br/>operator] --> B[Task B<br/>operator]
+  SCHED["Scheduler<br/>(daily)"] -.->|triggers| A
+  subgraph DAG["DAG — your pipeline as code"]
+    direction LR
+    A["Task A<br/>operator"] --> B["Task B<br/>operator"]
   end
-  SCHED[Scheduler<br/>@daily] -.triggers.-> DAG
-  DAG -.logs + status.-> UI[Web UI]
+  B -.->|logs and status| UI["Web UI"]
 ```
+
+## Set up Airflow on your machine
+The professional workflow is: **write a DAG, test it locally on your own machine, and only *then*
+ship it** — copy it into `local/code/airflow/dags/` (Compose bind-mounts that folder) or push it to
+the Git repo the remote Airflow git-syncs. This section sets up a Docker-free local Airflow so you
+never push a broken DAG. (You'll still use the running stack's **web UI** for the labs below.)
+
+!!! danger "Match the stack's version — Airflow **3.0.1**"
+    This stack runs **Airflow 3**, whose DAGs import `from airflow.sdk import DAG`. That module does
+    **not exist in Airflow 2**, so a 2.x local install (e.g. `2.10.5`) can't even parse these DAGs.
+    Always install the **same version as the deployment** — here, `3.0.1`.
+
+=== "macOS / Linux"
+    You just need **Python 3.11+** (`python3 --version`). Continue with the install below.
+
+=== "Windows"
+    Airflow is **not supported on native Windows** — run it inside **WSL 2** (Ubuntu). Open your WSL
+    shell and follow the macOS/Linux steps there.
+
+### 1. Install the matching version
+In a clean virtualenv, pinned with Airflow's official *constraints* file (so providers resolve to
+compatible versions):
+
+```bash
+python -m venv .airflow && source .airflow/bin/activate
+
+AIRFLOW_VERSION=3.0.1
+PY=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+pip install "apache-airflow==${AIRFLOW_VERSION}" apache-airflow-providers-standard \
+  --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PY}.txt"
+
+airflow version                          # → 3.0.1
+python -c "import airflow.sdk; print('sdk OK')"
+```
+
+### 2. Point it at a local home + your DAGs
+These are **environment variables — set them in every new shell** (they don't persist; a new shell
+without `AIRFLOW_HOME` silently uses a *different, empty* database):
+
+```bash
+export AIRFLOW_HOME=~/airflow-local              # your own metadata DB + logs
+export AIRFLOW__CORE__LOAD_EXAMPLES=False         # skip Airflow's bundled example DAGs (they error without extra deps)
+airflow db migrate                                # one-time: build the local SQLite DB (no server)
+export AIRFLOW__CORE__DAGS_FOLDER="$PWD/tmp"      # the folder holding the DAG(s) you're working on
+airflow dags list                                 # your DAGs, no examples
+```
+
+!!! tip "Use a scratch folder while developing"
+    Point `DAGS_FOLDER` at a throwaway folder (e.g. `tmp/`) for the DAG you're writing — that keeps
+    your work-in-progress out of `code/airflow/dags/` until it passes. Once it's green, copy it in.
+
+### 3. Test the DAG — three levels
+```bash
+# 1) parse-check only — does it import? (nothing runs)
+python tmp/my_dag.py
+
+# 2) run ONE task — LIVE output on your console (reads the file directly, always fresh)
+airflow tasks test <dag_id> <task_id> 2024-01-01
+
+# 3) run the WHOLE DAG (respects task order)
+airflow dags reserialize                 # FIRST: parse files -> serialize them into the DB
+airflow dags test <dag_id> 2024-01-01    # quiet on success
+echo $?                                   # 0 = the run succeeded
+```
+
+`<dag_id>` is the name inside the file (`DAG("my_first_dag", …)`), **not** the filename. Re-run
+`airflow dags reserialize` after each edit before `airflow dags test`.
+
+!!! tip "Why you might see *no* output"
+    - **`airflow tasks test`** streams the task's output (your `echo`, `print`, etc.) to the console
+      — as long as logging is at the default **INFO**. If you earlier ran
+      `export AIRFLOW__LOGGING__LOGGING_LEVEL=WARNING`, it mutes that output — `unset` it to see results.
+    - **`airflow dags test`** is *quiet by design*: it runs a real DAG run and writes task output to
+      **log files**, not the console. Success = `echo $?` is `0`; inspect it with
+      `airflow dags list-runs --dag-id <dag_id>` or read `~/airflow-local/logs/…`.
+
+!!! note "Local = *authoring & testing*; the stack = *running the real jobs*"
+    These commands **execute** the operators. Pure-Python / Bash tasks run offline, but tasks that
+    reach services (a `spark-submit`, or `postgres:5432` / `minio:9000` / `trino:8080`) need those
+    services reachable — that's the running stack's job. So **validate the DAG's shape locally, run
+    the heavy pipeline on the stack.** These same checks are what you put in **CI** to gate a DAG
+    before it's merged and git-synced to a remote cluster.
+
+??? bug "Common local-Airflow errors & fixes (the ones everyone hits)"
+    | Symptom | Cause | Fix |
+    |---|---|---|
+    | `ModuleNotFoundError: airflow.sdk` / DAG won't parse | local Airflow is **v2** | install `apache-airflow==3.0.1` |
+    | `Dag '<id>' could not be found in DagBag read from database` | `dags test` reads the **DB**; DAG not serialized | run `airflow dags reserialize` first |
+    | Import tracebacks under `example_dags/` (kubernetes / pandas / s3) | Airflow's **bundled examples** need extra deps | `export AIRFLOW__CORE__LOAD_EXAMPLES=False` |
+    | `No data found` / `no such table` from `dags list` | new/empty or unmigrated DB — usually `AIRFLOW_HOME` changed between shells | set `AIRFLOW_HOME` consistently, then `airflow db migrate` |
+    | Ran, but **no output** on the console | `dags test` logs to files, or logging is muted | use `airflow tasks test`; `unset AIRFLOW__LOGGING__LOGGING_LEVEL`; check `echo $?` |
+    | `WARNING - cannot record queued_duration …` | harmless metric note on a one-off test run | ignore |
+
+### 4. Ship it
+Once the DAG passes locally, deploy it the same way the pros do:
+
+- **Local stack:** copy the file into `local/code/airflow/dags/` — the Compose Airflow bind-mounts
+  that folder and picks it up within a scan cycle (~30s).
+- **Remote/production:** **commit + push** to the Git repo the remote Airflow **git-syncs** (see the
+  remote-development section) — never edit files on the server directly.
 
 ## Lab
 
