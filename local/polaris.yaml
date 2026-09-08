@@ -37,11 +37,40 @@ services:
       QUARKUS_HTTP_CORS_ORIGINS: "http://localhost:8188"
       QUARKUS_HTTP_CORS_METHODS: "GET,POST,PUT,DELETE,OPTIONS,PATCH,HEAD"
       QUARKUS_HTTP_CORS_HEADERS: "Authorization,Content-Type,Polaris-Realm,X-Iceberg-Access-Delegation"
+      # --- Durable persistence: Postgres (db polarisdb) instead of in-memory ---
+      POLARIS_PERSISTENCE_TYPE: relational-jdbc
+      POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE: postgresql
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/polarisdb
+      QUARKUS_DATASOURCE_USERNAME: polaris
+      QUARKUS_DATASOURCE_PASSWORD: polaris
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8182/q/health"]
       interval: 10s
       timeout: 10s
       retries: 6
+    depends_on:
+      postgres:
+        condition: service_started
+      polaris-bootstrap:
+        condition: service_completed_successfully
+    networks:
+      - sparknet
+
+  # One-shot: bootstrap the Polaris schema + realm into Postgres (runs before polaris).
+  polaris-bootstrap:
+    image: apache/polaris-admin-tool:latest
+    container_name: polaris-bootstrap
+    environment:
+      POLARIS_PERSISTENCE_TYPE: relational-jdbc
+      POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE: postgresql
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/polarisdb
+      QUARKUS_DATASOURCE_USERNAME: polaris
+      QUARKUS_DATASOURCE_PASSWORD: polaris
+    command: ["bootstrap", "--realm=POLARIS", "--credential=POLARIS,root,s3cr3t"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_started
     networks:
       - sparknet
 

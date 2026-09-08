@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Seed the GOVERNED Polaris catalog for the training course: the `polaris_lake`
+# catalog on MinIO, medallion namespaces, and the analyst/engineer/lead RBAC
+# (per-persona, activated via their Keycloak `principal_roles` claim).
+#
+# Run once by the operator after Polaris is up (persistence in Postgres, so this
+# survives restarts). Idempotent-ish: re-creates 409 (ignored).
+set -euo pipefail
+
+B="${POLARIS_URL:-http://localhost:8185}"
+M="$B/api/management/v1"; C="$B/api/catalog/v1"
+RT=$(curl -s -m 10 "$B/api/catalog/v1/oauth/tokens" --user root:s3cr3t -H 'Polaris-Realm: POLARIS' \
+      -d grant_type=client_credentials -d scope=PRINCIPAL_ROLE:ALL | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+H=(-H "Authorization: Bearer $RT" -H "Content-Type: application/json" -H "Polaris-Realm: POLARIS")
+post() { curl -s -m 10 "${H[@]}" -X POST "$1" -d "$2" -o /dev/null -w "%{http_code} "; }
+put()  { curl -s -m 10 "${H[@]}" -X PUT  "$1" -d "$2" -o /dev/null -w "%{http_code} "; }
+grant(){ put "$M/catalogs/polaris_lake/catalog-roles/$1/grants" \
+         "{\"grant\":{\"type\":\"namespace\",\"namespace\":[\"$2\"],\"privilege\":\"$3\"}}"; }
+
+echo "catalog:   $(post $M/catalogs '{"catalog":{"name":"polaris_lake","type":"INTERNAL","properties":{"default-base-location":"s3://demo-bucket/polaris"},"storageConfigInfo":{"storageType":"S3","allowedLocations":["s3://demo-bucket/polaris"],"endpoint":"http://minio:9000","pathStyleAccess":true,"region":"us-east-1"}}}')"
+echo "namespaces:$(for ns in bronze silver gold; do post $C/polaris_lake/namespaces "{\"namespace\":[\"$ns\"]}"; done)"
+echo "principals:$(for p in analyst engineer lead; do post $M/principals "{\"principal\":{\"name\":\"$p\"}}"; done)"
+echo "p-roles:   $(for r in analyst_role engineer_role lead_role; do post $M/principal-roles "{\"principalRole\":{\"name\":\"$r\"}}"; done)"
+echo "assign:    $(for pr in analyst:analyst_role engineer:engineer_role lead:lead_role; do put $M/principals/${pr%%:*}/principal-roles "{\"principalRole\":{\"name\":\"${pr##*:}\"}}"; done)"
+echo "c-roles:   $(for r in analyst_role engineer_role lead_role; do post $M/catalogs/polaris_lake/catalog-roles "{\"catalogRole\":{\"name\":\"${r}_cr\"}}"; put $M/principal-roles/$r/catalog-roles/polaris_lake "{\"catalogRole\":{\"name\":\"${r}_cr\"}}"; done)"
+
+# medallion grants (per persona)
+echo "analyst:   $(for pr in TABLE_READ_DATA TABLE_LIST; do grant analyst_role_cr gold $pr; done)"
+echo "engineer:  $(for pr in TABLE_READ_DATA TABLE_LIST; do grant engineer_role_cr gold $pr; done; for pr in TABLE_READ_DATA TABLE_LIST TABLE_WRITE_DATA TABLE_CREATE; do grant engineer_role_cr silver $pr; done)"
+echo "lead:      $(for ns in bronze silver gold; do for pr in TABLE_READ_DATA TABLE_LIST TABLE_WRITE_DATA TABLE_CREATE; do grant lead_role_cr $ns $pr; done; done)"
+echo "Done."
