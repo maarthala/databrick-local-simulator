@@ -16,6 +16,10 @@ CREATE DATABASE metastore OWNER hive;
 CREATE USER hue WITH PASSWORD 'hue';
 CREATE DATABASE hue OWNER hue;
 
+-- create unity-catalog user (UC metadata store — replaces embedded H2)
+CREATE USER ucuser WITH PASSWORD 'ucuser';
+CREATE DATABASE ucdb OWNER ucuser;
+
 -- Optional: Connect to the new database and create schema
 -- \connect airflow
 
