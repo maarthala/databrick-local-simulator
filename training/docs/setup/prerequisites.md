@@ -12,27 +12,32 @@ each tool the way you would in a real job: through its web UI or its client.
 
 ```mermaid
 flowchart LR
-  YOU["💻 Your machine<br/>browser · trino CLI"] -->|http / SQL| STACK["🐳 The stack<br/>Trino · Superset · Airflow<br/>Jupyter · Unity Catalog · MinIO"]
+  YOU["💻 Your machine<br/>browser · trino CLI"] -->|http / SQL| STACK["🐳 The stack<br/>Trino · Superset · Airflow<br/>Jupyter · Polaris · MinIO"]
 ```
 
 ## What you need
 
 | # | Thing | Required? | Why |
 |---|---|---|---|
-| 1 | A modern **web browser** | ✅ Always | Every tool (Superset, Airflow, Jupyter, Unity Catalog, MinIO) is a web UI |
-| 2 | The **`keycloak` hosts entry** | ✅ Always | Single sign-on — without it, Unity Catalog & Keycloak logins fail |
-| 3 | The **Trino CLI** | ⭐ Recommended | The fastest way to run the SQL in [Unit 2](../unit2/intro.md) (or use Superset SQL Lab instead) |
-| 4 | **Docker Desktop** + Git | ⚙️ Only if *you* run the stack | Needed to bring the platform up on your own laptop |
+| 1 | A modern **web browser** | ✅ Always | Every tool (Superset, Airflow, Jupyter, Polaris Console, MinIO) is a web UI |
+| 2 | The **Trino CLI** | ⭐ Recommended | The fastest way to run the SQL in [Unit 2](../unit2/intro.md) (or use Superset SQL Lab instead) |
+| 3 | **Docker Desktop** + Git | ⚙️ Only if *you* run the stack | Needed to bring the platform up on your own laptop |
 
-Items 1–3 are all a learner needs when the stack is provided for you (a shared server, or an
-instructor's machine). Item 4 is only for running the whole thing yourself.
+Items 1–2 are all a learner needs when the stack is provided for you (a shared server, or an
+instructor's machine). Item 3 is only for running the whole thing yourself.
+
+!!! note "No hosts-file entry needed"
+    Earlier versions required a `keycloak` hosts entry for single sign-on. The stack now uses direct
+    Polaris logins (client id/secret), so there's **nothing to add to your hosts file** locally — just
+    open the URLs. (On Kubernetes the cluster admin still points the `*.de.lan` wildcard at the
+    ingress, as for every other service.)
 
 ---
 
 ## 1. A web browser
 
 Any recent Chrome, Edge, Firefox, or Safari. That's the entire requirement for Superset, Airflow,
-Jupyter, the Unity Catalog UI, MinIO, and this course site. Bookmark the landing page — it links to
+Jupyter, the Polaris Console, MinIO, and this course site. Bookmark the landing page — it links to
 everything:
 
 - **Local (Docker):** [http://localhost:8000](http://localhost:8000)
@@ -40,60 +45,7 @@ everything:
 
 ---
 
-## 2. The `keycloak` hosts entry (required)
-
-The stack uses **Keycloak** for single sign-on. For security, Keycloak issues its login URLs under
-one fixed name — `keycloak:8080` — and **both** your browser **and** the Unity Catalog server must
-resolve that name to the *same* place. On the server side Docker/Kubernetes handles it; on your side
-you add one line to your **hosts file** so `keycloak` points at your local machine.
-
-!!! warning "Skip this and two things break"
-    Logging into **Unity Catalog** (`localhost:3000`) and opening the **Keycloak** console both
-    redirect to `http://keycloak:8080/…`. Without the hosts entry your browser can't resolve
-    `keycloak` and the page fails to load.
-
-=== "macOS / Linux"
-
-    The hosts file is `/etc/hosts`. Add the line (needs your admin password):
-
-    ```bash
-    echo "127.0.0.1 keycloak" | sudo tee -a /etc/hosts
-    ```
-
-    Verify:
-
-    ```bash
-    getent hosts keycloak 2>/dev/null || ping -c1 keycloak
-    ```
-
-=== "Windows"
-
-    The hosts file is `C:\Windows\System32\drivers\etc\hosts` and editing it requires
-    **Administrator** rights.
-
-    1. Press **Start**, type **Notepad**, right-click it → **Run as administrator**.
-    2. **File → Open**, paste `C:\Windows\System32\drivers\etc\hosts`
-       (set the file-type filter to *All Files* so it shows up).
-    3. Add this line at the end and **Save**:
-
-    ```
-    127.0.0.1 keycloak
-    ```
-
-    Verify in PowerShell:
-
-    ```powershell
-    Resolve-DnsName keycloak
-    ```
-
-!!! note "On Kubernetes it's the `*.de.lan` wildcard instead"
-    The k8s deployment uses hostnames like `auth.de.lan`, `trino.de.lan`, `superset.de.lan`. Your
-    cluster admin points `*.de.lan` at the ingress (via DNS or a single wildcard hosts entry) — the
-    same idea, one entry for all services.
-
----
-
-## 3. The Trino CLI (recommended)
+## 2. The Trino CLI (recommended)
 
 [Unit 2](../unit2/intro.md) runs SQL against the lakehouse. You have two ways to do it — pick either:
 
@@ -174,9 +126,9 @@ You'll get a `trino>` prompt — type SQL, end each statement with `;`, quit wit
 
 ---
 
-## 4. Running the stack yourself (only if it isn't provided)
+## 3. Running the stack yourself (only if it isn't provided)
 
-If someone already runs the platform for you, skip this — you just need items 1–3 and their URLs.
+If someone already runs the platform for you, skip this — you just need items 1–2 and their URLs.
 To run it on your **own** laptop, you need Docker and the repo.
 
 === "macOS"
@@ -203,7 +155,7 @@ To run it on your **own** laptop, you need Docker and the repo.
     3. Install **Git** (`sudo apt-get install -y git`).
 
 !!! warning "This stack is memory-hungry"
-    You're running ~a dozen services (Spark, Trino, Superset, Airflow, Keycloak, Postgres, …).
+    You're running ~a dozen services (Spark, Trino, Superset, Airflow, Polaris, Postgres, …).
     Give Docker at least **8 GB** of RAM — **12–16 GB** is comfortable. On Docker Desktop set this
     in **Settings → Resources → Memory**. Too little and containers get killed (`exit 137`).
 
@@ -214,15 +166,13 @@ commands (Docker Compose) or the Ansible steps (Kubernetes).
 
 ## Verify your setup
 
-Run through this checklist once — if all four pass, you're ready for Unit 1.
+Run through this checklist once — if all three pass, you're ready for Unit 1.
 
 1. **Landing page loads** — open [http://localhost:8000](http://localhost:8000). You should see the
    ShopFlow tiles.
-2. **`keycloak` resolves** — `getent hosts keycloak` (mac/linux) or `Resolve-DnsName keycloak`
-   (Windows) returns `127.0.0.1`.
-3. **Unity Catalog login works** — open `http://localhost:3000` → **Continue with Keycloak** →
-   `analyst` / `analyst`. You land in the catalog UI (this proves the hosts entry).
-4. **SQL works** — either in the Trino CLI or Superset SQL Lab:
+2. **Polaris Console login works** — open `http://localhost:8189`, sign in with Client ID/Secret
+   `analyst` / `analyst`. You land in the catalog scoped to that persona.
+3. **SQL works** — either in the Trino CLI or Superset SQL Lab:
 
     ```sql
     SELECT 'ready!' AS status;
@@ -245,12 +195,11 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 | Trino | http://localhost:8007/ui/ (CLI: `:8007`) | any username, no password |
 | Superset (BI) | http://localhost:8004 | `admin` / `admin` |
 | Airflow | http://localhost:8001 | `airflow` / `airflow` |
-| Unity Catalog UI | http://localhost:3000 | `analyst` / `analyst` (via Keycloak) |
-| Keycloak (SSO) | http://keycloak:8080 | `admin` / `admin` |
+| Polaris Console (governance) | http://localhost:8189 | `analyst` / `analyst` (or `engineer` / `lead`; admin `root` / `s3cr3t`) |
 | MinIO console (S3) | http://localhost:9001 | `minioadmin` / `minioadmin` |
 
 ## You can now…
-- Set up your machine to use the stack (browser, hosts entry, Trino CLI) on macOS, Windows, or Linux
-- Explain why the `keycloak` hosts entry is required for single sign-on
+- Set up your machine to use the stack (browser, Trino CLI) on macOS, Windows, or Linux
+- Sign in to the Polaris Console as a persona with its client id/secret
 - Run the whole platform yourself with Docker, if it isn't already provided
-- Prove your setup works with the four-step verification checklist
+- Prove your setup works with the three-step verification checklist

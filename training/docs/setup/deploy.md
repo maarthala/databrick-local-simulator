@@ -2,8 +2,8 @@
 
 This page is for **whoever runs the platform** — you on your laptop (Docker Compose) or an operator
 on a cluster (Kubernetes). If someone already runs the stack for you and gave you URLs, you don't
-need this — go straight to [Prerequisites](prerequisites.md) (browser + `keycloak` hosts entry + the
-Trino CLI) and start learning.
+need this — go straight to [Prerequisites](prerequisites.md) (browser + the Trino CLI) and start
+learning.
 
 !!! info "Two ways to run the *same* stack"
     The lakehouse is identical either way — same services, same course. **Docker Compose** runs it
@@ -14,10 +14,7 @@ Trino CLI) and start learning.
 
     ### Prerequisites
     - **Docker Desktop** (≥ 8 GB RAM allocated — 12–16 GB is comfortable) and **Git**
-      — see [Prerequisites → run the stack yourself](prerequisites.md#4-running-the-stack-yourself-only-if-it-isnt-provided).
-    - The **`keycloak` hosts entry** (`127.0.0.1 keycloak`) —
-      [why & how](prerequisites.md#2-the-keycloak-hosts-entry-required).
-    - **Ansible** (once, to build the two patched Unity Catalog images the compose stack consumes).
+      — see [Prerequisites → run the stack yourself](prerequisites.md#3-running-the-stack-yourself-only-if-it-isnt-provided).
 
     ### Steps
     ```bash
@@ -25,15 +22,12 @@ Trino CLI) and start learning.
     git clone https://github.com/maarthala/databrick-local-simulator.git
     cd databrick-local-simulator
 
-    # 1. first time only: build the patched Unity Catalog images (built on your Mac, no cluster needed)
-    (cd k8s/ansible && ansible-playbook build-load.yml --tags images)
-
-    # 2. bring it up (all commands run from local/)
+    # bring it up (all commands run from local/)
     cd local
-    make init      # first run only: download base JARs into ../common/dockerfiles/tmp
-    make docs      # build the training course site (../training -> ../training/site)
-    make up        # build the compose images + start every service
-    make uc-seed   # provision the governed 'shopflow' catalog + personas (needed for Unit 6)
+    make init          # first run only: download base JARs into ../common/dockerfiles/tmp
+    make docs          # build the training course site (../training -> ../training/site)
+    make up            # build the compose images + start every service
+    make polaris-seed  # provision the governed catalog + personas/RBAC (needed for Unit 6)
     ```
 
     ### Verify
@@ -68,8 +62,8 @@ Trino CLI) and start learning.
     - A **Kubernetes cluster** (this repo targets MicroK8s) with the `ingress`,
       `hostpath-storage`, and `metrics-server` addons, plus an external **Postgres** reachable.
     - **Wildcard DNS** `*.de.lan → <node-ip>` so all the `*.de.lan` UIs resolve.
-    - On your workstation: **`kubectl`**, **`helm`**, **`ansible`**, **`docker`**, **`git`**, and the
-      **`uc` CLI** (`brew install unitycatalog`), with `KUBECONFIG` pointed at the cluster.
+    - On your workstation: **`kubectl`**, **`helm`**, **`ansible`**, **`docker`**, and **`git`**, with
+      `KUBECONFIG` pointed at the cluster.
 
     ### Steps — Ansible (recommended)
     ```bash
@@ -84,7 +78,8 @@ Trino CLI) and start learning.
         kubectl create namespace de-stack
         kubectl -n de-stack create secret generic de-stack-git-token --from-literal=token=<PAT>
         helm template de-stack k8s/helm/de-stack | kubectl -n de-stack apply -f -
-        # then seed governance with the uc CLI (see common/uc-cli/README.md)
+        # then seed Polaris: run common/polaris/seed-polaris.sh inside the polaris pod
+        # (POLARIS_URL=http://localhost:8181) — see common/polaris/seed-polaris.sh
         ```
 
     ### Verify
@@ -92,7 +87,7 @@ Trino CLI) and start learning.
     kubectl -n de-stack get pods         # wait for everything to be Running/Ready
     ```
     Open the landing page at **`http://home.de.lan`**. All UIs live at `http(s)://<name>.de.lan`
-    (jupyter, trino, superset, airflow, spark, minio, auth, uc-ui) — the landing page links them.
+    (jupyter, trino, superset, airflow, spark, minio, polaris-console) — the landing page links them.
 
     ### Teardown
     ```bash
@@ -107,6 +102,6 @@ Trino CLI) and start learning.
   (`http://localhost:8000/training/` locally, `http://home.de.lan/training/` on k8s).
 
 ## You can now…
-- Bring the whole stack up with Docker Compose (`make up` + `make uc-seed`) or on Kubernetes (Ansible)
+- Bring the whole stack up with Docker Compose (`make up` + `make polaris-seed`) or on Kubernetes (Ansible)
 - Verify every service is running and reach the landing page
 - Tear it down / reset cleanly, and know which command wipes data

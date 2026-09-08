@@ -12,7 +12,7 @@ flowchart LR
     B[Bronze<br/>raw] --> S[Silver<br/>clean] --> G[Gold<br/>business marts]
   end
   G --> D[Superset<br/>dashboards]
-  UC[(Unity Catalog<br/>governance + RBAC)] -.governs.- B & S & G
+  PC[(Apache Polaris<br/>governance + RBAC)] -.governs.- B & S & G
   AF[Airflow] -.schedules.- B & S & G
 ```
 
@@ -42,9 +42,11 @@ only on the managed layer**, not on relearning the basics.
     feature that does it on each platform (e.g. *this MERGE = ADF Data Flow "Alter Row" =
     Databricks `MERGE INTO` = Snowflake `MERGE` = Fabric Spark MERGE*).
 
-    In fact the catalog you'll use here (**Unity Catalog**) *is* the open-source edition
-    of Databricks' own, and **Medallion (Bronze/Silver/Gold)** is Databricks' own
-    terminology — so parts of this course are already Azure Databricks, verbatim.
+    In fact the governance model you'll use here (**Apache Polaris** — Iceberg-native,
+    the open catalog that maps to **Snowflake Open Catalog**) is *identical in shape* to
+    Databricks **Unity Catalog** — catalog → schema → table with RBAC — and **Medallion
+    (Bronze/Silver/Gold)** is Databricks' own terminology, so parts of this course are
+    already Azure Databricks & Snowflake, verbatim.
 
 ## Path
 1. **[The ShopFlow scenario](scenario.md)** — the company and its data
