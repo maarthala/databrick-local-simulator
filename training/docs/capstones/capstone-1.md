@@ -2,7 +2,7 @@
 
 ## Concept
 You've now touched every layer of a real data platform: **Python** (Unit 3), **Spark** to build
-(Unit 4), **Airflow** to schedule (Unit 5), **Unity Catalog** to govern (Unit 6), and **Superset**
+(Unit 4), **Airflow** to schedule (Unit 5), **Apache Polaris** to govern (Unit 6), and **Superset**
 to visualise (Unit 7). This capstone strings them together on your own — end to end — by shipping
 **one new metric** for ShopFlow.
 
@@ -36,7 +36,7 @@ Add a new Gold mart `iceberg.gold.daily_cancellations` and expose it in Superset
    `--catalog` like the other jobs, and write with Iceberg `createOrReplace` (idempotent).
 2. **Airflow.** Add a `gold_cancellations` task to your `shopflow_medallion` DAG ([5.2](../unit5/medallion-dag.md)),
    depending on `silver`.
-3. **Governance.** Define the analyst grant in Unity Catalog ([6.2](../unit6/rbac.md)): analyst gets
+3. **Governance.** Define the analyst grant in Apache Polaris ([6.2](../unit6/rbac.md)): analyst gets
    `SELECT` on the new Gold table — nothing more.
 4. **BI.** Add a Superset **Dataset** on `gold.daily_cancellations` and a **line chart** of
    `cancellation_rate` over `order_date`, on the executive dashboard.
@@ -45,7 +45,7 @@ Add a new Gold mart `iceberg.gold.daily_cancellations` and expose it in Superset
 - `SELECT * FROM iceberg.gold.daily_cancellations ORDER BY order_date DESC LIMIT 5;` returns one row
   per day with `cancellation_rate` between 0 and 1.
 - Re-running the DAG leaves row counts unchanged (idempotent).
-- The analyst grant on Gold is defined in UC.
+- The analyst grant on Gold is defined in Polaris.
 - The chart appears on **ShopFlow — Executive Overview**.
 
 ### Hints
@@ -98,12 +98,14 @@ Add a new Gold mart `iceberg.gold.daily_cancellations` and expose it in Superset
     (`spark_job()` from [5.2](../unit5/medallion-dag.md) already adds `--catalog iceberg` and the
     cluster/cores config.)
 
-    **3. Governance — define the analyst grant (Unity Catalog, from Unit 6)**
+    **3. Governance — define the analyst grant (Apache Polaris, from Unit 6)**
 
-        # token via login.sh (container-free), $UC as in 6.1
-        uc --server $UC --auth_token "$T" permission create \
-          --securable_type schema --name shopflow.gold \
-          --privilege SELECT --principal analyst@dev-epireum.com
+    In the Polaris catalog, grant the **analyst** principal `SELECT` (via the Gold
+    schema's read privilege) on the new `gold.daily_cancellations` table — and nothing
+    more. This is the same grant chain you built in [6.2](../unit6/rbac.md), pointed at the
+    new mart:
+
+        analyst  →  USE CATALOG iceberg  →  USE SCHEMA gold  →  SELECT on daily_cancellations
 
     This records the least-privilege policy (analyst reads Gold only). On managed **Databricks
     Unity Catalog** the engines enforce it automatically; on this OSS stack it documents the intent
@@ -122,7 +124,7 @@ Add a new Gold mart `iceberg.gold.daily_cancellations` and expose it in Superset
 
 !!! tip "🎯 The same metric-to-dashboard loop on Azure, Databricks, Snowflake & Fabric"
     **What you just did:** shipped one new metric end to end — a Gold mart built in Spark,
-    scheduled in Airflow, granted in Unity Catalog, charted in Superset.
+    scheduled in Airflow, granted in Apache Polaris, charted in Superset.
 
     - **Transform:** the identical PySpark runs unchanged as an **Azure Databricks** or **Fabric**
       notebook; in pure **ADF** it's a Mapping Data Flow (Aggregate + Derived Column).
@@ -136,6 +138,6 @@ Add a new Gold mart `iceberg.gold.daily_cancellations` and expose it in Superset
     Build in Spark → schedule → govern → chart from Gold is the universal daily rhythm of the job.
 
 ## You can now…
-- Ship a brand-new metric end to end across Spark, Airflow, Unity Catalog, and Superset
+- Ship a brand-new metric end to end across Spark, Airflow, Apache Polaris, and Superset
 - Write an idempotent Gold job a scheduler can safely re-run
 - Define least-privilege grants and surface a metric on a dashboard

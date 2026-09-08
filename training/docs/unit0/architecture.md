@@ -29,8 +29,7 @@ flowchart TB
 
   subgraph GOV["③ Governance — every table, every user"]
     direction LR
-    UC[Unity Catalog<br/>catalog + RBAC]
-    KC[Keycloak<br/>single sign-on]
+    UC[Apache Polaris<br/>Iceberg catalog + RBAC]
   end
 
   subgraph USE["④ Consume — people & tools ask questions"]
@@ -46,7 +45,6 @@ flowchart TB
   HIST --> ING
   ING --> BR
   AF -.runs.-> ING
-  KC -.logs users in to.-> UC
   UC -.governs.-> LAKE
   GO --> TR
   TR --> SUP
@@ -69,9 +67,9 @@ running the pipeline on a schedule so it stays current.
 3. **Store in the lakehouse (②).** All three layers live as tables in **MinIO** — one
    cheap object store holding raw files *and* analytics-ready tables. That's the whole
    idea of a lakehouse.
-4. **Govern everything (③).** **Unity Catalog** is the single catalog of every table
-   and who may touch it; **Keycloak** proves who each user is (single sign-on). Together
-   they enforce that analysts read Gold while engineers write Silver — the *same*
+4. **Govern everything (③).** **Apache Polaris** is the single Iceberg catalog of every
+   table and who may touch it — each persona logs in with a Polaris client id/secret.
+   It enforces that analysts read Gold while engineers write Silver — the *same*
    rules no matter which tool does the asking.
 5. **Consume (④).** The Gold layer is where value is extracted: **Trino** runs SQL over
    it, **Superset** turns that into dashboards, and **Jupyter** lets you explore with
@@ -86,9 +84,7 @@ running the pipeline on a schedule so it stays current.
 | ① | **Postgres** | The live application database — a data *source* | (internal) | — |
 | ① / ② | **MinIO** | S3-compatible object storage: raw history *and* the lakehouse tables | http://localhost:9001 | minioadmin / minioadmin |
 | ② | **Spark** | Ingests sources and builds Bronze→Silver→Gold | http://localhost:8002 | — |
-| ② | **Iceberg REST** | The lake's table catalog that Trino reads through | (internal) | — |
-| ③ | **Unity Catalog** | Governs every table + per-user access (RBAC) | http://localhost:3000 | analyst / analyst |
-| ③ | **Keycloak** | Single sign-on — proves who each user is | http://keycloak:8080 | admin / admin |
+| ②/③ | **Apache Polaris** | Iceberg REST catalog `iceberg` (warehouse `polaris_lake`) + per-user access (RBAC) | http://localhost:8189 | root / s3cr3t |
 | ④ | **Trino** | Distributed SQL engine over the lakehouse | http://localhost:8007/ui/ | any user, no password |
 | ④ | **Superset** | BI dashboards on the Gold layer | http://localhost:8004 | admin / admin |
 | ④ | **Jupyter** | Notebooks (Spark) for exploration & labs | http://localhost:8008 | token `123456` |

@@ -34,6 +34,12 @@ persona = a Polaris principal (analyst / engineer / lead)
 - **Console UI**: <http://localhost:8189> (local) or `http://polaris-console.de.lan` (k8s)
 - **No separate identity server** — principals authenticate to Polaris directly.
 
+!!! info "This governs the *real* tables you already built"
+    `polaris_lake` is the very same catalog your engines call **`iceberg`** — the one
+    the whole pipeline writes to in Units 2–5. So the medallion tables you queried as
+    `iceberg.gold.daily_sales` are exactly what these personas get graded access to.
+    One governed catalog, used by everything (Trino, Spark, the Console).
+
 ## Lab
 
 ### 1 · Sign in to the Console as your persona

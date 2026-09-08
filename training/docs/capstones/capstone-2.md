@@ -45,7 +45,7 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
    with columns `iso_week` (e.g. `2026-W36`), `product_name`, `category`, `revenue`, `units`.
 3. **Idempotency.** Recompute only the weeks touched by the batch and **overwrite just those
    partitions**, so a re-run is byte-identical and a late line corrects only its week.
-4. **RBAC (least privilege).** In Unity Catalog, **engineer** works in `silver`; **analyst**
+4. **RBAC (least privilege).** In Apache Polaris, **engineer** works in `silver`; **analyst**
    (analyst) gets `SELECT` on **`gold` only**. Define both; note where enforcement lives.
 5. **Airflow.** Schedule it (`@weekly`, or a weekly rollup task on the `@daily` DAG),
    `catchup=False`, idempotent re-runs.
@@ -58,7 +58,7 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
 - Injecting a **corrected line** and re-running updates that week's `revenue`/`units` in
   `gold.product_weekly` with **no duplicate `(iso_week, product_name)` rows**.
 - Re-triggering the same run produces an identical mart (idempotent).
-- The analyst grant on `gold` and the engineer grant on `silver` are defined in UC.
+- The analyst grant on `gold` and the engineer grant on `silver` are defined in Polaris.
 - The dashboard renders from Gold only.
 
 ### Hints
@@ -112,18 +112,19 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
     `2026-W35` recomputes only that week. Same input → same partition contents (idempotent), no
     duplicate `(iso_week, product_name)` rows.
 
-    **3 — RBAC, two blast radii (Unity Catalog, from Unit 6; per-user in UC OSS):**
+    **3 — RBAC, two blast radii (Apache Polaris, from Unit 6; per-principal grants):**
+
+    Grant each Polaris principal exactly the blast radius its role needs — the same grant
+    chain from [6.2](../unit6/rbac.md), applied to two schemas:
 
         # engineer works in silver
-        uc --server $UC --auth_token "$ADMIN" permission create --securable_type schema \
-          --name shopflow.silver --privilege "USE SCHEMA" --principal engineer@dev-epireum.com
+        engineer  →  USE CATALOG iceberg  →  USE SCHEMA silver  (read + write)
         # analyst reads gold only — least privilege
-        uc --server $UC --auth_token "$ADMIN" permission create --securable_type schema \
-          --name shopflow.gold --privilege SELECT --principal analyst@dev-epireum.com
+        analyst   →  USE CATALOG iceberg  →  USE SCHEMA gold    →  SELECT
 
     This defines the least-privilege policy. On managed **Databricks Unity Catalog** the engines
     enforce it automatically (and you'd grant **groups**, not users); on this OSS stack it records
-    the intent — see the honest note in [6.2](../unit6/rbac.md). (UC OSS has no roles/groups.)
+    the intent — see the honest note in [6.2](../unit6/rbac.md).
 
     **4 — Airflow, idempotent + no catchup:**
 

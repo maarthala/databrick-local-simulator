@@ -167,7 +167,7 @@ building it, confirm the **same** table is readable from Trino (it should be —
 
     - **Azure Databricks** — this exact PySpark/`spark.sql` runs unchanged, scheduled as a Job;
       you can also express Bronze→Silver→Gold declaratively with **Delta Live Tables (DLT)**,
-      governed by **Unity Catalog** (the same product as this course).
+      governed by **Unity Catalog** (the cloud analogue of the **Apache Polaris** catalog you use here).
     - **Microsoft Fabric** — Fabric Spark notebooks build the same mart and store it as Delta in
       a Lakehouse on OneLake.
     - **Snowflake** — build the same `GROUP BY` + window mart in SQL/Snowpark, or as a declarative
