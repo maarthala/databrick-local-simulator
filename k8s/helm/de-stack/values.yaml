@@ -84,7 +84,8 @@ hiveMetastore:
   repo: hive
   tag: latest
 icebergRest:
-  enabled: true
+  # Dropped — the pipeline now runs on the governed Polaris catalog (single catalog).
+  enabled: false
   image: apache/iceberg-rest-fixture:latest
   storage: 2Gi
 # Unity Catalog OSS — governed catalog + RBAC. The stock 3.1GB image spins this
