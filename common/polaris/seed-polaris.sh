@@ -27,6 +27,11 @@ echo "p-roles:   $(for r in analyst_role engineer_role lead_role; do post $M/pri
 echo "assign:    $(for pr in analyst:analyst_role engineer:engineer_role lead:lead_role; do put $M/principals/${pr%%:*}/principal-roles "{\"principalRole\":{\"name\":\"${pr##*:}\"}}"; done)"
 echo "c-roles:   $(for r in analyst_role engineer_role lead_role; do post $M/catalogs/polaris_lake/catalog-roles "{\"catalogRole\":{\"name\":\"${r}_cr\"}}"; put $M/principal-roles/$r/catalog-roles/polaris_lake "{\"catalogRole\":{\"name\":\"${r}_cr\"}}"; done)"
 
+# Admin content access: root (service_admin) runs the ingest/build pipeline, which
+# creates + writes tables with credential vending (CREATE_TABLE_..._WITH_WRITE_DELEGATION).
+# service_admin manages the catalog but needs CATALOG_MANAGE_CONTENT for data ops.
+echo "admin:     $(post $M/catalogs/polaris_lake/catalog-roles '{"catalogRole":{"name":"admin_cr"}}'; put $M/catalogs/polaris_lake/catalog-roles/admin_cr/grants '{"grant":{"type":"catalog","privilege":"CATALOG_MANAGE_CONTENT"}}'; put $M/principal-roles/service_admin/catalog-roles/polaris_lake '{"catalogRole":{"name":"admin_cr"}}')"
+
 # medallion grants (per persona)
 echo "analyst:   $(for pr in TABLE_READ_DATA TABLE_LIST; do grant analyst_role_cr gold $pr; done)"
 echo "engineer:  $(for pr in TABLE_READ_DATA TABLE_LIST; do grant engineer_role_cr gold $pr; done; for pr in TABLE_READ_DATA TABLE_LIST TABLE_WRITE_DATA TABLE_CREATE; do grant engineer_role_cr silver $pr; done)"
