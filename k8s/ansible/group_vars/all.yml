@@ -100,6 +100,7 @@ seed_users:
   - { name: "Ava Analyst",   email: "analyst@dev-epireum.com" }
   - { name: "Eddie Engineer", email: "engineer@dev-epireum.com" }
   - { name: "Lena Lead",     email: "lead@dev-epireum.com" }
+  - { name: "Admin User",    email: "admin@dev-epireum.com" }
 seed_catalog: lakehouse
 seed_schema: sales
 seed_grants:

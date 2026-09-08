@@ -24,7 +24,9 @@
         "http://localhost:3000/*",
         "http://uc-ui.de.lan/*"
       ],
-      "webOrigins": ["+"]
+      "webOrigins": [
+        "+"
+      ]
     },
     {
       "clientId": "unity-catalog-ui",
@@ -41,7 +43,9 @@
         "http://uc-ui.de.lan/*",
         "http://localhost:3000/*"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "+"
+      ],
       "attributes": {
         "post.logout.redirect.uris": "+"
       }
@@ -56,7 +60,11 @@
       "firstName": "Ava",
       "lastName": "Analyst",
       "credentials": [
-        { "type": "password", "value": "analyst", "temporary": false }
+        {
+          "type": "password",
+          "value": "analyst",
+          "temporary": false
+        }
       ]
     },
     {
@@ -67,7 +75,11 @@
       "firstName": "Eddie",
       "lastName": "Engineer",
       "credentials": [
-        { "type": "password", "value": "engineer", "temporary": false }
+        {
+          "type": "password",
+          "value": "engineer",
+          "temporary": false
+        }
       ]
     },
     {
@@ -78,7 +90,26 @@
       "firstName": "Lena",
       "lastName": "Lead",
       "credentials": [
-        { "type": "password", "value": "lead", "temporary": false }
+        {
+          "type": "password",
+          "value": "lead",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@dev-epireum.com",
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
       ]
     }
   ]

@@ -46,6 +46,24 @@
   changed_when: false
   no_log: true
 
+- name: Read the metastore id (for the admin CREATE CATALOG grant)
+  ansible.builtin.command: >
+    kubectl -n {{ namespace }} exec deploy/unity-catalog --
+    bin/uc --auth_token {{ uc_admin.stdout }} metastore get
+  register: uc_metastore
+  changed_when: false
+  no_log: true
+
+- name: Grant the admin identity CREATE CATALOG on the metastore (idempotent)
+  ansible.builtin.shell: >
+    kubectl -n {{ namespace }} exec deploy/unity-catalog --
+    bin/uc --auth_token '{{ uc_admin.stdout }}'
+    permission create --securable_type metastore
+    --name '{{ uc_metastore.stdout | regex_search("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}") }}'
+    --privilege 'CREATE CATALOG' --principal admin@dev-epireum.com || true
+  changed_when: false
+  no_log: true
+
 - name: Seed complete
   ansible.builtin.debug:
     msg: >-

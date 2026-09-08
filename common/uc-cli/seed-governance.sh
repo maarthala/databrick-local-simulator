@@ -49,4 +49,12 @@ for s in bronze silver gold; do
   grant schema "shopflow.$s" "CREATE TABLE" lead@dev-epireum.com
 done
 
+echo "Granting the admin identity catalog-creation rights (Unit 6 self-serve lab)…"
+# The `admin` Keycloak user (email admin@dev-epireum.com) maps to this UC user; a
+# metastore-level CREATE CATALOG grant lets it create catalogs from the UI/CLI —
+# without ever needing the container-bound bootstrap token.
+u user create --name "Admin User" --email admin@dev-epireum.com 2>/dev/null || true
+MID=$(u metastore get 2>/dev/null | awk -F'│' '/METASTORE_ID/{gsub(/ /,"",$3); print $3; exit}')
+[ -n "$MID" ] && grant metastore "$MID" "CREATE CATALOG" admin@dev-epireum.com
+
 echo "Done. Browse it: uc --server $SRV --auth_token \$(common/uc-cli/login.sh analyst) catalog list"
