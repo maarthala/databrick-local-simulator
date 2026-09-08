@@ -15,12 +15,18 @@ you (analyst / engineer / lead)
  MinIO (Delta)  → rows returned only if you're allowed
 ```
 
-The medallion lives twice on this stack, on purpose:
+The medallion lives twice on this stack, on purpose — **two engines, two roles**:
 
-| Catalog | Engine | Governed by UC? | Use it for |
-|---|---|---|---|
-| `iceberg.*` | Trino **and** Spark | ❌ (open) | SQL/BI, dashboards (Units 2, 7) |
-| `lakehouse.*` (UC/Delta) | **Spark** | ✅ per-user RBAC | governed access (this lesson) |
+| Engine → catalog | Access model | Role in the course |
+|---|---|---|
+| **Trino → `iceberg.*`** | **full / open** — every user sees everything | SQL, BI, dashboards, exploration (Units 2, 7) |
+| **Spark → `lakehouse.*`** (UC/Delta) | **governed** — per-user RBAC via Unity Catalog | governance (this unit) |
+
+Think of it as: **Trino is the open analytics engine; Spark is the governed engine.**
+That's the same division you'll meet in industry — an open SQL layer for broad
+access, and a governed catalog (Unity Catalog) that gates who reads what. On
+Databricks both run *through* UC; here we teach governance on the engine where UC
+works natively — **Spark** — and use **Trino for full-access SQL**.
 
 ## Lab
 
