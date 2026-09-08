@@ -87,15 +87,16 @@ configured Ava's tool, Eddie's tool, and Lena's tool separately. That's the job 
 | finance vs dashboard numbers disagree | everyone reads the same `gold` marts |
 | "who saw PII last quarter?" — no answer | every access recorded |
 
-## The honest caveat on *this* stack
-What you saw enforced above is **catalog/schema visibility and grants** — Unity Catalog's governance
-model, working. But the actual **table data** lives in the `iceberg` catalog, and on this OSS stack the
-query engines (Trino/Spark) read `iceberg` **directly**, so they don't yet check UC on every row.
+## Where this is enforced (and the good news)
+The visibility above is Unity Catalog enforcing grants. And on this stack it's not just *visibility* —
+**Spark now enforces it at query time**: querying the governed `lakehouse` catalog through UC, Ava's
+read of `silver`/`bronze` is refused **by the engine itself**, per her token (see
+[6.8](governed-spark.md)). **Trino** still reads the open `iceberg` catalog directly (ungoverned) —
+that's the SQL/BI path (Units 2 & 7).
 
-On **Databricks / Snowflake / Fabric**, the engine calls the catalog **before returning a row**, so the
-*same policy you just wrote* is also enforced at query time — Ava's `SELECT` on a silver table would be
-refused by the engine itself. The **policy design is identical**; the managed cloud adds engine-level
-enforcement on top. You've learned the part that transfers 100%.
+On **Databricks / Snowflake / Fabric**, *every* engine goes through the catalog before returning a row;
+here **Spark does and Trino doesn't (yet)** — but the **policy you wrote is identical**, so it transfers
+100%.
 
 ## Key terms, at a glance
 | Term | Plain meaning |

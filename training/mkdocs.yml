@@ -116,6 +116,7 @@ nav:
       - "6.5 Tables in Unity Catalog": unit6/tables.md
       - "6.6 Beyond tables: volumes & functions": unit6/volumes-functions.md
       - "6.7 A day in the governed lakehouse": unit6/day-in-the-life.md
+      - "6.8 Querying through Unity Catalog (Spark)": unit6/governed-spark.md
   - "7 · Business intelligence (Superset)":
       - "7.1 Dashboards from the Gold layer": unit7/dashboards.md
   - Capstones:
