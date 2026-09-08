@@ -97,10 +97,12 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "redirectUris": [
-        "http://localhost:8189/*"
+        "http://localhost:8189/*",
+        "http://polaris-console.de.lan/*"
       ],
       "webOrigins": [
-        "http://localhost:8189"
+        "http://localhost:8189",
+        "http://polaris-console.de.lan"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256"

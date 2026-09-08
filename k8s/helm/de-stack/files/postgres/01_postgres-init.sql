@@ -20,6 +20,10 @@ CREATE DATABASE hue OWNER hue;
 CREATE USER ucuser WITH PASSWORD 'ucuser';
 CREATE DATABASE ucdb OWNER ucuser;
 
+-- Apache Polaris metastore (relational-jdbc persistence)
+CREATE USER polaris WITH PASSWORD 'polaris';
+CREATE DATABASE polarisdb OWNER polaris;
+
 -- Optional: Connect to the new database and create schema
 -- \connect airflow
 

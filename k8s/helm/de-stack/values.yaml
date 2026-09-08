@@ -109,6 +109,17 @@ unityCatalog:
     # ui/ source + flattened; see docs. Rebuild: docker build --build-arg
     # PROXY_HOST=unity-catalog -t unitycatalog/unitycatalog-ui:kc ui/ then flatten.
     image: unitycatalog/unitycatalog-ui:kcflat
+# Apache Polaris — Iceberg-native governed catalog (the live governance solution;
+# UC is paused above). Persistence in Postgres (db polarisdb), Keycloak SSO, MinIO
+# storage with static creds. Console UI is a LOCAL build (common/polaris-console/).
+# Images must be imported to the node (kubelet pulls corrupt containerd snapshots):
+#   docker save apache/polaris:latest | ssh sysadmin@<node> microk8s ctr images import -
+polaris:
+  enabled: true
+  image: apache/polaris:latest
+  adminImage: apache/polaris-admin-tool:latest
+  consoleImage: apache/polaris-console:latest
+
 trino:
   enabled: true
   image: trinodb/trino:473
