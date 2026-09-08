@@ -49,6 +49,89 @@
       "attributes": {
         "post.logout.redirect.uris": "+"
       }
+    },
+    {
+      "clientId": "polaris",
+      "name": "Apache Polaris (engines/API)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "polaris-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": true,
+      "protocolMappers": [
+        {
+          "name": "principal_name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "principal_name",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "principal_roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "principal_roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "polaris-ui",
+      "name": "Apache Polaris Console",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8189/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8189"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "fullScopeAllowed": true,
+      "protocolMappers": [
+        {
+          "name": "principal_name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "principal_name",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "principal_roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "principal_roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [
@@ -65,6 +148,9 @@
           "value": "analyst",
           "temporary": false
         }
+      ],
+      "realmRoles": [
+        "analyst_role"
       ]
     },
     {
@@ -80,6 +166,9 @@
           "value": "engineer",
           "temporary": false
         }
+      ],
+      "realmRoles": [
+        "engineer_role"
       ]
     },
     {
@@ -95,6 +184,9 @@
           "value": "lead",
           "temporary": false
         }
+      ],
+      "realmRoles": [
+        "lead_role"
       ]
     },
     {
@@ -112,5 +204,18 @@
         }
       ]
     }
-  ]
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "analyst_role"
+      },
+      {
+        "name": "engineer_role"
+      },
+      {
+        "name": "lead_role"
+      }
+    ]
+  }
 }
