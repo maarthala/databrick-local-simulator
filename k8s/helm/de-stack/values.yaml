@@ -91,7 +91,7 @@ icebergRest:
 # node's overlayfs snapshotter; we use a FLATTENED single-layer build (1.7GB) that
 # imports/creates cleanly. Loaded onto the node via `ctr images import`.
 unityCatalog:
-  enabled: true
+  enabled: false
   # Patched build: vends static permanent S3 keys (MinIO can't do STS AssumeRole,
   # and stock UC only vends via STS/session tokens). See tools/uc-server/.
   image: unitycatalog/unitycatalog:vendflat
@@ -103,7 +103,7 @@ unityCatalog:
   # Web UI (React dev server, port 3000) — proxies /api to the unity-catalog
   # Service. Built from ui/ with PROXY_HOST=unity-catalog, flattened to 1 layer.
   ui:
-    enabled: true
+    enabled: false
     # Patched build: adds a working "Continue with Keycloak" login (implicit OIDC)
     # and Bearer-token auth so the UI works over plain http. Built from the pinned
     # ui/ source + flattened; see docs. Rebuild: docker build --build-arg
