@@ -28,6 +28,9 @@ x-airflow-common:
     - ./configs/airflow.cfg:/opt/airflow/config/airflow.cfg
     - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
     - ./init_scripts/airflow:/init_scripts
+    # Shared task-log dir so the api-server (UI) can read logs written by the
+    # scheduler/dag-processor directly — no cross-container fetch over port 8793.
+    - airflow-logs:/opt/airflow/logs
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -114,3 +117,7 @@ services:
       - airflow
     depends_on:
       <<: *airflow-common-depends-on
+
+volumes:
+  # Shared across all Airflow services so task logs are readable in the web UI.
+  airflow-logs:
