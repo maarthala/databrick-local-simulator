@@ -101,6 +101,7 @@ nav:
       - "5.1 Airflow basics": unit5/basics.md
       - "5.2 Build the medallion DAG": unit5/medallion-dag.md
       - "5.3 Schedule ingestion & Spark jobs": unit5/schedule.md
+      - "5.4 The development workflow (notebook → job → DAG)": unit5/dev-workflow.md
   - "Real-world recipes":
       - "Ingest Excel from object storage": recipes/excel.md
       - "Run on file arrival (event trigger)": recipes/file-trigger.md
@@ -111,6 +112,9 @@ nav:
       - "6.1 Catalogs, schemas, tables": unit6/catalogs.md
       - "6.2 Users, roles & RBAC": unit6/rbac.md
       - "6.3 Discovery & search": unit6/discovery.md
+      - "6.4 Create & assign your own catalog": unit6/create-assign.md
+      - "6.5 Tables in Unity Catalog": unit6/tables.md
+      - "6.6 Beyond tables: volumes & functions": unit6/volumes-functions.md
   - "7 · Business intelligence (Superset)":
       - "7.1 Dashboards from the Gold layer": unit7/dashboards.md
   - Capstones:

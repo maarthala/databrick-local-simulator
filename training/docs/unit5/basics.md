@@ -133,7 +133,9 @@ echo $?                                   # 0 = the run succeeded
 ```
 
 `<dag_id>` is the name inside the file (`DAG("my_first_dag", …)`), **not** the filename. Re-run
-`airflow dags reserialize` after each edit before `airflow dags test`.
+`airflow dags reserialize` after each edit before `airflow dags test`. The **`<date>` must be on or
+after the DAG's `start_date`** — test with a date *before* `start_date` and Airflow runs **no tasks**
+yet still reports the run "successful" (a common surprise — pick any date between `start_date` and today).
 
 !!! tip "Why you might see *no* output"
     - **`airflow tasks test`** streams the task's output (your `echo`, `print`, etc.) to the console
@@ -158,6 +160,7 @@ echo $?                                   # 0 = the run succeeded
     | Import tracebacks under `example_dags/` (kubernetes / pandas / s3) | Airflow's **bundled examples** need extra deps | `export AIRFLOW__CORE__LOAD_EXAMPLES=False` |
     | `No data found` / `no such table` from `dags list` | new/empty or unmigrated DB — usually `AIRFLOW_HOME` changed between shells | set `AIRFLOW_HOME` consistently, then `airflow db migrate` |
     | Ran, but **no output** on the console | `dags test` logs to files, or logging is muted | use `airflow tasks test`; `unset AIRFLOW__LOGGING__LOGGING_LEVEL`; check `echo $?` |
+    | `dags test` says **success** but **no tasks ran** | the test **date is before the DAG's `start_date`** | use a date **≥ `start_date`** (and ≤ today) |
     | `WARNING - cannot record queued_duration …` | harmless metric note on a one-off test run | ignore |
 
 ### 4. Ship it
