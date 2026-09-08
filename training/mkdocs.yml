@@ -119,6 +119,7 @@ nav:
   # The files remain in the repo; re-add them here when UC is brought back.
   - "6 · Data governance (Polaris)":
       - "Governed Iceberg with Apache Polaris": unit6/polaris.md
+      - "Administer access: create users & assign RBAC": unit6/polaris-admin.md
   - "7 · Business intelligence (Superset)":
       - "7.1 Dashboards from the Gold layer": unit7/dashboards.md
   - Capstones:
