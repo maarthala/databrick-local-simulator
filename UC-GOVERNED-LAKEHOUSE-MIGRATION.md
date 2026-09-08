@@ -6,6 +6,15 @@ Catalog enforces their persona's RBAC** and vends storage credentials. Today UC
 governs a *separate* registry while Trino/Spark query the Iceberg lakehouse
 directly (ungoverned). This plan closes that gap.
 
+## Progress (updated)
+- ✅ **Phase 1 done** — Spark queries `lakehouse.*` through UC; RBAC enforced at query time (committed: Delta baked into the image, `run-uc-spark.sh` compose+k8s).
+- ✅ **Phase 2 done (compose)** — full medallion migrated to governed UC/Delta on MinIO (`bronze`/`silver`/`gold`), medallion grant policy seeded. Proven read matrix: analyst=gold, engineer=+silver, lead=+bronze.
+- ⚠️ **Finding — per-user writes are admin-only.** `generateTemporaryPathCredentials` returns **403** for personas (even with `CREATE TABLE`); only the bootstrap admin gets write creds. So pipelines write as an **admin/service principal**; per-user *reads* are fully governed. Fixing per-user writes = patch UC's path-credential **authorization** (Phase 4) — the "doesn't quite work yet" gap from UC's own source.
+- ⚠️ **Phase 3 (Trino→UC) — BLOCKED on this OSS build.** Trino's Delta connector has no UC-metastore option; UC's Iceberg REST endpoint returns **500 "Couldn't unwrap service"** on namespace/table calls (config works). Would need patching UC's Iceberg REST service **+ UniForm** on the Delta tables. Deferred.
+- ✅ **Phase 4 per-user READS proven** (the matrix runs on per-user tokens via `run-uc-spark.sh`). ⚠️ **per-user WRITES blocked** — `generateTemporaryPathCredentials → 403` is a UC-server authorization stub; only bootstrap-admin writes. Notebook (Spark Connect) per-user is also limited (shared connect server can't carry per-user tokens).
+- **Both open blockers live in the UC *server*** (`common/uc-server/`) and need a patch + `sbt` image rebuild — high-risk, likely multi-session. Everything achievable without rebuilding the UC server is done.
+- ⬜ Phase 5 (rewrite jobs to write UC natively + docs + k8s) remains.
+
 ## Target architecture
 ```
 learner (analyst/engineer/lead)
