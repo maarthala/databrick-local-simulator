@@ -12,9 +12,10 @@ data:
     polaris.realm-context.realms=POLARIS
     polaris.readiness.ignore-severe-issues=true
     quarkus.otel.sdk.disabled=true
-    # persistence → Postgres (db polarisdb)
+    # persistence → Postgres (db polarisdb). database-type is set via env (below):
+    # as a properties-file key it fails Quarkus config validation; the env source
+    # is lenient, matching the working compose setup.
     polaris.persistence.type=relational-jdbc
-    polaris.persistence.relational-jdbc.database-type=postgresql
     quarkus.datasource.jdbc.url=jdbc:postgresql://postgres:5432/polarisdb
     quarkus.datasource.username=polaris
     quarkus.datasource.password=polaris
@@ -90,6 +91,8 @@ spec:
             - { name: AWS_REGION, value: "us-east-1" }
             - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
             - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+            # lenient env source (unmapped keys ignored) — declares the JDBC dialect
+            - { name: POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE, value: postgresql }
           volumeMounts:
             - { name: cfg, mountPath: /deployments/config/application.properties, subPath: application.properties }
           readinessProbe:
