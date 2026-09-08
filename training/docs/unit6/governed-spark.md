@@ -72,11 +72,13 @@ path; here's the honest map and the right move when something won't work:
     - **Pipeline writes** into the governed lakehouse (`publish-medallion-uc.sh`).
 
 !!! warning "Doesn't work here — use the alternative"
-    - **Trino → UC**: not supported on this OSS build (UC's Iceberg REST endpoint
-      errors; Trino's Delta connector has no UC metastore). **Alternative:** for
-      SQL/BI and Superset, query the **`iceberg`** catalog via Trino (Units 2 & 7);
-      use UC/Spark for *governed* access. *Hint: on Databricks every engine goes
-      through UC — one catalog, all engines.*
+    - **Trino → UC**: not reachable cleanly on this OSS build. UC's Iceberg REST
+      endpoint works, but it only exposes a table to Trino if the table carries
+      **UniForm** (Iceberg) metadata — which doesn't generate through the UC Spark
+      connector here (and Trino's Delta connector has no UC-metastore option).
+      **Alternative:** for SQL/BI and Superset, query the **`iceberg`** catalog via
+      Trino (Units 2 & 7); use UC/Spark for *governed* access. *Hint: on Databricks
+      every engine goes through UC — one catalog, all engines.*
     - **Per-user writes**: personas can't write as themselves (UC-server
       `generateTemporaryPathCredentials` is a stub → 403). **Alternative:** the
       **pipeline writes as a service/admin principal** (the normal production
