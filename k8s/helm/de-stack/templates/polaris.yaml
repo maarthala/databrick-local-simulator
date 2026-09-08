@@ -1,0 +1,186 @@
+{{- if .Values.polaris.enabled }}
+# Apache Polaris — Iceberg-native governed catalog (Trino + Spark), Postgres-backed.
+# Internal auth: principals log in with a client id/secret (no external IdP).
+# Replaces Unity Catalog as the live governance solution.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: polaris-config
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+  # Quarkus reads config/application.properties relative to the app (/deployments).
+  application.properties: |
+    polaris.realm-context.realms=POLARIS
+    polaris.readiness.ignore-severe-issues=true
+    quarkus.otel.sdk.disabled=true
+    # persistence → Postgres (db polarisdb). database-type is set via env (below):
+    # as a properties-file key it fails Quarkus config validation; the env source
+    # is lenient, matching the working compose setup.
+    polaris.persistence.type=relational-jdbc
+    quarkus.datasource.jdbc.url=jdbc:postgresql://postgres:5432/polarisdb
+    quarkus.datasource.username=polaris
+    quarkus.datasource.password=polaris
+    # storage (MinIO, static creds — no STS)
+    polaris.features."ALLOW_INSECURE_STORAGE_TYPES"=true
+    polaris.features."ALLOW_NAMESPACE_CUSTOM_LOCATION"=true
+    polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"=["FILE","S3"]
+    # Auth: Polaris-internal only. Principals log in with a client id/secret —
+    # no external IdP (Keycloak dropped from the stack).
+    polaris.authentication.type=internal
+---
+# One-shot: bootstrap the schema + realm into Postgres. Delete before re-apply.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: polaris-bootstrap
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 4
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "polaris-bootstrap") | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: bootstrap
+          image: {{ .Values.polaris.adminImage }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: POLARIS_PERSISTENCE_TYPE, value: relational-jdbc }
+            - { name: POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE, value: postgresql }
+            - { name: QUARKUS_DATASOURCE_JDBC_URL, value: "jdbc:postgresql://postgres:5432/polarisdb" }
+            - { name: QUARKUS_DATASOURCE_USERNAME, value: polaris }
+            - { name: QUARKUS_DATASOURCE_PASSWORD, value: polaris }
+          args: ["bootstrap", "--realm=POLARIS", "--credential=POLARIS,root,s3cr3t"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: polaris
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "polaris") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "polaris") | nindent 8 }}
+    spec:
+      {{- if .Values.keycloak.enabled }}
+      # Fetch Keycloak JWKS straight from the keycloak Service (the nginx ingress
+      # chunks responses the JWKS client rejects) while keeping the auth.de.lan issuer.
+      hostAliases:
+        - ip: {{ .Values.keycloak.clusterIP | quote }}
+          hostnames: ["auth.{{ .Values.ingress.baseHost }}"]
+      {{- end }}
+      containers:
+        - name: polaris
+          image: {{ .Values.polaris.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - { name: http, containerPort: 8181 }
+            - { name: mgmt, containerPort: 8182 }
+          env:
+            - { name: AWS_REGION, value: "us-east-1" }
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+            # lenient env source (unmapped keys ignored) — declares the JDBC dialect
+            - { name: POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE, value: postgresql }
+          volumeMounts:
+            - { name: cfg, mountPath: /deployments/config/application.properties, subPath: application.properties }
+          readinessProbe:
+            httpGet: { path: /q/health, port: 8182 }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+      volumes:
+        - { name: cfg, configMap: { name: polaris-config } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: polaris
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "polaris") | nindent 4 }}
+  ports:
+    - { name: http, port: 8181, targetPort: 8181 }
+    - { name: mgmt, port: 8182, targetPort: 8182 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: polaris-console
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "polaris-console") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "polaris-console") | nindent 8 }}
+    spec:
+      containers:
+        - name: console
+          image: {{ .Values.polaris.consoleImage }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            # Runtime config.js (same-origin: API served under /api on the console host).
+            - { name: VITE_POLARIS_API_URL, value: "http://polaris-console.{{ .Values.ingress.baseHost }}" }
+            - { name: VITE_POLARIS_REALM, value: "POLARIS" }
+            - { name: VITE_POLARIS_PRINCIPAL_SCOPE, value: "PRINCIPAL_ROLE:ALL" }
+            - { name: VITE_OAUTH_TOKEN_URL, value: "http://polaris-console.{{ .Values.ingress.baseHost }}/api/catalog/v1/oauth/tokens" }
+            - { name: VITE_POLARIS_REALM_HEADER_NAME, value: "Polaris-Realm" }
+            # No VITE_OIDC_* → Console shows the Client ID/Secret login (no IdP).
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: polaris-console
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "polaris-console") | nindent 4 }}
+  ports:
+    - { name: http, port: 8080, targetPort: 8080 }
+{{- if .Values.ingress.enabled }}
+---
+# API on its own host (Spark/Trino/CLI hit this directly).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: polaris
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: polaris.{{ .Values.ingress.baseHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: polaris, port: { number: 8181 } }
+---
+# Console host, same-origin: /api → polaris, / → the Console UI (no CORS).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: polaris-console
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: polaris-console.{{ .Values.ingress.baseHost }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service: { name: polaris, port: { number: 8181 } }
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: polaris-console, port: { number: 8080 } }
+{{- end }}
+{{- end }}

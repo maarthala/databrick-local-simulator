@@ -18,7 +18,7 @@ diff --git a/ui/src/components/login/KeycloakAuthButton.tsx b/ui/src/components/
 index 0c8d465..9e03c82 100644
 --- a/ui/src/components/login/KeycloakAuthButton.tsx
 +++ b/ui/src/components/login/KeycloakAuthButton.tsx
-@@ -1,47 +1,74 @@
+@@ -1,47 +1,77 @@
 -import { Avatar, Button } from 'antd';
 -// getting errors with node version in jwt-decode dependency, removed package for now
 -// import Keycloak from 'keycloak-js';
@@ -78,6 +78,9 @@ index 0c8d465..9e03c82 100644
 +    if (idToken && state && state === expected) {
 +      handled.current = true;
 +      sessionStorage.removeItem('kc_state');
++      // Keep the raw Keycloak id_token so logout can pass it as id_token_hint to
++      // the end-session endpoint (RP-initiated logout clears the SSO session too).
++      sessionStorage.setItem('kc_id_token', idToken);
 +      // Strip the token fragment from the address bar.
 +      window.history.replaceState(
 +        {},
@@ -241,7 +244,7 @@ index c473c05..0a7ad04 100644
          return response.data;
        }
      },
-@@ -66,11 +80,17 @@ export function useLoginWithToken() {
+@@ -66,11 +80,34 @@ export function useLoginWithToken() {
  export interface LogoutCurrentUserMutationParams {}
  
  export function useLogoutCurrentUser() {
@@ -255,6 +258,23 @@ index c473c05..0a7ad04 100644
 +      // Drop the stored token regardless of the server response, then refresh.
 +      localStorage.removeItem(UC_TOKEN_STORAGE_KEY);
 +      queryClient.invalidateQueries({ queryKey: ['getUser'] });
++      // RP-initiated logout: also end the Keycloak SSO session, otherwise the
++      // next login silently re-authenticates as the same user (SSO cookie lives
++      // on). Redirect through the end-session endpoint and come back to the app.
++      const kcUrl = process.env.REACT_APP_KEYCLOAK_URL || '';
++      const kcRealm = process.env.REACT_APP_KEYCLOAK_REALM_ID || '';
++      const kcClient = process.env.REACT_APP_KEYCLOAK_CLIENT_ID || '';
++      if (kcUrl && kcRealm) {
++        const idHint = sessionStorage.getItem('kc_id_token');
++        sessionStorage.removeItem('kc_id_token');
++        const redirect = window.location.origin + '/';
++        let url =
++          `${kcUrl}/realms/${kcRealm}/protocol/openid-connect/logout` +
++          `?post_logout_redirect_uri=${encodeURIComponent(redirect)}` +
++          `&client_id=${encodeURIComponent(kcClient)}`;
++        if (idHint) url += `&id_token_hint=${encodeURIComponent(idHint)}`;
++        window.location.assign(url);
++      }
 +    },
      mutationFn: async () => {
        const response = await (route as Route<ControlApi>)({

@@ -84,14 +84,15 @@ hiveMetastore:
   repo: hive
   tag: latest
 icebergRest:
-  enabled: true
+  # Dropped — the pipeline now runs on the governed Polaris catalog (single catalog).
+  enabled: false
   image: apache/iceberg-rest-fixture:latest
   storage: 2Gi
 # Unity Catalog OSS — governed catalog + RBAC. The stock 3.1GB image spins this
 # node's overlayfs snapshotter; we use a FLATTENED single-layer build (1.7GB) that
 # imports/creates cleanly. Loaded onto the node via `ctr images import`.
 unityCatalog:
-  enabled: true
+  enabled: false
   # Patched build: vends static permanent S3 keys (MinIO can't do STS AssumeRole,
   # and stock UC only vends via STS/session tokens). See tools/uc-server/.
   image: unitycatalog/unitycatalog:vendflat
@@ -103,12 +104,23 @@ unityCatalog:
   # Web UI (React dev server, port 3000) — proxies /api to the unity-catalog
   # Service. Built from ui/ with PROXY_HOST=unity-catalog, flattened to 1 layer.
   ui:
-    enabled: true
+    enabled: false
     # Patched build: adds a working "Continue with Keycloak" login (implicit OIDC)
     # and Bearer-token auth so the UI works over plain http. Built from the pinned
     # ui/ source + flattened; see docs. Rebuild: docker build --build-arg
     # PROXY_HOST=unity-catalog -t unitycatalog/unitycatalog-ui:kc ui/ then flatten.
     image: unitycatalog/unitycatalog-ui:kcflat
+# Apache Polaris — Iceberg-native governed catalog (the live governance solution;
+# UC is paused above). Persistence in Postgres (db polarisdb), Keycloak SSO, MinIO
+# storage with static creds. Console UI is a LOCAL build (common/polaris-console/).
+# Images must be imported to the node (kubelet pulls corrupt containerd snapshots):
+#   docker save apache/polaris:latest | ssh sysadmin@<node> microk8s ctr images import -
+polaris:
+  enabled: true
+  image: apache/polaris:latest
+  adminImage: apache/polaris-admin-tool:latest
+  consoleImage: apache/polaris-console:latest
+
 trino:
   enabled: true
   image: trinodb/trino:473
@@ -117,7 +129,9 @@ trino:
 # realm re-imported from files/keycloak/de-stack-realm.json on every start (users
 # analyst/engineer/lead, confidential client "unity-catalog"). Issuer: http://auth.de.lan/realms/de-stack.
 keycloak:
-  enabled: true
+  # Dropped from the stack — Polaris uses internal principal logins (client id/secret),
+  # no external IdP. Re-enable (with UC) when human SSO is needed again.
+  enabled: false
   image: quay.io/keycloak/keycloak:26.0
   adminUser: admin
   adminPassword: admin

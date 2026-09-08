@@ -79,9 +79,9 @@ Same architecture, running continuously instead of on a schedule.
 ## How it maps to the rest of the course
 | Layer | Built with | Governed by | Units |
 |---|---|---|---|
-| **Bronze** | ingestion (Spark) | Unity Catalog | [3](../unit4/read-bronze.md), [4](../unit5/basics.md) |
-| **Silver** | Spark / SQL transforms | Unity Catalog | [2](../unit2/intro.md), [3](../unit4/transform-silver.md) |
-| **Gold** | Spark / SQL aggregates | Unity Catalog | [2](../unit2/intro.md), [3](../unit4/spark-sql-gold.md) |
+| **Bronze** | ingestion (Spark) | Apache Polaris | [3](../unit4/read-bronze.md), [4](../unit5/basics.md) |
+| **Silver** | Spark / SQL transforms | Apache Polaris | [2](../unit2/intro.md), [3](../unit4/transform-silver.md) |
+| **Gold** | Spark / SQL aggregates | Apache Polaris | [2](../unit2/intro.md), [3](../unit4/spark-sql-gold.md) |
 | **Serve** | Trino + Superset | RBAC on Gold | [5](../unit6/catalogs.md), [6](../unit7/dashboards.md) |
 
 !!! abstract "Where medallion lives on the cloud"

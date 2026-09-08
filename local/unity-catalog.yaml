@@ -9,12 +9,21 @@ services:
         condition: service_started
       keycloak:
         condition: service_healthy
+      postgres:
+        condition: service_started
     environment:
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: minioadmin
       AWS_SECRET_ACCESS_KEY: minioadmin
     volumes:
+      # Persist etc/conf (the token-signing keys: private_key.der / certs.json /
+      # key_id.txt) so a container restart no longer rotates the key and
+      # invalidates every outstanding token. Docker seeds the volume from the
+      # image on first boot; UC then reuses the same key across restarts.
+      - uc-conf:/home/unitycatalog/etc/conf
       - ./configs/unity-catalog/server.properties:/home/unitycatalog/etc/conf/server.properties:ro
+      # Metadata store → Postgres (db `ucdb`), overriding the image default (H2).
+      - ./configs/unity-catalog/hibernate.properties:/home/unitycatalog/etc/conf/hibernate.properties:ro
       - uc-data:/home/unitycatalog/etc/db
     ports:
       - "8081:8080"     # uc --server http://localhost:8081
@@ -42,3 +51,5 @@ services:
 
 volumes:
   uc-data:
+  # UC's etc/conf (persists the token-signing key across restarts).
+  uc-conf:

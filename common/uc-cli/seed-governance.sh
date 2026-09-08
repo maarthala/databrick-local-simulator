@@ -49,4 +49,39 @@ for s in bronze silver gold; do
   grant schema "shopflow.$s" "CREATE TABLE" lead@dev-epireum.com
 done
 
+echo "Provisioning the GOVERNED 'lakehouse' catalog (Spark-through-UC, per-user reads)…"
+# Unlike 'shopflow' (governance metadata only), 'lakehouse' holds real Delta tables
+# that Spark reads THROUGH Unity Catalog with per-user RBAC enforced at query time
+# (see common/uc-spark/run-uc-spark.sh). Populate the tables with
+# common/uc-spark/publish-medallion-uc.sh (writes run as the pipeline/admin
+# principal — per-user WRITES are a UC-server limitation on OSS).
+u catalog create --name lakehouse                        2>/dev/null || true
+for s in bronze silver gold; do
+  u schema create --catalog lakehouse --name "$s"        2>/dev/null || true
+done
+# Medallion access policy (READS enforced per-user via the Spark UC connector):
+grant catalog lakehouse       "USE CATALOG"  analyst@dev-epireum.com
+grant schema  lakehouse.gold  "USE SCHEMA"   analyst@dev-epireum.com
+grant schema  lakehouse.gold  "SELECT"       analyst@dev-epireum.com
+grant catalog lakehouse       "USE CATALOG"  engineer@dev-epireum.com
+for s in silver gold; do
+  grant schema "lakehouse.$s" "USE SCHEMA"   engineer@dev-epireum.com
+  grant schema "lakehouse.$s" "SELECT"       engineer@dev-epireum.com
+done
+grant schema  lakehouse.silver "CREATE TABLE" engineer@dev-epireum.com
+grant catalog lakehouse       "USE CATALOG"  lead@dev-epireum.com
+for s in bronze silver gold; do
+  grant schema "lakehouse.$s" "USE SCHEMA"   lead@dev-epireum.com
+  grant schema "lakehouse.$s" "SELECT"       lead@dev-epireum.com
+  grant schema "lakehouse.$s" "CREATE TABLE" lead@dev-epireum.com
+done
+
+echo "Granting the admin identity catalog-creation rights (Unit 6 self-serve lab)…"
+# The `admin` Keycloak user (email admin@dev-epireum.com) maps to this UC user; a
+# metastore-level CREATE CATALOG grant lets it create catalogs from the UI/CLI —
+# without ever needing the container-bound bootstrap token.
+u user create --name "Admin User" --email admin@dev-epireum.com 2>/dev/null || true
+MID=$(u metastore get 2>/dev/null | awk -F'│' '/METASTORE_ID/{gsub(/ /,"",$3); print $3; exit}')
+[ -n "$MID" ] && grant metastore "$MID" "CREATE CATALOG" admin@dev-epireum.com
+
 echo "Done. Browse it: uc --server $SRV --auth_token \$(common/uc-cli/login.sh analyst) catalog list"

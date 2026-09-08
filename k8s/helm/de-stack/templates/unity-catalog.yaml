@@ -1,8 +1,9 @@
 {{- if .Values.unityCatalog.enabled }}
 # Unity Catalog OSS — governed catalog + RBAC. Server API on :8080, driven by the
-# bundled `uc` CLI. Metadata (H2) persisted on a PVC; server.authorization toggles
-# grant enforcement. Custom server.properties patches only the settings we change
-# (the token-signing keys / other conf files stay from the image).
+# bundled `uc` CLI. Metadata is kept in the shared Postgres (db `ucdb`) via a
+# hibernate.properties override; server.authorization toggles grant enforcement.
+# Custom server.properties patches only the settings we change (the token-signing
+# keys / other conf files stay from the image).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -31,6 +32,19 @@ data:
     s3.region.0=us-east-1
     s3.accessKey.0={{ .Values.minio.rootUser }}
     s3.secretKey.0={{ .Values.minio.rootPassword }}
+  # Metadata store → shared Postgres (db `ucdb`), overriding the image's embedded
+  # H2. Hibernate auto-creates its schema on boot (hbm2ddl.auto=update).
+  hibernate.properties: |
+    hibernate.connection.driver_class=org.postgresql.Driver
+    hibernate.connection.url=jdbc:postgresql://postgres:5432/ucdb
+    hibernate.connection.user=ucuser
+    hibernate.connection.password=ucuser
+    hibernate.hbm2ddl.auto=update
+    hibernate.show_sql=false
+    hibernate.archive.autodetection=class
+    hibernate.use_sql_comments=true
+    org.hibernate.SQL=INFO
+    org.hibernate.type.descriptor.sql.BasicBinder=TRACE
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -43,6 +57,20 @@ spec:
   resources:
     requests:
       storage: {{ .Values.unityCatalog.storage }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  # Persists etc/conf (the token-signing key) so a pod restart doesn't rotate the
+  # key and invalidate every outstanding token. Seeded once by an init container.
+  name: unity-catalog-conf
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.global.storageClass }}
+  resources:
+    requests:
+      storage: 128Mi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -69,6 +97,16 @@ spec:
       {{- end }}
       securityContext:
         fsGroup: 101            # unitycatalog gid — makes the PVC writable
+      initContainers:
+        # Seed the (initially empty) conf PVC from the image's etc/conf so the
+        # log4j2 configs etc. are present. `cp -n` never clobbers, so the signing
+        # key UC writes there on first boot survives every later restart.
+        - name: seed-conf
+          image: {{ .Values.unityCatalog.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["sh", "-c", "cp -rn /home/unitycatalog/etc/conf/. /seed/ 2>/dev/null || true"]
+          volumeMounts:
+            - { name: conf, mountPath: /seed }
       containers:
         - name: unity-catalog
           image: {{ .Values.unityCatalog.image }}
@@ -80,7 +118,9 @@ spec:
             - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
             - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
           volumeMounts:
+            - { name: conf, mountPath: /home/unitycatalog/etc/conf }
             - { name: cfg, mountPath: /home/unitycatalog/etc/conf/server.properties, subPath: server.properties }
+            - { name: cfg, mountPath: /home/unitycatalog/etc/conf/hibernate.properties, subPath: hibernate.properties }
             - { name: data, mountPath: /home/unitycatalog/etc/db }
           readinessProbe:
             tcpSocket: { port: 8080 }
@@ -89,6 +129,7 @@ spec:
       volumes:
         - { name: cfg, configMap: { name: unity-catalog-config } }
         - { name: data, persistentVolumeClaim: { claimName: unity-catalog-data } }
+        - { name: conf, persistentVolumeClaim: { claimName: unity-catalog-conf } }
 ---
 apiVersion: v1
 kind: Service

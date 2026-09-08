@@ -11,7 +11,7 @@ working per-user login that also works over plain **http**.
 | `components/login/KeycloakAuthButton.tsx` | Implements the button: OIDC **implicit flow** (`response_type=id_token`, no secret/PKCE — `crypto.subtle` is unavailable on http), reads the id_token from the return fragment, calls `loginWithToken`. |
 | `App.tsx` | `authEnabled` now also honors `REACT_APP_KEYCLOAK_AUTH_ENABLED` / Okta (was Google-only). |
 | `context/client.ts` | Axios request interceptor attaches `Authorization: Bearer <uc_token>` from `localStorage`. UC's session cookie is `Secure`-only and the browser drops it on http, so the UI authenticates by header instead. |
-| `hooks/user.ts` | Stores the UC token in the **`mutationFn`** and refreshes the user via a **`useMutation`-level `onSuccess`** (mutate-level callbacks are dropped when the caller unmounts mid-redirect — the actual bug that made login silently no-op). Logout clears it in `onSettled`. |
+| `hooks/user.ts` | Stores the UC token in the **`mutationFn`** and refreshes the user via a **`useMutation`-level `onSuccess`** (mutate-level callbacks are dropped when the caller unmounts mid-redirect — the actual bug that made login silently no-op). Logout clears the token **and does an RP-initiated logout** — redirects to Keycloak's `end-session` endpoint (`id_token_hint` + `post_logout_redirect_uri`) so the **SSO session** is cleared too; without this the next login silently re-auths as the same user. `KeycloakAuthButton.tsx` stashes the raw id_token in `sessionStorage` at login to serve as that `id_token_hint`. |
 | `context/auth-context.tsx` | Minor: stores/clears the token on login/logout (belt-and-suspenders). |
 
 ## Runtime config (set as pod env — read by the CRA dev server at start)
@@ -34,7 +34,7 @@ public `unity-catalog-ui` client (implicit flow) and UC's `server.audiences`
 # 1. check out the pinned UC source and apply the patch
 git clone https://github.com/unitycatalog/unitycatalog /tmp/uc-src
 cd /tmp/uc-src && git checkout 58d5c7b
-git apply /path/to/common/uc-ui/keycloak-login.patch
+git apply --recount /path/to/common/uc-ui/keycloak-login.patch
 
 # 2. build (amd64 for the node) + flatten to a single layer (node overlayfs is fragile)
 cd ui

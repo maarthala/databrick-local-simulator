@@ -17,7 +17,7 @@ COMPOSE = docker compose
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init up down restart ps logs connectors config clean docs uc-seed
+.PHONY: help init up down restart ps logs connectors config clean docs polaris-seed uc-seed
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -47,7 +47,10 @@ docs: ## Build the training site (../training -> ../training/site), served by ho
 	docker run --rm -v "$(CURDIR)/../training":/docs squidfunk/mkdocs-material:9 build
 	@echo "training site built -> ../training/site (browse http://localhost:8000/training/ once the stack is up)"
 
-uc-seed: ## Provision the governed 'shopflow' Unity Catalog for the training course (Unit 6)
+polaris-seed: ## Provision the governed Polaris catalog + personas/RBAC (Unit 6, the live governance)
+	bash ../common/polaris/seed-polaris.sh
+
+uc-seed: ## (paused) Provision the governed Unity Catalog — only if UC is re-enabled
 	bash ../common/uc-cli/seed-governance.sh
 
 config: ## Validate the merged compose configuration

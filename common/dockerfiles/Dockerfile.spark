@@ -36,8 +36,21 @@ RUN zip -q -d /opt/spark/jars/bundle-2.24.6.jar 'io/netty/*' 'META-INF/native/li
 # patched to accept permanent MinIO creds — no STS session token). Placed in
 # /opt/spark/jars (system classpath) so hadoop-aws's S3A can load UC's vended
 # credential provider. Lets Spark read/write GOVERNED Delta tables in UC's lakehouse
-# catalog. Delta itself is supplied per-job via --packages (see tools/uc-spark/).
+# catalog.
 COPY ./uc-jars/*.jar /opt/spark/jars/
+
+# Delta Lake (the UC lakehouse's table format). Baked onto the system classpath —
+# supplying it per-job via --packages fails on local[*] because DeltaCatalog is
+# referenced during session init before the ivy jars join the driver classpath
+# (ClassNotFoundException: org.apache.spark.sql.delta.catalog.DeltaCatalog).
+ARG DELTA_VER=4.3.1
+RUN cd /opt/spark/jars && \
+    base=https://repo1.maven.org/maven2/io/delta && \
+    curl -fsSL -O $base/delta-spark_2.13/${DELTA_VER}/delta-spark_2.13-${DELTA_VER}.jar 2>/dev/null || \
+    curl -fsSL -O $base/delta-spark_4.0_2.13/${DELTA_VER}/delta-spark_4.0_2.13-${DELTA_VER}.jar && \
+    curl -fsSL -O $base/delta-storage/${DELTA_VER}/delta-storage-${DELTA_VER}.jar && \
+    curl -fsSL -O $base/delta-kernel-api/${DELTA_VER}/delta-kernel-api-${DELTA_VER}.jar && \
+    curl -fsSL -O $base/delta-kernel-defaults/${DELTA_VER}/delta-kernel-defaults-${DELTA_VER}.jar
 
 RUN chown spark:spark /opt/spark/jars/*.jar && chmod 644 /opt/spark/jars/*.jar
 

@@ -34,7 +34,7 @@ they're already familiar when you get there.
 ## Catalog, medallion & governance
 | Term | Meaning |
 |---|---|
-| **Catalog** | Top level of the namespace + governance layer (**Unity Catalog**). |
+| **Catalog** | Top level of the namespace + governance layer (**Apache Polaris** here; **Unity Catalog** / Snowflake on the cloud). |
 | **Namespace** | `catalog.schema.table` — the 3-level path to any table. |
 | **Medallion** | Bronze (raw) → Silver (clean) → Gold (business) layering. |
 | **Bronze / Silver / Gold** | The three medallion quality tiers. |
@@ -45,7 +45,7 @@ they're already familiar when you get there.
 | **RBAC** | Role/rule-based access control — grants on securables. |
 | **Securable / principal / privilege** | Object protected / identity granted / action allowed. |
 | **Grant chain** | You need permission at *every* level above a table to read it. |
-| **SSO / OIDC** | Single sign-on; log in once via an identity provider (Keycloak). |
+| **SSO / OIDC** | Single sign-on via an identity provider — used on the cloud platforms (Entra/Okta), *not* in this local stack (personas log in with a Polaris client id/secret). |
 | **Credential vending** | The catalog issuing short-lived storage credentials to engines. |
 
 ## Compute, SQL & Python

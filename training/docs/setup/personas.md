@@ -1,26 +1,25 @@
 # Personas & roles
 
-You **don't create users** in this course. Instead you *act as* one of three fixed **personas** that
-already exist in the stack. Each persona is a real login (in Keycloak) mapped to a real set of
-permissions (in Unity Catalog) — so when you sign in as one, you see exactly what that role is
+You **don't create users** to get started — you *act as* one of three fixed **personas** that already
+exist in the stack. Each persona is a real **Polaris principal** (a login with a client ID + secret)
+mapped to a real set of **grants** — so when you sign in as one, you see exactly what that role is
 allowed to see. That's the whole point: you *experience* governance from inside a role, the way a
-real teammate would.
+real teammate would. (Creating your *own* users is Unit 6.10.)
 
 !!! tip "Username = role, on purpose"
     In a real company people have names and get permissions through their *role*. Here we make the
     login **be** the role (`analyst`, `engineer`, `lead`) so it's always obvious who you are and what
-    you can do. Each one still has a human display name in the UI (Ava, Eddie, Lena) so it feels
-    like a real directory.
+    you can do.
 
 ## The three personas
 
-| Login | Password | Display name | Role | Can do |
-|---|---|---|---|---|
-| `analyst` | `analyst` | Ava Analyst | Analyst / BI | **Read the 🥇 Gold layer** — the finished, business-ready marts. Nothing else. |
-| `engineer` | `engineer` | Eddie Engineer | Data Engineer | **Build in 🥈 Silver** (read/write/create tables) and **read Gold**. Cannot touch raw Bronze. |
-| `lead` | `lead` | Lena Lead | Data Lead / Owner | **Full access to every layer** — Bronze, Silver, Gold. The owner who can also grant to others. |
+| Login (Client ID) | Secret | Role | Can do |
+|---|---|---|---|
+| `analyst` | `analyst` | Analyst / BI | **Read the 🥇 Gold layer** — the finished, business-ready marts. Nothing else. |
+| `engineer` | `engineer` | Data Engineer | **Build in 🥈 Silver** (read/write/create tables) and **read Gold**. Cannot touch raw Bronze. |
+| `lead` | `lead` | Data Lead / Owner | **Full access to every layer** — Bronze, Silver, Gold. The owner who can also grant to others. |
 
-The password is the same as the username for every persona.
+The secret is the same as the login for every persona.
 
 ```mermaid
 flowchart TB
@@ -43,25 +42,21 @@ flowchart TB
 
 This is the **medallion access policy** — least privilege by layer. An analyst can't see half-cleaned
 Silver or raw Bronze; an engineer can build Silver but can't rummage in raw Bronze; only the lead
-sees everything. You'll define and inspect these exact grants in [Unit 6.2 — RBAC](../unit6/rbac.md).
+sees everything. You'll see and build these exact grants in
+[Unit 6 — Data governance](../unit6/polaris.md).
 
 ## How to "become" a persona
 
-The personas are **Unity Catalog / Keycloak** identities — use them wherever the stack asks *who you
-are* for governance:
+Sign in with the persona's **Client ID + Secret** wherever the stack asks *who you are*:
 
-- **Unity Catalog Web UI** — open <http://localhost:3000>, click **Continue with Keycloak**, and sign
-  in as `analyst` / `engineer` / `lead`. The catalog tree you see is scoped to that persona's grants.
-- **`uc` CLI** — get a token for a persona and run commands as them:
+- **Polaris Console** — open <http://localhost:8189> (k8s: `http://polaris-console.de.lan`), enter the
+  **Client ID** and **Client Secret** (e.g. `analyst` / `analyst`), and sign in. The catalog tree you
+  see is scoped to that persona's grants.
+- **An engine (Trino / Spark)** — point it at the governed catalog with the same client ID/secret;
+  it reads/writes only what that persona is allowed.
 
-    ```bash
-    T=$(common/uc-cli/login.sh analyst)     # or engineer / lead — password defaults to the username
-    uc --server http://localhost:8081 --auth_token "$T" catalog list
-    ```
-
-!!! warning "You need the `keycloak` hosts entry first"
-    Signing in as any persona redirects through Keycloak, so `keycloak` must resolve on your machine
-    — see [Prerequisites → the hosts entry](prerequisites.md#2-the-keycloak-hosts-entry-required).
+No identity server, no browser redirect, no hosts entry — the principal authenticates to Polaris
+directly.
 
 ## These are *not* personas — they're platform/ops accounts
 
@@ -70,8 +65,7 @@ roles. Don't confuse them with the personas above:
 
 | Account | Where | What it is |
 |---|---|---|
-| `admin` / `admin` | Keycloak console (master realm) | Identity-platform admin — manages Keycloak itself |
-| UC **bootstrap token** | inside the `unity-catalog` container | The metastore owner used *once* by the operator to create catalogs & seed grants |
+| `root` / `s3cr3t` | Polaris (Console or API) | Catalog **admin** — creates catalogs, users, roles & grants |
 | `admin` / `admin` | Superset | BI tool admin (Superset has its own users) |
 | `airflow` / `airflow` | Airflow | Orchestrator admin |
 | token `123456` | Jupyter | Notebook access |
@@ -82,17 +76,18 @@ above is just how you open each tool.
 
 ## Where the personas are defined (for the curious)
 
-- **Identity** — the three users live in the Keycloak realm import:
-  `local/configs/keycloak/de-stack-realm.json` (and the identical k8s copy). Change them there.
-- **Permissions** — the Unity Catalog grants are applied by the operator's seed script
-  `common/uc-cli/seed-governance.sh` (compose, via `make uc-seed`) or the ansible seed on k8s.
+Both identity *and* permissions come from one operator seed script,
+`common/polaris/seed-polaris.sh` (compose: `make polaris-seed`; k8s: run inside the polaris pod). It
+creates the three principals, pins their logins (client ID = secret = name), and applies the graded
+grants. Change the personas or their access there — it's idempotent and safe to re-run.
 
-!!! note "On the cloud, this is users + groups"
-    On Databricks/Snowflake you'd typically create *people* and attach them to **groups**
-    (`analysts`, `engineers`) that hold the grants. UC OSS here has no groups, so grants are
-    per-user — but the mental model (identity → role → grants → least privilege) is identical.
+!!! note "On the cloud, this is users + groups + an IdP"
+    On Databricks/Snowflake you'd create *people*, attach them to **groups** (`analysts`,
+    `engineers`) that hold the grants, and log in via an identity provider (SSO/MFA). Here we skip the
+    IdP and give each role a direct principal login — simpler for training, and the mental model
+    (identity → role → grants → least privilege) is identical.
 
 ## You can now…
-- Name the three personas, their passwords, and what each is allowed to read/write
-- Sign in as a persona in the Unity Catalog UI or with the `uc` CLI
+- Name the three personas, their logins, and what each is allowed to read/write
+- Sign in as a persona in the **Polaris Console** (or an engine) with its client ID/secret
 - Tell a **data-access persona** apart from a **platform/ops service account**

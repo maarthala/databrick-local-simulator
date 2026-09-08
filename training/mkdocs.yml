@@ -60,6 +60,11 @@ extra:
       link: https://github.com/maarthala/databrick-local-simulator
       name: Project on GitHub
 
+# The hidden UC lessons stay in the repo but aren't in the nav; don't fail --strict.
+validation:
+  nav:
+    omitted_files: ignore
+
 nav:
   - Home: index.md
   - Getting started:
@@ -101,16 +106,20 @@ nav:
       - "5.1 Airflow basics": unit5/basics.md
       - "5.2 Build the medallion DAG": unit5/medallion-dag.md
       - "5.3 Schedule ingestion & Spark jobs": unit5/schedule.md
+      - "5.4 The development workflow (notebook → job → DAG)": unit5/dev-workflow.md
   - "Real-world recipes":
       - "Ingest Excel from object storage": recipes/excel.md
       - "Run on file arrival (event trigger)": recipes/file-trigger.md
       - "Slowly changing dimensions (SCD2)": recipes/scd2.md
       - "Data quality checks & quarantine": recipes/data-quality.md
       - "Reverse-ETL: publish Gold out": recipes/reverse-etl.md
-  - "6 · Data governance (Unity Catalog)":
-      - "6.1 Catalogs, schemas, tables": unit6/catalogs.md
-      - "6.2 Users, roles & RBAC": unit6/rbac.md
-      - "6.3 Discovery & search": unit6/discovery.md
+  # NOTE: the Unity Catalog lessons (unit6/catalogs, rbac, discovery, create-assign,
+  # tables, volumes-functions, day-in-the-life, governed-spark) are intentionally
+  # hidden from the portal while the UC services are disabled to save resources.
+  # The files remain in the repo; re-add them here when UC is brought back.
+  - "6 · Data governance (Polaris)":
+      - "Governed Iceberg with Apache Polaris": unit6/polaris.md
+      - "Create users & assign access (UI)": unit6/polaris-admin.md
   - "7 · Business intelligence (Superset)":
       - "7.1 Dashboards from the Gold layer": unit7/dashboards.md
   - Capstones:

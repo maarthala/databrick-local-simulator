@@ -14,7 +14,7 @@ its own schemas and tables. `SHOW CATALOGS` lists them. On our stack:
 | Catalog | Connects to… | Where the bytes physically live | What's inside | You use it |
 |---|---|---|---|---|
 | **`shopflow`** | the live ShopFlow app database (Postgres) | the Postgres server | the **raw source** tables — `customers`, `products`, `orders`, `order_items` | **now, Unit 2** |
-| **`iceberg`** | the lakehouse (via an Iceberg REST catalog) | Parquet files on **MinIO** object storage | the **Bronze / Silver / Gold** tables *you'll build* | from Unit 4 |
+| **`iceberg`** | the lakehouse (via the **Apache Polaris** Iceberg REST catalog) | Parquet files on **MinIO** object storage | the **Bronze / Silver / Gold** tables *you'll build* | from Unit 4 |
 | **`system`** | Trino itself | in memory | engine info (nodes, running queries) | rarely |
 
 !!! question "Why is the lakehouse catalog called `iceberg` and not `shopflow`?"
@@ -36,7 +36,7 @@ its own schemas and tables. `SHOW CATALOGS` lists them. On our stack:
 
     - **schemas and tables** in the lakehouse — with Spark in
       [Unit 4](../unit4/read-bronze.md) (`CREATE SCHEMA`, `CREATE TABLE`);
-    - a governed **Unity Catalog catalog** — with the `uc` CLI in
+    - governed **schemas and tables** in the **Apache Polaris** catalog — in
       [Unit 6](../unit6/catalogs.md).
 
 So in this unit you'll **explore ShopFlow's raw source with SQL** — the exact
@@ -218,7 +218,7 @@ SELECT * FROM iceberg.my_lab.first_table ORDER BY id;
 
 !!! note "Why writing works here without a login"
     On this learning stack, Trino/Spark write to `iceberg` **freely** — the engines aren't wired to
-    Unity Catalog's per-user enforcement, so you can experiment without permission errors. On a
+    per-user enforcement, so you can experiment without permission errors. On a
     *governed* platform an admin would `GRANT` you `CREATE` on a schema first — the access model you'll
     meet in [Unit 6](../unit6/rbac.md).
 
@@ -241,7 +241,7 @@ Using only the `orders` table: list the **5 most recent cancelled orders placed 
     `SELECT`s over source tables using `catalog.schema.table` names.
 
     - **Azure Databricks** — the same ANSI `SELECT / WHERE / ORDER BY` runs on a SQL
-      Warehouse; tables are `catalog.schema.table` in Unity Catalog, exactly as here.
+      Warehouse; tables use the same `catalog.schema.table` naming, addressed via Unity Catalog.
     - **Snowflake** — same SQL in a Snowsight worksheet on a Virtual Warehouse; three-part
       naming is `database.schema.table`; `SHOW SCHEMAS`/`SHOW TABLES` work the same.
     - **Microsoft Fabric** — query via the Lakehouse SQL analytics endpoint over OneLake

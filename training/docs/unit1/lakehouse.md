@@ -67,8 +67,9 @@ flowchart TB
 2. **An open table format** (Delta or Iceberg) — a thin metadata layer *over* those files
    that turns "a folder of files" into a real **table** with database guarantees. This is
    the piece that makes a lakehouse possible (you go deep on it in [1.3](formats.md)).
-3. **A catalog** (Unity Catalog) — the directory of all tables plus **governance**: a
-   `catalog.schema.table` namespace, access control, discovery, and lineage.
+3. **A catalog** (Apache Polaris, an Iceberg-native REST catalog) — the directory of all
+   tables plus **governance**: a `catalog.schema.table` namespace, access control,
+   discovery, and lineage.
 
 ### What the table format actually buys you
 This is the heart of the lakehouse — the features a bare data lake lacks:
@@ -108,8 +109,8 @@ ShopFlow's lakehouse maps one-to-one onto the three layers (you saw the tools in
 | Layer | ShopFlow uses |
 |---|---|
 | Object storage | **MinIO** (S3-compatible), holding Parquet files |
-| Open table format | **Delta / Iceberg** tables |
-| Catalog & governance | **Unity Catalog** (`shopflow` catalog, RBAC) |
+| Open table format | **Iceberg** tables |
+| Catalog & governance | **Apache Polaris** (the `iceberg` catalog, RBAC) |
 
 One place holds the raw **Bronze** copy *and* the business-ready **Gold** marts — no
 separate lake and warehouse, no copying data between them.
@@ -150,4 +151,4 @@ separate lake and warehouse, no copying data between them.
 - Name the three lakehouse ingredients (object storage + table format + catalog)
 - Explain what an open **table format** adds to plain files (ACID, MERGE, time travel…)
 - Distinguish schema-on-write from schema-on-read, and coupled vs separated storage/compute
-- Map ShopFlow's MinIO + Delta/Iceberg + Unity Catalog onto that pattern
+- Map ShopFlow's MinIO + Iceberg + Apache Polaris onto that pattern

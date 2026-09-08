@@ -150,12 +150,12 @@ Open the Unity Catalog Web UI at <http://localhost:3000> and sign in as **`analy
 ownership — a self-service map of the lakehouse. *(The browser SSO redirect needs the
 `127.0.0.1 keycloak` hosts entry.)*
 
-!!! warning "Honest limits on this OSS stack"
-    On **Databricks Unity Catalog** the query engines read table data straight from the catalog and
-    enforce its policies. On this OSS compose stack, UC stores the **namespace and policy** (which
-    you browse here), but wiring the engines to *read UC tables and enforce grants* needs extra
-    pieces (Delta + a Trino UC connector) that aren't installed — so we learn the governance
-    **model** here, and it transfers 1:1 to the managed cloud where enforcement is automatic.
+!!! info "How enforcement works on this stack"
+    UC stores the **namespace + policy** (which you browse here) **and enforces it at query time via
+    Spark** — reading the governed `lakehouse` catalog through UC gates each persona (see
+    [6.8](governed-spark.md)). **Trino** reads the open `iceberg` catalog (full access) for SQL/BI.
+    So: **Spark = governed, Trino = full access** — the same split as industry. On **Databricks**
+    *every* engine reads through UC; here Spark does, and the governance model transfers 1:1.
 
 ## Challenge
 Answer, entirely by browsing the catalog (CLI or UI): **which schemas does `shopflow` contain, and
