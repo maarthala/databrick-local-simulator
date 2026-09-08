@@ -13,8 +13,7 @@ data:
    | replace "http://localhost:8004" (printf "http://superset.%s" .Values.ingress.baseHost)
    | replace "http://localhost:8007" (printf "http://trino.%s" .Values.ingress.baseHost)
    | replace "http://localhost:8008" (printf "http://jupyter.%s" .Values.ingress.baseHost)
-   | replace "http://keycloak:8080" (printf "http://auth.%s" .Values.ingress.baseHost)
-   | replace "http://localhost:3000" (printf "http://uc-ui.%s" .Values.ingress.baseHost)
+   | replace "http://localhost:8189" (printf "http://polaris-console.%s" .Values.ingress.baseHost)
    | replace "http://localhost:9001" (printf "http://minio.%s" .Values.ingress.baseHost)
    | indent 4 }}
 ---

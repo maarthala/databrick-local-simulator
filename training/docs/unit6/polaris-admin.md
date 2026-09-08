@@ -1,105 +1,80 @@
-# 6.10 Create users & assign access (with the UIs)
+# 6.10 Create users & assign access (in the Console)
 
 In 6.9 you *saw* the persona matrix. Here you'll *build* it by clicking — create a
-user, give it a role, grant that role access — using the **Polaris Console** and the
-**Keycloak** admin console. No command line.
+user, give it a role, grant that role access — entirely in the **Polaris Console**.
+No command line, and no separate login server: Polaris manages its own users.
 
-## Two kinds of user
+## How access works
 
-| | **Service / app** | **Person (interactive)** |
-|---|---|---|
-| Logs in with | a Polaris **client secret** | a **password / SSO** via Keycloak |
-| Created in | **Polaris Console** only | **Keycloak** (login) **+** Polaris (grants) |
-| Use it for | pipelines, scripts, tools | analysts, engineers, humans |
-
-Either way, access in Polaris always flows through a **role** — you never grant a
-user directly:
+Every user in Polaris is a **principal** that logs in with a **Client ID + Client
+Secret** (people and apps alike). You never grant a user directly — access always
+flows through a **role**:
 
 ```
 user (principal) ─► principal-role ─► catalog-role ─► privilege on a namespace
    e.g. auditor      auditor_role       auditor_cr      gold : read
 ```
 
-Open the **Polaris Console** at <http://localhost:8189> (k8s:
-`http://polaris-console.de.lan`) and sign in as **`root` / `s3cr3t`** (the admin).
+Grant once to the role, and every user who holds it gets that access.
+
+Open the **Polaris Console** — <http://localhost:8189> (k8s:
+`http://polaris-console.de.lan`) — and sign in as **`root` / `s3cr3t`** (the admin).
 
 ---
 
-## A · A service user — all in the Polaris Console
+## Create a user and grant it access
 
-We'll make a read-only user **`intern`** with access to `gold`.
+We'll make a read-only user **`auditor`** with access to `gold`.
 
 **1 · Create the user.** Left nav **Access Control → Principals → Create Principal**.
-Name it `intern`, choose **Create and generate credentials**. Polaris shows a
+Name it `auditor`, choose **Create and generate credentials**. Polaris shows a
 **Client ID** and **Client Secret** — **copy them now**, the secret is shown once
-(you can **Rotate** it later). That pair is how an app logs in.
+(you can **Rotate** it later). That pair *is* the user's login — hand it to the
+person or app that will use it.
 
 **2 · Create a role.** **Access Control → Principal Roles → Create Principal Role**,
-name it `intern_role`.
+name it `auditor_role`.
 
-**3 · Give the user the role.** Open `intern_role` → **Assigned Principals →
-Grant to Principal → `intern`**. (Same thing from the principal's *Assigned
+**3 · Give the user the role.** Open `auditor_role` → **Assigned Principals →
+Grant to Principal → `auditor`**. (Same thing from the principal's *Assigned
 Principal Roles* tab.)
 
 **4 · Create the grant bundle.** Go to **Catalogs → `polaris_lake` → Catalog Roles
-→ Create Catalog Role**, name it `intern_cr`.
+→ Create Catalog Role**, name it `auditor_cr`.
 
-**5 · Attach the bundle to the role.** On `intern_cr` → **manage principal roles →
-Grant to Principal Role → `intern_role`**.
+**5 · Attach the bundle to the role.** On `auditor_cr` → **manage principal roles →
+Grant to Principal Role → `auditor_role`**.
 
-**6 · Grant the access.** Still on `intern_cr`, add grants: pick **Namespace →
+**6 · Grant the access.** Still on `auditor_cr`, add grants: pick **Namespace →
 `gold`**, privilege **`TABLE_READ_DATA`**; add another for **`TABLE_LIST`** (so it
 can see the tables). Save.
 
-**Done.** `intern` now reads `gold` on both Trino and Spark. To let it also *write*
-`silver`, add grants on `intern_cr` for **`silver`**: `TABLE_READ_DATA`,
+**Done.** `auditor` now reads `gold` on both Trino and Spark. To let a user also
+*write* `silver`, add grants on its catalog role for **`silver`**: `TABLE_READ_DATA`,
 `TABLE_LIST`, `TABLE_WRITE_DATA`, `TABLE_CREATE`.
 
-!!! tip "Test without curl"
-    Hand the app the Client ID/Secret, or point Trino/Spark at the catalog with
-    them — the engine sees only `gold`. Reading `silver` returns *not found*.
+!!! tip "Test it"
+    Sign out and sign back in with `auditor`'s Client ID/Secret (or point Trino/Spark
+    at the catalog with them) — you see only `gold`; `silver` returns *not found*.
 
----
+## Log in as the user
 
-## B · A person who logs in with a password (Keycloak + Polaris)
+There's no separate identity server — a user signs into the Console (or any engine)
+with the **Client ID + Secret** from step 1. Whoever holds those credentials *is*
+that principal and sees exactly its grants.
 
-People authenticate through **Keycloak**, so you touch **both** consoles. The link
-is simple: **the names must match.**
+!!! note "Memorable persona logins"
+    The built-in personas use tidy credentials — `analyst`/`analyst`,
+    `engineer`/`engineer`, `lead`/`lead` — because `common/polaris/seed-polaris.sh`
+    pins them (Client ID = Secret = name). The Console's own *Create / Rotate* gives
+    randomly generated values instead; use the seed (or the reset API) when you want
+    a memorable pair.
 
-| Keycloak | → token claim → | Polaris |
-|---|---|---|
-| username `auditor` | `principal_name` | principal `auditor` |
-| realm role `auditor_role` | `principal_roles` | principal-role `auditor_role` |
-
-**1 · Polaris side (Console).** Do steps 1–6 from Part A for `auditor` /
-`auditor_role` / `auditor_cr` with a `gold` read grant. (A human logs in via
-Keycloak, so you can skip copying the client secret — it won't be used.)
-
-**2 · Keycloak side (admin console).** Open <http://localhost:8080> (k8s:
-`http://auth.de.lan/admin`), sign in **`admin` / `admin`**, pick the **`de-stack`**
-realm, then:
-
-  - **Users → Add user** → username **`auditor`** (must match the principal).
-  - **Credentials → Set password** → turn **Temporary off**.
-  - **Role mapping → Assign role** → select **`auditor_role`**.
-
-**3 · Sign in as the person.** In the Polaris Console choose **Sign in with OIDC**,
-log in as `auditor` / (their password). They see exactly `gold`. That's the whole
-SSO pattern — and how `analyst` / `engineer` / `lead` were set up.
-
-!!! warning "Order matters"
-    Create the **Polaris** principal + role first. If a Keycloak user signs in and
-    Polaris has no matching principal holding the claimed role, the login is
-    rejected (**401 — principal roles not found**).
-
-!!! danger "Keycloak users here are **temporary**"
-    Keycloak runs in dev mode with no database volume, so a user you add in its UI
-    is **wiped on the next restart** (the realm re-imports from
-    `files/keycloak/de-stack-realm.json`). Perfect for a live demo; to make a user
-    **permanent**, add it to that realm file. *Polaris* principals persist to
-    Postgres — Console changes survive restarts.
-
----
+!!! tip "Where an IdP (SSO) would fit"
+    Client-secret logins are simplest for training. In production you'd front *human*
+    logins with an identity provider (Keycloak, Okta, Entra) for passwords + MFA +
+    SSO, while services keep using client secrets. Polaris would trust the IdP's
+    token and map a claim to a principal-role — the grants model below is unchanged.
 
 ## Privileges you'll grant most
 
@@ -126,11 +101,11 @@ narrower scope = tighter least-privilege.
 
 Every click above is also a REST call, so onboarding can be automated (CI,
 reproducible setups). The stack's own `common/polaris/seed-polaris.sh` is a worked
-example that creates the personas and grants end-to-end.
+example that creates the personas, pins their logins, and grants access end-to-end.
 
 ## You can now…
 
-- Create a **service user** entirely in the Polaris Console and read back its credentials
+- Create a **user** (principal) in the Polaris Console and read back its login
 - Build the chain **principal → principal-role → catalog-role → grant** by clicking
-- Onboard a **person** across Keycloak (login) + Polaris (grants) with matching names
 - Grant read vs write at namespace scope, and **rotate / revoke / delete** later
+- Explain how the built-in personas log in, and where an IdP would slot in for SSO

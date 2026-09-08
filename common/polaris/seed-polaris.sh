@@ -20,6 +20,9 @@ grant(){ put "$M/catalogs/polaris_lake/catalog-roles/$1/grants" \
 echo "catalog:   $(post $M/catalogs '{"catalog":{"name":"polaris_lake","type":"INTERNAL","properties":{"default-base-location":"s3://demo-bucket/polaris"},"storageConfigInfo":{"storageType":"S3","allowedLocations":["s3://demo-bucket/polaris"],"endpoint":"http://minio:9000","pathStyleAccess":true,"region":"us-east-1"}}}')"
 echo "namespaces:$(for ns in bronze silver gold; do post $C/polaris_lake/namespaces "{\"namespace\":[\"$ns\"]}"; done)"
 echo "principals:$(for p in analyst engineer lead; do post $M/principals "{\"principal\":{\"name\":\"$p\"}}"; done)"
+# Pin known client credentials so personas log in cleanly (clientId=secret=name).
+# No IdP needed — principals authenticate with client id/secret (API + Console).
+echo "creds:     $(for p in analyst engineer lead; do post $M/principals/$p/reset "{\"clientId\":\"$p\",\"clientSecret\":\"$p\"}"; done)"
 echo "p-roles:   $(for r in analyst_role engineer_role lead_role; do post $M/principal-roles "{\"principalRole\":{\"name\":\"$r\"}}"; done)"
 echo "assign:    $(for pr in analyst:analyst_role engineer:engineer_role lead:lead_role; do put $M/principals/${pr%%:*}/principal-roles "{\"principalRole\":{\"name\":\"${pr##*:}\"}}"; done)"
 echo "c-roles:   $(for r in analyst_role engineer_role lead_role; do post $M/catalogs/polaris_lake/catalog-roles "{\"catalogRole\":{\"name\":\"${r}_cr\"}}"; put $M/principal-roles/$r/catalog-roles/polaris_lake "{\"catalogRole\":{\"name\":\"${r}_cr\"}}"; done)"

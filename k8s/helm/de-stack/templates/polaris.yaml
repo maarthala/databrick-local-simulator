@@ -1,6 +1,7 @@
 {{- if .Values.polaris.enabled }}
-# Apache Polaris — Iceberg-native governed catalog (Trino + Spark), Keycloak SSO,
-# Postgres-backed. Replaces Unity Catalog as the live governance solution.
+# Apache Polaris — Iceberg-native governed catalog (Trino + Spark), Postgres-backed.
+# Internal auth: principals log in with a client id/secret (no external IdP).
+# Replaces Unity Catalog as the live governance solution.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -23,17 +24,9 @@ data:
     polaris.features."ALLOW_INSECURE_STORAGE_TYPES"=true
     polaris.features."ALLOW_NAMESPACE_CUSTOM_LOCATION"=true
     polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"=["FILE","S3"]
-    # Keycloak OIDC — mixed realm (internal root + external persona tokens)
+    # Auth: Polaris-internal only. Principals log in with a client id/secret —
+    # no external IdP (Keycloak dropped from the stack).
     polaris.authentication.type=internal
-    polaris.authentication."POLARIS".type=mixed
-    quarkus.oidc.tenant-enabled=true
-    quarkus.oidc.auth-server-url=http://auth.{{ .Values.ingress.baseHost }}/realms/de-stack
-    quarkus.oidc.client-id=polaris
-    quarkus.oidc.credentials.secret=polaris-secret
-    quarkus.oidc.roles.role-claim-path=principal_roles
-    polaris.oidc.principal-mapper.name-claim-path=principal_name
-    polaris.oidc.principal-roles-mapper.mappings[0].regex=(.+)
-    polaris.oidc.principal-roles-mapper.mappings[0].replacement=PRINCIPAL_ROLE:$1
 ---
 # One-shot: bootstrap the schema + realm into Postgres. Delete before re-apply.
 apiVersion: batch/v1
@@ -139,10 +132,7 @@ spec:
             - { name: VITE_POLARIS_PRINCIPAL_SCOPE, value: "PRINCIPAL_ROLE:ALL" }
             - { name: VITE_OAUTH_TOKEN_URL, value: "http://polaris-console.{{ .Values.ingress.baseHost }}/api/catalog/v1/oauth/tokens" }
             - { name: VITE_POLARIS_REALM_HEADER_NAME, value: "Polaris-Realm" }
-            - { name: VITE_OIDC_ISSUER_URL, value: "http://auth.{{ .Values.ingress.baseHost }}/realms/de-stack" }
-            - { name: VITE_OIDC_CLIENT_ID, value: "polaris-ui" }
-            - { name: VITE_OIDC_REDIRECT_URI, value: "http://polaris-console.{{ .Values.ingress.baseHost }}/auth/callback" }
-            - { name: VITE_OIDC_SCOPE, value: "openid profile" }
+            # No VITE_OIDC_* → Console shows the Client ID/Secret login (no IdP).
 ---
 apiVersion: v1
 kind: Service

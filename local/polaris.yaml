@@ -22,16 +22,9 @@ services:
       polaris.features."ALLOW_NAMESPACE_CUSTOM_LOCATION": "true"
       polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\"]"
       polaris.readiness.ignore-severe-issues: "true"
-      # --- Keycloak OIDC (mixed realm: accepts Polaris-internal AND Keycloak tokens) ---
-      polaris.authentication."POLARIS".type: mixed
-      quarkus.oidc.tenant-enabled: "true"
-      quarkus.oidc.auth-server-url: http://keycloak:8080/realms/de-stack
-      quarkus.oidc.client-id: polaris
-      quarkus.oidc.credentials.secret: polaris-secret
-      quarkus.oidc.roles.role-claim-path: principal_roles
-      polaris.oidc.principal-mapper.name-claim-path: principal_name
-      polaris.oidc.principal-roles-mapper.mappings[0].regex: (.+)
-      polaris.oidc.principal-roles-mapper.mappings[0].replacement: "PRINCIPAL_ROLE:$1"
+      # Auth: Polaris-internal only. Principals (analyst/engineer/lead, root) log in
+      # with a client id/secret — no external IdP. (Keycloak dropped from the stack.)
+      polaris.authentication.type: internal
       # CORS — let the browser-based Console (:8188) call the API (:8185).
       QUARKUS_HTTP_CORS: "true"
       QUARKUS_HTTP_CORS_ORIGINS: "http://localhost:8188"
@@ -90,10 +83,7 @@ services:
       VITE_POLARIS_PRINCIPAL_SCOPE: PRINCIPAL_ROLE:ALL
       VITE_OAUTH_TOKEN_URL: http://localhost:8189/api/catalog/v1/oauth/tokens
       VITE_POLARIS_REALM_HEADER_NAME: Polaris-Realm
-      VITE_OIDC_ISSUER_URL: http://keycloak:8080/realms/de-stack
-      VITE_OIDC_CLIENT_ID: polaris-ui
-      VITE_OIDC_REDIRECT_URI: http://localhost:8189/auth/callback
-      VITE_OIDC_SCOPE: "openid profile"
+      # No VITE_OIDC_* → the Console shows the Client ID/Secret login (no IdP).
     depends_on:
       - polaris
     networks:

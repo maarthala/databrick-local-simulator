@@ -128,7 +128,9 @@ trino:
 # realm re-imported from files/keycloak/de-stack-realm.json on every start (users
 # analyst/engineer/lead, confidential client "unity-catalog"). Issuer: http://auth.de.lan/realms/de-stack.
 keycloak:
-  enabled: true
+  # Dropped from the stack — Polaris uses internal principal logins (client id/secret),
+  # no external IdP. Re-enable (with UC) when human SSO is needed again.
+  enabled: false
   image: quay.io/keycloak/keycloak:26.0
   adminUser: admin
   adminPassword: admin
