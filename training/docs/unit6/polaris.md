@@ -31,12 +31,13 @@ persona (Keycloak SSO: analyst / engineer / lead)
  governed reads/writes  ◄───────────  MinIO (Iceberg tables under demo-bucket/polaris/)
 ```
 - **Catalog** `polaris_lake` on MinIO · namespaces `bronze` / `silver` / `gold`
-- **Console UI**: <http://localhost:8189> (Keycloak SSO login)
+- **Console UI**: <http://localhost:8189> (local) or `http://polaris-console.de.lan` (k8s) — Keycloak SSO login
 
 ## Lab
 
 ### 1 · Sign in to the Console with your persona (SSO)
-Open **<http://localhost:8189>** → **Sign in with OIDC** → log in as
+Open the Console — **<http://localhost:8189>** (local) or **`http://polaris-console.de.lan`**
+(k8s) → **Sign in with OIDC** → log in as
 **`analyst` / `analyst`** (or `engineer` / `lead`). You're now browsing the
 catalog *as that persona* — Keycloak authenticated you, Polaris mapped your token
 to a principal and applied your grants.
@@ -73,10 +74,18 @@ what you can touch.
     - **Keycloak SSO** end-to-end, including the **Console UI**
     - MinIO works with **static credentials** (no STS needed)
 
-!!! note "Operator caveats (not learner-facing)"
-    The demo Polaris runs **in-memory** (a restart clears the catalog — a Postgres
-    metastore fixes that), and the Keycloak clients + Polaris grants are applied at
-    runtime (they'd be seeded for a from-scratch deploy).
+!!! note "Runs durably on both stacks (operator note)"
+    This is a real, persistent deployment, not a throwaway demo:
+
+    - **Postgres persistence** (`polarisdb`) — the catalog, principals, and grants
+      **survive restarts** (no in-memory reset).
+    - **Keycloak clients** (`polaris`, `polaris-ui`) and the persona **realm roles**
+      are declared in the realm JSON, so they're re-created on every Keycloak start.
+    - **RBAC is seeded** by `common/polaris/seed-polaris.sh` (catalog, namespaces,
+      principals, principal-/catalog-roles, graded grants) — idempotent, run once.
+
+    Same on **Docker Compose** and **Kubernetes** (`de-stack` Helm chart); on k8s the
+    Console is at `polaris-console.de.lan` and the API at `polaris.de.lan`.
 
 ## Two catalogs, one model — how to teach it
 - **Unity Catalog** = the **Databricks**-world catalog (Delta + Spark). Learn the
