@@ -1,215 +1,136 @@
-# 6.10 Administer access: create users & assign RBAC
+# 6.10 Create users & assign access (with the UIs)
 
-In 6.9 you *observed* the persona matrix. Now you'll *build* it — create a new
-user, give it a role, grant that role access, and watch Polaris enforce it. This
-is the day job of a catalog owner.
+In 6.9 you *saw* the persona matrix. Here you'll *build* it by clicking — create a
+user, give it a role, grant that role access — using the **Polaris Console** and the
+**Keycloak** admin console. No command line.
 
-## Two kinds of identity
+## Two kinds of user
 
-Governance has two halves, and Polaris keeps them separate:
-
-| | **Authentication** — *who are you?* | **Authorization** — *what can you touch?* |
+| | **Service / app** | **Person (interactive)** |
 |---|---|---|
-| Lives in | **Keycloak** (human users) **or** Polaris (service principals) | **Polaris** (principals, roles, grants) |
-| Example | `analyst` logs in with a password / SSO | `analyst` principal holds `analyst_role` → `gold` read |
+| Logs in with | a Polaris **client secret** | a **password / SSO** via Keycloak |
+| Created in | **Polaris Console** only | **Keycloak** (login) **+** Polaris (grants) |
+| Use it for | pipelines, scripts, tools | analysts, engineers, humans |
 
-A **user never gets a grant directly.** Access always flows through a role:
+Either way, access in Polaris always flows through a **role** — you never grant a
+user directly:
 
 ```
-principal ──assigned──► principal-role ──bound to──► catalog-role ──granted──► privilege on a namespace/table
- (the user)              (what they are)             (a bundle of grants)       (e.g. gold : TABLE_READ_DATA)
+user (principal) ─► principal-role ─► catalog-role ─► privilege on a namespace
+   e.g. auditor      auditor_role       auditor_cr      gold : read
 ```
 
-Why the extra hops? So you grant **once to a role** and reuse it for everyone who
-holds it — the same reason every real catalog (UC, Snowflake) works this way.
+Open the **Polaris Console** at <http://localhost:8189> (k8s:
+`http://polaris-console.de.lan`) and sign in as **`root` / `s3cr3t`** (the admin).
 
-!!! note "Admin identity"
-    Creating users and roles is a **catalog-admin** action. In this training stack
-    you act as the bootstrap admin **`root` / `s3cr3t`**. On a real deployment this
-    would be a locked-down owner account.
+---
 
-## Set up your shell
+## A · A service user — all in the Polaris Console
 
-All admin actions go through the Polaris **management API**. Paste these helpers
-(they fetch an admin token and define `post` / `put` / `del`):
+We'll make a read-only user **`intern`** with access to `gold`.
 
-```bash
-# API base — local (compose) vs k8s
-B=http://localhost:8185                 # k8s: B=http://polaris.de.lan
-M=$B/api/management/v1; C=$B/api/catalog/v1
+**1 · Create the user.** Left nav **Access Control → Principals → Create Principal**.
+Name it `intern`, choose **Create and generate credentials**. Polaris shows a
+**Client ID** and **Client Secret** — **copy them now**, the secret is shown once
+(you can **Rotate** it later). That pair is how an app logs in.
 
-# admin token (root)
-RT=$(curl -s "$C/oauth/tokens" --user root:s3cr3t -H 'Polaris-Realm: POLARIS' \
-      -d grant_type=client_credentials -d scope=PRINCIPAL_ROLE:ALL \
-      | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
-H=(-H "Authorization: Bearer $RT" -H "Content-Type: application/json" -H "Polaris-Realm: POLARIS")
+**2 · Create a role.** **Access Control → Principal Roles → Create Principal Role**,
+name it `intern_role`.
 
-post(){ curl -s "${H[@]}" -X POST "$1" -d "$2"; echo; }
-put(){  curl -s "${H[@]}" -X PUT  "$1" -d "$2" -o /dev/null -w "%{http_code}\n"; }
-del(){  curl -s "${H[@]}" -X DELETE "$1" -o /dev/null -w "%{http_code}\n"; }
-```
+**3 · Give the user the role.** Open `intern_role` → **Assigned Principals →
+Grant to Principal → `intern`**. (Same thing from the principal's *Assigned
+Principal Roles* tab.)
 
-## Lab A — Create a user and grant it access
+**4 · Create the grant bundle.** Go to **Catalogs → `polaris_lake` → Catalog Roles
+→ Create Catalog Role**, name it `intern_cr`.
 
-We'll onboard a read-only BI user called **`intern`** and give it `gold` access —
-the same shape as the `analyst` persona.
+**5 · Attach the bundle to the role.** On `intern_cr` → **manage principal roles →
+Grant to Principal Role → `intern_role`**.
 
-### 1 · Create the user (principal)
+**6 · Grant the access.** Still on `intern_cr`, add grants: pick **Namespace →
+`gold`**, privilege **`TABLE_READ_DATA`**; add another for **`TABLE_LIST`** (so it
+can see the tables). Save.
 
-```bash
-post "$M/principals" '{"principal":{"name":"intern"}}'
-```
-Polaris returns the new principal **and its credentials** — copy these; the secret
-is shown **once**:
-```json
-{ "principal":   { "name": "intern", "clientId": "abfba421afffb419" },
-  "credentials": { "clientId": "abfba421afffb419",
-                   "clientSecret": "a32258af3b38b906657c72354edf2d89" } }
-```
-That `clientId`/`clientSecret` is how a **service/automation** logs in. (A **human**
-user logs in through Keycloak instead — see Lab B.)
+**Done.** `intern` now reads `gold` on both Trino and Spark. To let it also *write*
+`silver`, add grants on `intern_cr` for **`silver`**: `TABLE_READ_DATA`,
+`TABLE_LIST`, `TABLE_WRITE_DATA`, `TABLE_CREATE`.
 
-### 2 · Create a role and assign it to the user
+!!! tip "Test without curl"
+    Hand the app the Client ID/Secret, or point Trino/Spark at the catalog with
+    them — the engine sees only `gold`. Reading `silver` returns *not found*.
 
-```bash
-post "$M/principal-roles" '{"principalRole":{"name":"intern_role"}}'
-put  "$M/principals/intern/principal-roles" '{"principalRole":{"name":"intern_role"}}'   # 201
-```
+---
 
-### 3 · Bundle the grants in a catalog-role and grant `gold` read
+## B · A person who logs in with a password (Keycloak + Polaris)
 
-```bash
-post "$M/catalogs/polaris_lake/catalog-roles" '{"catalogRole":{"name":"intern_cr"}}'
-put  "$M/principal-roles/intern_role/catalog-roles/polaris_lake" '{"catalogRole":{"name":"intern_cr"}}'   # 201
+People authenticate through **Keycloak**, so you touch **both** consoles. The link
+is simple: **the names must match.**
 
-for p in TABLE_READ_DATA TABLE_LIST; do
-  put "$M/catalogs/polaris_lake/catalog-roles/intern_cr/grants" \
-      "{\"grant\":{\"type\":\"namespace\",\"namespace\":[\"gold\"],\"privilege\":\"$p\"}}"   # 201
-done
-```
-
-### 4 · Prove it — log in *as intern* and test
-
-```bash
-CID=abfba421afffb419; CSEC=a32258af3b38b906657c72354edf2d89   # from step 1
-IT=$(curl -s "$C/oauth/tokens" --user "$CID:$CSEC" -H 'Polaris-Realm: POLARIS' \
-      -d grant_type=client_credentials -d scope=PRINCIPAL_ROLE:ALL \
-      | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
-
-curl -s -o /dev/null -w "gold   %{http_code}\n" -H "Authorization: Bearer $IT" -H 'Polaris-Realm: POLARIS' "$C/polaris_lake/namespaces/gold/tables"
-curl -s -o /dev/null -w "silver %{http_code}\n" -H "Authorization: Bearer $IT" -H 'Polaris-Realm: POLARIS' "$C/polaris_lake/namespaces/silver/tables"
-```
-```
-gold   200      ← granted
-silver 403      ← never granted → invisible
-```
-You just created a user and its access from scratch, and Polaris enforced it
-immediately — on **both** Trino and Spark.
-
-### 5 · Give the user *write* on silver (promote to engineer-like)
-
-Add the write privileges to the **role** — every holder gets them at once:
-```bash
-for p in TABLE_READ_DATA TABLE_LIST TABLE_WRITE_DATA TABLE_CREATE; do
-  put "$M/catalogs/polaris_lake/catalog-roles/intern_cr/grants" \
-      "{\"grant\":{\"type\":\"namespace\",\"namespace\":[\"silver\"],\"privilege\":\"$p\"}}"
-done
-```
-
-## Lab B — Onboard a *human* user with SSO
-
-Service principals log in with a client secret; **people** log in through
-**Keycloak**, and Polaris trusts the token. The link is two claims in the token:
-
-- **`principal_name`** → the Polaris **principal** to act as
-- **`principal_roles`** → the Polaris **principal-role(s)** to activate
-
-So a human user needs a matching pair: a **Keycloak user** *and* a **Polaris
-principal + role** of the same name.
-
-**Names must match across the two systems** — that's the whole trick:
-
-| Keycloak (authN) | → token claim → | Polaris (authZ) |
+| Keycloak | → token claim → | Polaris |
 |---|---|---|
 | username `auditor` | `principal_name` | principal `auditor` |
 | realm role `auditor_role` | `principal_roles` | principal-role `auditor_role` |
 
-To add a new persona — say an **`auditor`** with read-only `gold`:
+**1 · Polaris side (Console).** Do steps 1–6 from Part A for `auditor` /
+`auditor_role` / `auditor_cr` with a `gold` read grant. (A human logs in via
+Keycloak, so you can skip copying the client secret — it won't be used.)
 
-1. **In Polaris** — create principal `auditor`, principal-role `auditor_role`,
-   assign it, catalog-role + grant `gold` read (Lab A, via API **or** the Console —
-   see below).
-2. **In Keycloak** — create the user `auditor` and the realm role `auditor_role`,
-   and assign the role to the user. The realm's mappers already emit
-   `principal_name` (username) and `principal_roles` (realm roles) — no per-user
-   wiring needed.
+**2 · Keycloak side (admin console).** Open <http://localhost:8080> (k8s:
+`http://auth.de.lan/admin`), sign in **`admin` / `admin`**, pick the **`de-stack`**
+realm, then:
 
-Now `auditor` logs into the **Console** (or any engine) via *Sign in with OIDC*
-and sees exactly `gold`. The three built-in personas (`analyst` / `engineer` /
-`lead`) are this exact pattern, pre-seeded by `common/polaris/seed-polaris.sh`.
+  - **Users → Add user** → username **`auditor`** (must match the principal).
+  - **Credentials → Set password** → turn **Temporary off**.
+  - **Role mapping → Assign role** → select **`auditor_role`**.
 
-!!! warning "Create the Polaris principal *first*"
-    If the token's `principal_name` has no matching Polaris principal holding the
-    claimed role, Polaris rejects the call with **401 / "principal roles not
-    found"**. Do the Polaris side before the user signs in.
+**3 · Sign in as the person.** In the Polaris Console choose **Sign in with OIDC**,
+log in as `auditor` / (their password). They see exactly `gold`. That's the whole
+SSO pattern — and how `analyst` / `engineer` / `lead` were set up.
 
-### Do it click-through (both UIs)
+!!! warning "Order matters"
+    Create the **Polaris** principal + role first. If a Keycloak user signs in and
+    Polaris has no matching principal holding the claimed role, the login is
+    rejected (**401 — principal roles not found**).
 
-You don't have to use the API — both halves have a UI:
+!!! danger "Keycloak users here are **temporary**"
+    Keycloak runs in dev mode with no database volume, so a user you add in its UI
+    is **wiped on the next restart** (the realm re-imports from
+    `files/keycloak/de-stack-realm.json`). Perfect for a live demo; to make a user
+    **permanent**, add it to that realm file. *Polaris* principals persist to
+    Postgres — Console changes survive restarts.
 
-- **Keycloak admin console** — <http://localhost:8080> (k8s: `http://auth.de.lan/admin`),
-  log in `admin` / `admin` → *Users → Add user*, set a password under *Credentials*,
-  then *Role mapping → Assign role* → pick `auditor_role`.
-- **Polaris Console** — <http://localhost:8189> (k8s: `polaris-console.de.lan`) →
-  **Create Principal**, create/assign roles, and **Manage** a catalog role's grants
-  (it does full create/revoke, not just browsing).
-
-!!! danger "Keycloak UI changes are **not persisted** here"
-    Keycloak runs in **dev mode** (`start-dev --import-realm`, ephemeral H2) with no
-    data volume, so a user you create in its UI **disappears on the next restart** —
-    the realm re-imports from `files/keycloak/de-stack-realm.json`. Great for a live
-    demo; to make a user **permanent**, add it to that realm JSON. (Polaris, by
-    contrast, persists to Postgres — Console changes survive restarts.)
+---
 
 ## Privileges you'll grant most
 
-| Privilege | Lets the role… | Persona that needs it |
-|---|---|---|
-| `TABLE_LIST` | see tables exist in a namespace | everyone with any access |
-| `TABLE_READ_DATA` | read table data | analyst (gold) |
-| `TABLE_WRITE_DATA` | insert/update/delete rows | engineer (silver) |
-| `TABLE_CREATE` | create new tables | engineer / lead |
-| `NAMESPACE_CREATE` | create namespaces | lead / owner |
-| `CATALOG_MANAGE_CONTENT` | full content control | lead / owner |
+| Privilege | Lets the role… |
+|---|---|
+| `TABLE_LIST` | see that tables exist |
+| `TABLE_READ_DATA` | read table data |
+| `TABLE_WRITE_DATA` | insert / update / delete rows |
+| `TABLE_CREATE` | create new tables |
+| `NAMESPACE_CREATE` | create namespaces |
+| `CATALOG_MANAGE_CONTENT` | full control of a catalog's content |
 
-Grants can target a whole **catalog**, a **namespace** (`"type":"namespace"`), or a
-single **table** — narrower scope = tighter least-privilege.
+Grant on a whole **catalog**, a **namespace** (as above), or a single **table** —
+narrower scope = tighter least-privilege.
 
-## Revoking access
+## Managing access later (all in the Console)
 
-Remove a grant, unassign a role, or delete the user entirely — each returns `204`:
-```bash
-del "$M/catalogs/polaris_lake/catalog-roles/intern_cr"   # drops its grants
-del "$M/principal-roles/intern_role"
-del "$M/principals/intern"
-```
+- **Change access** → add/remove grants on the **catalog role** (every holder
+  updates at once).
+- **Rotate a leaked secret** → the principal's **Rotate** action.
+- **Remove access** → revoke the role, or **Delete Principal** to remove the user.
 
-## API vs. Console — when to use which
+## Prefer to script it?
 
-The Polaris **Console** (localhost:8189 / `polaris-console.de.lan`) does the full
-job visually — **Create/Delete Principal**, create catalogs/namespaces, and
-**Manage/Revoke** a catalog role's grants — great for one-off changes and for
-*seeing* the principal → role → grant chain you built.
-
-The **management API** (this lesson) is the choice for anything **repeatable**:
-onboarding scripts, CI, and reproducible environments — which is exactly why the
-stack's own `common/polaris/seed-polaris.sh` uses it. Same operations, same result;
-pick the UI to explore, the API to automate.
+Every click above is also a REST call, so onboarding can be automated (CI,
+reproducible setups). The stack's own `common/polaris/seed-polaris.sh` is a worked
+example that creates the personas and grants end-to-end.
 
 ## You can now…
 
-- Create a **user** (principal) and read back its credentials
-- Wire the full chain: **principal → principal-role → catalog-role → grant**
-- Grant read vs write at **namespace** scope and see it enforced instantly
-- Onboard a **human** user via Keycloak SSO (the `principal_name` / `principal_roles` link)
-- **Revoke** access by dropping grants, roles, or the principal
+- Create a **service user** entirely in the Polaris Console and read back its credentials
+- Build the chain **principal → principal-role → catalog-role → grant** by clicking
+- Onboard a **person** across Keycloak (login) + Polaris (grants) with matching names
+- Grant read vs write at namespace scope, and **rotate / revoke / delete** later
