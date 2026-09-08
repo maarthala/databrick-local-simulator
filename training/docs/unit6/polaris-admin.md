@@ -127,25 +127,49 @@ Service principals log in with a client secret; **people** log in through
 So a human user needs a matching pair: a **Keycloak user** *and* a **Polaris
 principal + role** of the same name.
 
+**Names must match across the two systems** — that's the whole trick:
+
+| Keycloak (authN) | → token claim → | Polaris (authZ) |
+|---|---|---|
+| username `auditor` | `principal_name` | principal `auditor` |
+| realm role `auditor_role` | `principal_roles` | principal-role `auditor_role` |
+
 To add a new persona — say an **`auditor`** with read-only `gold`:
 
-1. **In Keycloak** (`files/keycloak/de-stack-realm.json`, re-imported on restart):
-    - add a **user** `auditor` (with a password),
-    - add a **realm role** `auditor_role`,
-    - the realm's mappers already emit `principal_name` (username) and
-      `principal_roles` (realm roles) into the token — no per-user wiring.
-2. **In Polaris** (management API, as in Lab A):
-    - create principal `auditor`, principal-role `auditor_role`, assign it,
-    - catalog-role + grant `gold` read.
+1. **In Polaris** — create principal `auditor`, principal-role `auditor_role`,
+   assign it, catalog-role + grant `gold` read (Lab A, via API **or** the Console —
+   see below).
+2. **In Keycloak** — create the user `auditor` and the realm role `auditor_role`,
+   and assign the role to the user. The realm's mappers already emit
+   `principal_name` (username) and `principal_roles` (realm roles) — no per-user
+   wiring needed.
 
 Now `auditor` logs into the **Console** (or any engine) via *Sign in with OIDC*
 and sees exactly `gold`. The three built-in personas (`analyst` / `engineer` /
 `lead`) are this exact pattern, pre-seeded by `common/polaris/seed-polaris.sh`.
 
-!!! tip "Keycloak principal must exist in Polaris first"
-    If the token's `principal_name` has no matching Polaris principal (holding the
-    claimed role), Polaris rejects the call with **401 / "principal roles not
-    found"**. Create the principal + role *before* the user signs in.
+!!! warning "Create the Polaris principal *first*"
+    If the token's `principal_name` has no matching Polaris principal holding the
+    claimed role, Polaris rejects the call with **401 / "principal roles not
+    found"**. Do the Polaris side before the user signs in.
+
+### Do it click-through (both UIs)
+
+You don't have to use the API — both halves have a UI:
+
+- **Keycloak admin console** — <http://localhost:8080> (k8s: `http://auth.de.lan/admin`),
+  log in `admin` / `admin` → *Users → Add user*, set a password under *Credentials*,
+  then *Role mapping → Assign role* → pick `auditor_role`.
+- **Polaris Console** — <http://localhost:8189> (k8s: `polaris-console.de.lan`) →
+  **Create Principal**, create/assign roles, and **Manage** a catalog role's grants
+  (it does full create/revoke, not just browsing).
+
+!!! danger "Keycloak UI changes are **not persisted** here"
+    Keycloak runs in **dev mode** (`start-dev --import-realm`, ephemeral H2) with no
+    data volume, so a user you create in its UI **disappears on the next restart** —
+    the realm re-imports from `files/keycloak/de-stack-realm.json`. Great for a live
+    demo; to make a user **permanent**, add it to that realm JSON. (Polaris, by
+    contrast, persists to Postgres — Console changes survive restarts.)
 
 ## Privileges you'll grant most
 
@@ -170,12 +194,17 @@ del "$M/principal-roles/intern_role"
 del "$M/principals/intern"
 ```
 
-## In the Console (visual)
+## API vs. Console — when to use which
 
-Open the Console (**localhost:8189** / `polaris-console.de.lan`) and browse
-**Principals**, **Principal Roles**, **Catalog Roles**, and a catalog's **Grants** to
-*see* everything you just built — handy for verifying and for teaching the model
-visually. The API is the scriptable source of truth (that's what the seed uses).
+The Polaris **Console** (localhost:8189 / `polaris-console.de.lan`) does the full
+job visually — **Create/Delete Principal**, create catalogs/namespaces, and
+**Manage/Revoke** a catalog role's grants — great for one-off changes and for
+*seeing* the principal → role → grant chain you built.
+
+The **management API** (this lesson) is the choice for anything **repeatable**:
+onboarding scripts, CI, and reproducible environments — which is exactly why the
+stack's own `common/polaris/seed-polaris.sh` uses it. Same operations, same result;
+pick the UI to explore, the API to automate.
 
 ## You can now…
 
