@@ -67,6 +67,7 @@ validation:
 
 nav:
   - Home: index.md
+  - "Help & community": help.md
   - Getting started:
       - "Prerequisites & setup": setup/prerequisites.md
       - "Bring up the stack": setup/deploy.md
@@ -129,4 +130,3 @@ nav:
   - Bridge to the platforms:
       - "OSS ⇄ Databricks / Snowflake / Fabric / Azure": platforms/rosetta.md
       - Glossary: platforms/glossary.md
-  - "Help & community": help.md
