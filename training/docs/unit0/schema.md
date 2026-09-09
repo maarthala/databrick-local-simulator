@@ -1,4 +1,4 @@
-# 0.1 · The ShopFlow database schema
+# 0.6 The ShopFlow database schema
 
 The [scenario](../scenario.md) told you *what* the business is. This page shows you
 the **shape of its data** — the source-system schema you'll ingest from. Everything

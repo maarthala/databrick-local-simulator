@@ -1,4 +1,4 @@
-# 0.2 · Stack architecture
+# 0.7 Stack architecture
 
 Unit **0** showed *how data flows*. This page is the **deployment map**: every service
 that runs, what it's for, how the pieces are wired, where state lives, and how the

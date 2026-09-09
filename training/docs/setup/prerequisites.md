@@ -1,4 +1,4 @@
-# Prerequisites & setup
+# 0.1 Prerequisites & setup
 
 This course is **hands-on**: you drive a running data platform from **your own machine** — a
 browser and a couple of command-line tools. You never open a shell *inside* a container; you use

@@ -1,4 +1,4 @@
-# Data quality checks & quarantine
+# 8.4 Data quality checks and quarantine
 
 ## Concept
 Raw data lies. A feed will hand you a missing country, a negative amount, a duplicated key —

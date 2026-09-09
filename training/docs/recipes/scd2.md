@@ -1,4 +1,4 @@
-# Slowly changing dimensions (SCD Type 2)
+# 8.3 Slowly changing dimensions (SCD Type 2)
 
 ## Concept
 A **dimension** table (from Silver/Gold) is a clean, deduplicated list of business entities —

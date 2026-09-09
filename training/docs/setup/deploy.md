@@ -1,4 +1,4 @@
-# Bring up the stack
+# 0.2 Bring up the stack
 
 This page is for **whoever runs the platform** — you on your laptop (Docker Compose) or an operator
 on a cluster (Kubernetes). If someone already runs the stack for you and gave you URLs, you don't

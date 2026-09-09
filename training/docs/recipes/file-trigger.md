@@ -1,4 +1,4 @@
-# Run a pipeline when a file arrives (event trigger)
+# 8.2 Run a pipeline when a file arrives (event trigger)
 
 ## Concept
 In [Unit 5](../unit5/basics.md) you learned to run a pipeline **on a schedule** — "every day at
