@@ -129,3 +129,4 @@ nav:
   - Bridge to the platforms:
       - "OSS ⇄ Databricks / Snowflake / Fabric / Azure": platforms/rosetta.md
       - Glossary: platforms/glossary.md
+  - "Help & community": help.md
