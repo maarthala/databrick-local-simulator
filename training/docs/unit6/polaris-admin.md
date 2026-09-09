@@ -1,6 +1,6 @@
-# 6.10 Create users & assign access (in the Console)
+# 6.2 Create users & assign access (in the Console)
 
-In 6.9 you *saw* the persona matrix. Here you'll *build* it by clicking — create a
+In 6.1 you *saw* the persona matrix. Here you'll *build* it by clicking — create a
 user, give it a role, grant that role access — entirely in the **Polaris Console**.
 No command line, and no separate login server: Polaris manages its own users.
 

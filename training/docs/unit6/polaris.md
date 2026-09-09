@@ -1,10 +1,11 @@
-# 6.9 Polaris: governed Iceberg for *every* engine
+# 6.1 Polaris: governed Iceberg for *every* engine
 
 ## Concept
-Unity Catalog (6.1–6.8) taught the governance model, and you saw its OSS limits —
-**Spark** governed, **Trino** not; per-user *reads* but not *writes*. **Apache
-Polaris** is the other major open catalog (Snowflake's, now Apache), and it's
-**Iceberg-native** — so on this stack it closes those gaps:
+**Unity Catalog** (Databricks' catalog, open-sourced) is one way to govern a
+lakehouse, but on this OSS stack it has real limits — **Spark** governed, **Trino**
+not; per-user *reads* but not *writes*. **Apache Polaris** is the other major open
+catalog (Snowflake's, now Apache), and it's **Iceberg-native** — so on this stack it
+closes those gaps:
 
 | | Unity Catalog (OSS here) | **Apache Polaris** |
 |---|---|---|

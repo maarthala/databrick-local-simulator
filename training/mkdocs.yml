@@ -120,8 +120,8 @@ nav:
   # hidden from the portal while the UC services are disabled to save resources.
   # The files remain in the repo; re-add them here when UC is brought back.
   - "6 · Data governance (Polaris)":
-      - "Governed Iceberg with Apache Polaris": unit6/polaris.md
-      - "Create users & assign access (UI)": unit6/polaris-admin.md
+      - "6.1 Governed Iceberg with Apache Polaris": unit6/polaris.md
+      - "6.2 Create users & assign access (UI)": unit6/polaris-admin.md
   - "7 · Business intelligence (Superset)":
       - "7.1 Dashboards from the Gold layer": unit7/dashboards.md
   - Capstones:
