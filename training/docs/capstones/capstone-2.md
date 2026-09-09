@@ -1,4 +1,4 @@
-# Capstone 2 (medium)
+# 9.2 Capstone 2 (medium)
 
 ## Concept
 Capstone 1 was a clean, rebuild-every-run metric. Real pipelines are messier: orders get

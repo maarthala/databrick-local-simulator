@@ -1,4 +1,4 @@
-# Capstone 1 (easy)
+# 9.1 Capstone 1 (easy)
 
 ## Concept
 You've now touched every layer of a real data platform: **Python** (Unit 3), **Spark** to build

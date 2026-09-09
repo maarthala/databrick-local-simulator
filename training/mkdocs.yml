@@ -67,13 +67,15 @@ validation:
 
 nav:
   - Home: index.md
-  - Getting started:
-      - "Prerequisites & setup": setup/prerequisites.md
-      - "Bring up the stack": setup/deploy.md
-      - "Personas & roles": setup/personas.md
-      - The ShopFlow scenario: scenario.md
-      - "0 · Technical architecture": unit0/architecture.md
-      - "0.1 · Database schema": unit0/schema.md
+  - "Help & community": help.md
+  - "0 · Getting started":
+      - "0.1 Prerequisites & setup": setup/prerequisites.md
+      - "0.2 Bring up the stack": setup/deploy.md
+      - "0.3 Personas & roles": setup/personas.md
+      - "0.4 The ShopFlow scenario": scenario.md
+      - "0.5 Technical architecture": unit0/architecture.md
+      - "0.6 Database schema": unit0/schema.md
+      - "0.7 Stack architecture": unit0/stack.md
   - "1 · Foundations":
       - "1.1 What is Data Engineering": unit1/what-is-de.md
       - "1.2 Lake vs Warehouse vs Lakehouse": unit1/lakehouse.md
@@ -107,24 +109,24 @@ nav:
       - "5.2 Build the medallion DAG": unit5/medallion-dag.md
       - "5.3 Schedule ingestion & Spark jobs": unit5/schedule.md
       - "5.4 The development workflow (notebook → job → DAG)": unit5/dev-workflow.md
-  - "Real-world recipes":
-      - "Ingest Excel from object storage": recipes/excel.md
-      - "Run on file arrival (event trigger)": recipes/file-trigger.md
-      - "Slowly changing dimensions (SCD2)": recipes/scd2.md
-      - "Data quality checks & quarantine": recipes/data-quality.md
-      - "Reverse-ETL: publish Gold out": recipes/reverse-etl.md
   # NOTE: the Unity Catalog lessons (unit6/catalogs, rbac, discovery, create-assign,
   # tables, volumes-functions, day-in-the-life, governed-spark) are intentionally
   # hidden from the portal while the UC services are disabled to save resources.
   # The files remain in the repo; re-add them here when UC is brought back.
   - "6 · Data governance (Polaris)":
-      - "Governed Iceberg with Apache Polaris": unit6/polaris.md
-      - "Create users & assign access (UI)": unit6/polaris-admin.md
+      - "6.1 Governed Iceberg with Apache Polaris": unit6/polaris.md
+      - "6.2 Create users & assign access (UI)": unit6/polaris-admin.md
   - "7 · Business intelligence (Superset)":
       - "7.1 Dashboards from the Gold layer": unit7/dashboards.md
-  - Capstones:
-      - "Capstone 1 (easy)": capstones/capstone-1.md
-      - "Capstone 2 (medium)": capstones/capstone-2.md
-  - Bridge to the platforms:
-      - "OSS ⇄ Databricks / Snowflake / Fabric / Azure": platforms/rosetta.md
-      - Glossary: platforms/glossary.md
+  - "8 · Real-world recipes":
+      - "8.1 Ingest Excel from object storage": recipes/excel.md
+      - "8.2 Run on file arrival (event trigger)": recipes/file-trigger.md
+      - "8.3 Slowly changing dimensions (SCD2)": recipes/scd2.md
+      - "8.4 Data quality checks & quarantine": recipes/data-quality.md
+      - "8.5 Reverse-ETL: publish Gold out": recipes/reverse-etl.md
+  - "9 · Capstones":
+      - "9.1 Capstone 1 (easy)": capstones/capstone-1.md
+      - "9.2 Capstone 2 (medium)": capstones/capstone-2.md
+  - "10 · Bridge to the platforms":
+      - "10.1 OSS ⇄ Databricks / Snowflake / Fabric / Azure": platforms/rosetta.md
+      - "10.2 Glossary": platforms/glossary.md
