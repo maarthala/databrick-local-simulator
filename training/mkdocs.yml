@@ -109,12 +109,6 @@ nav:
       - "5.2 Build the medallion DAG": unit5/medallion-dag.md
       - "5.3 Schedule ingestion & Spark jobs": unit5/schedule.md
       - "5.4 The development workflow (notebook → job → DAG)": unit5/dev-workflow.md
-  - "8 · Real-world recipes":
-      - "8.1 Ingest Excel from object storage": recipes/excel.md
-      - "8.2 Run on file arrival (event trigger)": recipes/file-trigger.md
-      - "8.3 Slowly changing dimensions (SCD2)": recipes/scd2.md
-      - "8.4 Data quality checks & quarantine": recipes/data-quality.md
-      - "8.5 Reverse-ETL: publish Gold out": recipes/reverse-etl.md
   # NOTE: the Unity Catalog lessons (unit6/catalogs, rbac, discovery, create-assign,
   # tables, volumes-functions, day-in-the-life, governed-spark) are intentionally
   # hidden from the portal while the UC services are disabled to save resources.
@@ -124,6 +118,12 @@ nav:
       - "6.2 Create users & assign access (UI)": unit6/polaris-admin.md
   - "7 · Business intelligence (Superset)":
       - "7.1 Dashboards from the Gold layer": unit7/dashboards.md
+  - "8 · Real-world recipes":
+      - "8.1 Ingest Excel from object storage": recipes/excel.md
+      - "8.2 Run on file arrival (event trigger)": recipes/file-trigger.md
+      - "8.3 Slowly changing dimensions (SCD2)": recipes/scd2.md
+      - "8.4 Data quality checks & quarantine": recipes/data-quality.md
+      - "8.5 Reverse-ETL: publish Gold out": recipes/reverse-etl.md
   - "9 · Capstones":
       - "9.1 Capstone 1 (easy)": capstones/capstone-1.md
       - "9.2 Capstone 2 (medium)": capstones/capstone-2.md
