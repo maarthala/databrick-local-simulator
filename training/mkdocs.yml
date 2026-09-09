@@ -74,6 +74,7 @@ nav:
       - The ShopFlow scenario: scenario.md
       - "0 · Technical architecture": unit0/architecture.md
       - "0.1 · Database schema": unit0/schema.md
+      - "0.2 · Stack architecture": unit0/stack.md
   - "1 · Foundations":
       - "1.1 What is Data Engineering": unit1/what-is-de.md
       - "1.2 Lake vs Warehouse vs Lakehouse": unit1/lakehouse.md
