@@ -14,6 +14,16 @@ Bronze→Silver→Gold lakehouse and map every skill to Databricks, Snowflake & 
 Start with **Prerequisites & setup** and **Bring up the stack**, then work through the units.
 (The same course is also served by the running stack at `http://localhost:8000/training/`.)
 
+## 💬 Community & help
+
+Join our **Discord** to discuss the stack, get help with setup or problems, and connect
+with other learners:
+
+**→ [discord.gg/2B5mTgGjM](https://discord.gg/2B5mTgGjM)**
+
+- Instructor-led **DE training** for students & career-changers — **learning@epireum.com**
+- **Companies** looking for DE talent or delivery — **contact@epireum.com**
+
 ## Setup — pick your environment
 
 ### 🖥️ [Local (Docker Compose)](./local/README.md)
