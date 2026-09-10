@@ -1,0 +1,15 @@
+# Terraform
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Never commit real variable values / secrets (keep the .example)
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Keep the dependency lock file committed:
+!.terraform.lock.hcl

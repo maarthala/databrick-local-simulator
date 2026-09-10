@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars (gitignored) and fill in. Never commit real secrets.
+
+# Get it with: az account show --query id -o tsv   (or export ARM_SUBSCRIPTION_ID instead)
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+location            = "eastus"
+resource_group_name = "rg-adf-dev"
+name_prefix         = "adfdev"
+
+sql_admin_login = "sqladmin"
+# 12+ chars, mix of upper/lower/digit/symbol. Better: export TF_VAR_sql_admin_password
+sql_admin_password = "Ch4nge-Me-Now!42"
+
+sql_database_name = "shopflow"
+sku_name          = "Basic" # Basic | S0 | S1 | GP_S_Gen5_1 (serverless)
+max_size_gb       = 2
+
+allow_azure_services = true # let Azure Data Factory connect
+# client_ip          = "203.0.113.10"   # your public IP, to connect from SSMS/sqlcmd
