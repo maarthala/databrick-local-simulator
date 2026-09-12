@@ -5,7 +5,7 @@ subscription_id = "00000000-0000-0000-0000-000000000000"
 
 location            = "eastus"
 resource_group_name = "rg-adf-dev"
-name_prefix         = "adfdev"
+sql_server_name     = "adfdev-sql-epireum"  # must be globally unique
 
 sql_admin_login = "sqladmin"
 # 12+ chars, mix of upper/lower/digit/symbol. Better: export TF_VAR_sql_admin_password

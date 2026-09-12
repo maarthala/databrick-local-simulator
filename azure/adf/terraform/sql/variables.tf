@@ -16,14 +16,14 @@ variable "resource_group_name" {
   default     = "rg-adf-sql"
 }
 
-variable "name_prefix" {
-  description = "Short prefix for resource names (lowercase letters/digits). A random suffix is added to keep the SQL server name globally unique."
+variable "sql_server_name" {
+  description = "STATIC Azure SQL logical server name. Must be GLOBALLY UNIQUE across Azure — lowercase letters/digits/hyphens, 1-63 chars, not starting/ending with a hyphen."
   type        = string
-  default     = "adfdev"
+  default     = "adfdev-sql-epireum"
 
   validation {
-    condition     = can(regex("^[a-z][a-z0-9]{1,10}$", var.name_prefix))
-    error_message = "name_prefix must be 2-11 chars, lowercase letters/digits, starting with a letter."
+    condition     = can(regex("^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$", var.sql_server_name))
+    error_message = "sql_server_name: lowercase letters/digits/hyphens, 1-63 chars, no leading/trailing hyphen."
   }
 }
 
@@ -64,6 +64,12 @@ variable "max_size_gb" {
 
 variable "allow_azure_services" {
   description = "Add a firewall rule allowing Azure services (0.0.0.0) to reach the server — needed for Azure Data Factory to connect with the default runtime."
+  type        = bool
+  default     = true
+}
+
+variable "run_seed" {
+  description = "Run seed.sql against the database after it's created (needs sqlcmd on the machine running Terraform + firewall access)."
   type        = bool
   default     = true
 }

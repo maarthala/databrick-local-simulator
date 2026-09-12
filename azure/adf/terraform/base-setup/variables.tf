@@ -16,14 +16,14 @@ variable "resource_group_name" {
   default     = "rg-adf-dev"
 }
 
-variable "name_prefix" {
-  description = "Prefix for the factory name (a random suffix is added — ADF names are globally unique)."
+variable "prefix" {
+  description = "Static naming prefix for all resources (e.g. 'epireum'). Names are fixed (no random suffix), so must be GLOBALLY UNIQUE across Azure. Storage account becomes <prefix>dl (3-22 lowercase letters/digits, no hyphens); ADF becomes <prefix>-adf."
   type        = string
-  default     = "adfdev"
+  default     = "epireum"
 
   validation {
-    condition     = can(regex("^[a-z][a-z0-9-]{1,20}$", var.name_prefix))
-    error_message = "name_prefix: lowercase letters/digits/hyphen, start with a letter."
+    condition     = can(regex("^[a-z][a-z0-9]{2,20}$", var.prefix))
+    error_message = "prefix: 3-21 lowercase letters/digits, starting with a letter (no hyphens — storage account names disallow them)."
   }
 }
 
@@ -54,17 +54,6 @@ variable "git_root_folder" {
 }
 
 # --- ADLS Gen2 data lake (base stack) ---------------------------------------
-variable "storage_name_prefix" {
-  description = "Prefix for the ADLS Gen2 storage account name (lowercase letters/digits; a random suffix is appended)."
-  type        = string
-  default     = "adfdevdl"
-
-  validation {
-    condition     = can(regex("^[a-z0-9]{3,17}$", var.storage_name_prefix))
-    error_message = "storage_name_prefix: 3-17 lowercase letters/digits only."
-  }
-}
-
 variable "replication_type" {
   description = "Storage replication (LRS is cheapest)."
   type        = string
