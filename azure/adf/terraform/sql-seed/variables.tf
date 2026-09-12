@@ -11,7 +11,6 @@ variable "subscription_id" {
 variable "prefix" {
   description = "Same prefix as the sql/ stack — the existing server is <prefix>-sql."
   type        = string
-  default     = "epireum"
 }
 
 variable "resource_group_name" {
@@ -35,14 +34,12 @@ variable "sku_name" {
 variable "sql_admin_login" {
   description = "SQL admin login (matches the sql/ stack)."
   type        = string
-  default     = "sqladmin"
 }
 
 variable "sql_admin_password" {
   description = "SQL admin password (matches the sql/ stack). Override via tfvars or TF_VAR_sql_admin_password."
   type        = string
   sensitive   = true
-  default     = "qwert@123456"
 }
 
 variable "run_seed" {

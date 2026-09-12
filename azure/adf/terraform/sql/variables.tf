@@ -18,7 +18,6 @@ variable "resource_group_name" {
 variable "prefix" {
   description = "Static naming prefix for all resources (e.g. 'epireum'). Match base-setup. Server becomes <prefix>-sql — must be GLOBALLY UNIQUE across Azure."
   type        = string
-  default     = "epireum"
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9]{2,20}$", var.prefix))
@@ -29,14 +28,12 @@ variable "prefix" {
 variable "sql_admin_login" {
   description = "SQL Server administrator login name."
   type        = string
-  default     = "sqladmin"
 }
 
 variable "sql_admin_password" {
   description = "SQL Server administrator password. Default provided for dev/learning — CHANGE it for anything real (set in terraform.tfvars or export TF_VAR_sql_admin_password). Azure requires 8-128 chars with 3 of: uppercase, lowercase, digit, symbol."
   type        = string
   sensitive   = true
-  default     = "qwert@123456"
 
   validation {
     condition     = length(var.sql_admin_password) >= 12
