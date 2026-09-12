@@ -57,29 +57,3 @@ resource "azurerm_mssql_firewall_rule" "client" {
   start_ip_address = var.client_ip
   end_ip_address   = var.client_ip
 }
-
-# Seed the database after it's created — runs seed.sql via sqlcmd from the machine
-# running Terraform. Requires: sqlcmd installed (brew install sqlcmd) + firewall open
-# to this machine (allow_all_internet or client_ip). Password passed via SQLCMDPASSWORD
-# env so it isn't echoed in logs. Re-runs only when seed.sql changes.
-resource "null_resource" "seed" {
-  count = var.run_seed ? 1 : 0
-
-  depends_on = [
-    azurerm_mssql_database.adf,
-    azurerm_mssql_firewall_rule.allow_azure,
-    azurerm_mssql_firewall_rule.internet,
-  ]
-
-  triggers = {
-    database    = azurerm_mssql_database.adf.id
-    seed_sha256 = filesha256("${path.module}/seed.sql")
-  }
-
-  provisioner "local-exec" {
-    environment = {
-      SQLCMDPASSWORD = var.sql_admin_password
-    }
-    command = "sqlcmd -S ${azurerm_mssql_server.adf.fully_qualified_domain_name} -d ${var.sql_database_name} -U ${var.sql_admin_login} -N -C -i ${path.module}/seed.sql"
-  }
-}

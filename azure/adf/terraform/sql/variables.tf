@@ -69,12 +69,6 @@ variable "allow_azure_services" {
   default     = true
 }
 
-variable "run_seed" {
-  description = "Run seed.sql against the database after it's created (needs sqlcmd on the machine running Terraform + firewall access)."
-  type        = bool
-  default     = true
-}
-
 variable "allow_all_internet" {
   description = "Open the SQL server firewall to ALL public IPs (0.0.0.0-255.255.255.255). INSECURE — dev/learning only; connections still need the SQL login."
   type        = bool
