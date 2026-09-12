@@ -6,12 +6,13 @@
 #
 # Each stack uses the variables it declares; the rest print a harmless
 # "Value for undeclared variable" warning (add -compact-warnings to trim).
-# Values that DIFFER per stack (location, resource group, database name) are NOT
-# here — they come from each stack's own defaults in variables.tf.
+# Values that DIFFER per stack (resource group, database name) are NOT here — they
+# come from each stack's own defaults in variables.tf.
 
 # --- shared everywhere ---
 subscription_id = "00000000-0000-0000-0000-000000000000" # azur-learning
 prefix          = "epireum"                              # static, globally-unique naming
+location        = "swedencentral"                        # shared region (allowed for SQL)
 
 # --- SQL (sql/ + sql-seed/) ---
 sql_admin_login    = "sqladmin"
