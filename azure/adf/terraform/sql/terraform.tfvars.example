@@ -5,11 +5,11 @@ subscription_id = "00000000-0000-0000-0000-000000000000"
 
 location            = "eastus"
 resource_group_name = "rg-adf-dev"
-sql_server_name     = "adfdev-sql-epireum"  # must be globally unique
+prefix              = "epireum"  # <prefix>-sql, must be globally unique
 
 sql_admin_login = "sqladmin"
 # 12+ chars, mix of upper/lower/digit/symbol. Better: export TF_VAR_sql_admin_password
-sql_admin_password = "Ch4nge-Me-Now!42"
+sql_admin_password = "qwert@123456"  # default; change for anything real
 
 sql_database_name = "shopflow"
 sku_name          = "Basic" # Basic | S0 | S1 | GP_S_Gen5_1 (serverless)
