@@ -10,7 +10,7 @@
 # here — they come from each stack's own defaults in variables.tf.
 
 # --- shared everywhere ---
-subscription_id = "a0e23f01-2a2a-4ad5-a714-b0e35e5bd7de" # azur-learning
+subscription_id = "00000000-0000-0000-0000-000000000000" # azur-learning
 prefix          = "epireum"                              # static, globally-unique naming
 
 # --- SQL (sql/ + sql-seed/) ---
