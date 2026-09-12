@@ -1,0 +1,12 @@
+# Shared variables for the SQL stacks (sql/ and sql-seed/).
+# Copy to common.tfvars (gitignored) and pass with -var-file:
+#   cd sql      && terraform apply -var-file=../common.tfvars
+#   cd sql-seed && terraform apply -var-file=../common.tfvars
+#
+# Only variables DECLARED IN BOTH stacks may go here (Terraform errors on unknown
+# vars). base-setup/ uses its own tfvars — different variable set.
+
+prefix             = "epireum"
+sql_admin_login    = "sqladmin"
+sql_admin_password = "qwert@123456" # change for anything real
+sql_database_name  = "shopflow"
