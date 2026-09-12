@@ -5,9 +5,8 @@ variable "subscription_id" {
 }
 
 variable "location" {
-  description = "Azure region."
+  description = "Azure region. Set in common.tfvars (shared across stacks)."
   type        = string
-  default     = "northeurope"
 }
 
 variable "resource_group_name" {
