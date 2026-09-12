@@ -46,9 +46,15 @@ variable "sql_admin_password" {
 }
 
 variable "sql_database_name" {
-  description = "Name of the database to create (the source DB ADF will read/write)."
+  description = "Name of the database to create (populated with the AdventureWorks sample)."
   type        = string
-  default     = "shopflow"
+  default     = "AdventureWorks"
+}
+
+variable "sample_name" {
+  description = "Azure sample data to pre-load on create. 'AdventureWorksLT' = the standard sample (no seeding needed). Set to \"\" for an empty database."
+  type        = string
+  default     = "AdventureWorksLT"
 }
 
 variable "sku_name" {

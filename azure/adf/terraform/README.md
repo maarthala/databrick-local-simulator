@@ -23,43 +23,42 @@ az account set --subscription azur-learning
 export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 ```
 
-## Shared variables (`common.tfvars`)
+## One shared variables file (`common.tfvars`)
 
-The two SQL stacks (`sql/`, `sql-seed/`) share settings via one file:
+**All** stacks read from a single `common.tfvars` — there are no per-stack tfvars.
 
 ```bash
-cp common.tfvars.example common.tfvars   # edit values; gitignored (has the password)
+cp common.tfvars.example common.tfvars   # edit once; gitignored (has the password)
 ```
 
-Pass it with `-var-file` (path is relative to the stack you run from):
+Pass it to every stack with `-var-file` (path relative to the stack you run from):
 
 ```bash
-cd sql      && terraform apply -var-file=../common.tfvars
+cd base-setup && terraform apply -var-file=../common.tfvars
+cd ../sql     && terraform apply -var-file=../common.tfvars
 cd ../sql-seed && terraform apply -var-file=../common.tfvars
 ```
 
-`common.tfvars` may contain **only variables declared in both** stacks — `prefix`,
-`sql_admin_login`, `sql_admin_password`, `sql_database_name`. (Terraform errors on an
-undefined variable.) `base-setup/` has a different variable set, so it uses its own
-`terraform.tfvars`.
+Each stack uses the variables it declares; any it doesn't just print a harmless
+`Value for undeclared variable` warning (add `-compact-warnings` to trim). Put only
+**shared** values here (`subscription_id`, `prefix`, SQL creds, git). Values that
+**differ** per stack (location, resource group, database name) are NOT in the file —
+they come from each stack's own defaults in `variables.tf`.
 
 ## Deploy
 
 ```bash
+cd azure/adf/terraform
+cp common.tfvars.example common.tfvars     # edit values
+
 # 1. base (ADF + data lake) — free
-cd base-setup
-cp terraform.tfvars.example terraform.tfvars   # set prefix, git repo, etc.
-terraform init && terraform apply
+cd base-setup && terraform init && terraform apply -var-file=../common.tfvars
 
-# 2. SQL server + database — billable
-cd ../sql
-terraform init && terraform apply -var-file=../common.tfvars
+# 2. SQL server + AdventureWorks sample DB — billable
+cd ../sql && terraform init && terraform apply -var-file=../common.tfvars
 
-# 3. seed the SQL db (optional)
-cd ../sql-seed
-terraform init && terraform apply -var-file=../common.tfvars
-#   no sqlcmd? skip this and run seed.sql in Azure Data Studio / SSMS instead
-#   (see sql-seed/README.md)
+# 3. optional ShopFlow DB + seed (needs sqlcmd, or seed in a GUI)
+cd ../sql-seed && terraform init && terraform apply -var-file=../common.tfvars
 ```
 
 ## Destroy
@@ -67,8 +66,8 @@ terraform init && terraform apply -var-file=../common.tfvars
 Each stack independently (SQL is the only one that costs money):
 
 ```bash
-cd sql      && terraform destroy -var-file=../common.tfvars
-cd base-setup && terraform destroy
+cd sql        && terraform destroy -var-file=../common.tfvars
+cd ../base-setup && terraform destroy -var-file=../common.tfvars
 ```
 
 ## Notes
@@ -78,4 +77,6 @@ cd base-setup && terraform destroy
 - **Secrets/state are gitignored** — `*.tfvars`, `*.tfstate*`, `.terraform/`. Only
   `*.tf`, `*.tfvars.example`, READMEs, and the lock files are committed.
 - `prefix` must be **globally unique** (storage + SQL server names are global). Change
-  it in `common.tfvars` / `base-setup/terraform.tfvars` if `epireum` is taken.
+  it in `common.tfvars` if `epireum` is taken.
+- `sql/` creates the **AdventureWorks** sample DB (Azure-populated, no seeding);
+  `sql-seed/` optionally adds a separate **ShopFlow** DB and seeds it.
