@@ -16,14 +16,14 @@ variable "resource_group_name" {
   default     = "rg-adf-sql"
 }
 
-variable "sql_server_name" {
-  description = "STATIC Azure SQL logical server name. Must be GLOBALLY UNIQUE across Azure — lowercase letters/digits/hyphens, 1-63 chars, not starting/ending with a hyphen."
+variable "prefix" {
+  description = "Static naming prefix for all resources (e.g. 'epireum'). Match base-setup. Server becomes <prefix>-sql — must be GLOBALLY UNIQUE across Azure."
   type        = string
-  default     = "adfdev-sql-epireum"
+  default     = "epireum"
 
   validation {
-    condition     = can(regex("^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$", var.sql_server_name))
-    error_message = "sql_server_name: lowercase letters/digits/hyphens, 1-63 chars, no leading/trailing hyphen."
+    condition     = can(regex("^[a-z][a-z0-9]{2,20}$", var.prefix))
+    error_message = "prefix: 3-21 lowercase letters/digits, starting with a letter."
   }
 }
 
@@ -34,9 +34,10 @@ variable "sql_admin_login" {
 }
 
 variable "sql_admin_password" {
-  description = "SQL Server administrator password. Azure requires 8-128 chars with 3 of: uppercase, lowercase, digit, symbol. Do NOT commit this — set it in terraform.tfvars (gitignored) or export TF_VAR_sql_admin_password."
+  description = "SQL Server administrator password. Default provided for dev/learning — CHANGE it for anything real (set in terraform.tfvars or export TF_VAR_sql_admin_password). Azure requires 8-128 chars with 3 of: uppercase, lowercase, digit, symbol."
   type        = string
   sensitive   = true
+  default     = "qwert@123456"
 
   validation {
     condition     = length(var.sql_admin_password) >= 12

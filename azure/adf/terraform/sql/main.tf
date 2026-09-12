@@ -9,7 +9,7 @@ resource "azurerm_resource_group" "adf" {
 
 # The logical SQL Server (the host; databases live under it).
 resource "azurerm_mssql_server" "adf" {
-  name                          = var.sql_server_name
+  name                          = "${var.prefix}-sql"
   resource_group_name           = azurerm_resource_group.adf.name
   location                      = azurerm_resource_group.adf.location
   version                       = "12.0"
