@@ -18,7 +18,6 @@ variable "resource_group_name" {
 variable "prefix" {
   description = "Static naming prefix for all resources (e.g. 'epireum'). Names are fixed (no random suffix), so must be GLOBALLY UNIQUE across Azure. Storage account becomes <prefix>dl (3-22 lowercase letters/digits, no hyphens); ADF becomes <prefix>-adf."
   type        = string
-  default     = "epireum"
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9]{2,20}$", var.prefix))
