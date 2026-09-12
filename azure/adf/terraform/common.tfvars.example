@@ -1,12 +1,24 @@
-# Shared variables for the SQL stacks (sql/ and sql-seed/).
-# Copy to common.tfvars (gitignored) and pass with -var-file:
-#   cd sql      && terraform apply -var-file=../common.tfvars
-#   cd sql-seed && terraform apply -var-file=../common.tfvars
+# Single shared variables file for ALL stacks (base-setup, sql, sql-seed).
+# Copy to common.tfvars (gitignored) and pass it to every stack:
+#   cd base-setup && terraform apply -var-file=../common.tfvars
+#   cd sql        && terraform apply -var-file=../common.tfvars
+#   cd sql-seed   && terraform apply -var-file=../common.tfvars
 #
-# Only variables DECLARED IN BOTH stacks may go here (Terraform errors on unknown
-# vars). base-setup/ uses its own tfvars — different variable set.
+# Each stack uses the variables it declares; the rest print a harmless
+# "Value for undeclared variable" warning (add -compact-warnings to trim).
+# Values that DIFFER per stack (location, resource group, database name) are NOT
+# here — they come from each stack's own defaults in variables.tf.
 
-prefix             = "epireum"
+# --- shared everywhere ---
+subscription_id = "a0e23f01-2a2a-4ad5-a714-b0e35e5bd7de" # azur-learning
+prefix          = "epireum"                              # static, globally-unique naming
+
+# --- SQL (sql/ + sql-seed/) ---
 sql_admin_login    = "sqladmin"
 sql_admin_password = "qwert@123456" # change for anything real
-sql_database_name  = "shopflow"
+
+# --- Git integration (base-setup/) ---
+git_account_name    = "maarthala"
+git_repository_name = "azure-learning"
+git_branch_name     = "main"
+git_root_folder     = "/adf"

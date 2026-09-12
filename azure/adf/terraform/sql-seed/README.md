@@ -1,28 +1,44 @@
-# SQL seed (optional, standalone)
+# ShopFlow database + seed (optional)
 
-Runs `seed.sql` (ShopFlow tables + sample rows) against the **existing** `<prefix>-sql`
-database. Kept **separate** from the `sql/` stack so provisioning never depends on
-`sqlcmd` — deploy `sql/` first, then seed with whatever method suits you.
+The `sql/` stack already gives you a ready-to-use **AdventureWorks** sample database
+(Azure populates it — no seeding). Use **this** stack only if you *also* want a
+**ShopFlow** database with the custom schema.
+
+It **creates** a `shopflow` database on the existing `<prefix>-sql` server and seeds it
+with `seed.sql` (customers, products, orders, order_items, metadata).
+
+## Prerequisite
+
+Deploy the `sql/` stack first (this looks up its server by name `<prefix>-sql`).
 
 ## Option A — Terraform (needs `sqlcmd`)
 
 ```bash
 cd azure/adf/terraform/sql-seed
-export TF_VAR_sql_admin_password='qwert@123456'   # if not using the default
-terraform init && terraform apply
+terraform init
+terraform apply -var-file=../common.tfvars
 ```
 
-Requires `sqlcmd` on your machine and the SQL firewall reachable (the `sql/` stack
-opens Azure services + internet by default). Re-runs automatically when `seed.sql` changes.
+Creates the DB and runs the seed. Requires `sqlcmd` + firewall reachable (the `sql/`
+stack opens Azure services + internet by default).
 
 ## Option B — no sqlcmd (recommended on Windows)
 
-`sqlcmd` is fiddly on Windows. Just run the script in a GUI instead:
+Create the empty DB with Terraform, seed with a GUI:
 
-- **Azure Data Studio** (`winget install Microsoft.AzureDataStudio`) or **SSMS**
-- Connect to `<prefix>-sql.database.windows.net`, database `shopflow`, SQL auth
-  (`sqladmin` / your password)
-- Open `seed.sql` → **Run**
+```bash
+terraform apply -var-file=../common.tfvars -var run_seed=false
+```
 
-`seed.sql` is idempotent (create-if-missing, insert-if-empty), so either option is safe
-to re-run.
+Then open `seed.sql` in **Azure Data Studio** / **SSMS** (connect to
+`<prefix>-sql.database.windows.net`, database `shopflow`) and **Run**.
+
+`seed.sql` is idempotent (create-if-missing, insert-if-empty).
+
+## Teardown
+
+```bash
+terraform destroy -var-file=../common.tfvars
+```
+
+Removes just the ShopFlow database (leaves the server + AdventureWorks DB from `sql/`).

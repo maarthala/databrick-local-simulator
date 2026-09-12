@@ -27,6 +27,8 @@ resource "azurerm_mssql_database" "adf" {
   sku_name    = var.sku_name
   max_size_gb = var.max_size_gb
   collation   = "SQL_Latin1_General_CP1_CI_AS"
+  # Azure pre-populates the AdventureWorksLT sample schema/data on create — no seeding.
+  sample_name = var.sample_name != "" ? var.sample_name : null
   tags        = var.tags
 }
 
