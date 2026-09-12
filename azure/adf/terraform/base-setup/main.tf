@@ -48,8 +48,16 @@ resource "azurerm_storage_account" "dl" {
   tags                     = var.tags
 }
 
+# Give the new account's shared key time to propagate — without this the filesystem
+# create often 403s on the first apply (data-plane auth races account creation).
+resource "time_sleep" "wait_for_storage" {
+  depends_on      = [azurerm_storage_account.dl]
+  create_duration = "30s"
+}
+
 resource "azurerm_storage_data_lake_gen2_filesystem" "fs" {
   for_each           = toset(var.filesystems)
   name               = each.value
   storage_account_id = azurerm_storage_account.dl.id
+  depends_on         = [time_sleep.wait_for_storage]
 }
