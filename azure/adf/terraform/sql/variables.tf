@@ -12,7 +12,6 @@ variable "location" {
 variable "resource_group_name" {
   description = "Resource group to create for the ADF dev SQL environment (its own, separate from base-setup)."
   type        = string
-  default     = "rg-adf-sql"
 }
 
 variable "prefix" {

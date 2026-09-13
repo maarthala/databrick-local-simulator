@@ -12,7 +12,6 @@ variable "location" {
 variable "resource_group_name" {
   description = "Resource group for the Data Factory."
   type        = string
-  default     = "rg-adf-dev"
 }
 
 variable "prefix" {

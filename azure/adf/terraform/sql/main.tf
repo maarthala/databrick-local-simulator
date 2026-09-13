@@ -1,17 +1,16 @@
 # Azure SQL dev environment for the ADF training: a logical SQL Server + one database
 # that Azure Data Factory connects to as a source/sink. Kept intentionally small/cheap.
 
-resource "azurerm_resource_group" "adf" {
-  name     = var.resource_group_name
-  location = var.location
-  tags     = var.tags
+# Shared resource group, created by the base-setup stack.
+data "azurerm_resource_group" "adf" {
+  name = var.resource_group_name
 }
 
 # The logical SQL Server (the host; databases live under it).
 resource "azurerm_mssql_server" "adf" {
   name                          = "${var.prefix}-sql"
-  resource_group_name           = azurerm_resource_group.adf.name
-  location                      = azurerm_resource_group.adf.location
+  resource_group_name           = data.azurerm_resource_group.adf.name
+  location                      = data.azurerm_resource_group.adf.location
   version                       = "12.0"
   administrator_login           = var.sql_admin_login
   administrator_login_password  = var.sql_admin_password

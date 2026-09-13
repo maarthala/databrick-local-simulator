@@ -1,6 +1,6 @@
 output "resource_group_name" {
   description = "Resource group holding the dev SQL environment."
-  value       = azurerm_resource_group.adf.name
+  value       = data.azurerm_resource_group.adf.name
 }
 
 output "sql_server_name" {
