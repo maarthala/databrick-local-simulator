@@ -51,7 +51,6 @@ S3-compatible storage. Browse it at the **MinIO console** (<http://localhost:900
   - **`polaris/`** — the **warehouse** where the catalog's table files physically live (Bronze/
     Silver/Gold Parquet + Iceberg metadata, e.g. `polaris/gold/daily_sales`). You normally read
     these *through the catalog*, not by path.
-  - **`northwind/`** — a small extra sample dataset (parquet/CSV) for ad-hoc practice.
 
 **Reach it:** `spark.read.parquet("s3a://demo-bucket/…")` in a notebook ([3.9](../unit3/upload-register.md)),
 or the MinIO console to browse/upload.

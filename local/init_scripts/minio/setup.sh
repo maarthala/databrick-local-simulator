@@ -1,5 +1,5 @@
 #!/bin/sh
-# Seed MinIO with the demo buckets and sample Northwind data.
+# Seed MinIO with the demo bucket.
 # Runs as a one-shot container (minio-init) after MinIO starts.
 set -e
 
@@ -16,9 +16,6 @@ echo "MinIO is ready."
 
 # Buckets (idempotent).
 mc mb --ignore-existing local/demo-bucket
-
-# Upload the sample Northwind parquet/CSV data.
-mc cp --recursive /code/shared/testdata/ local/demo-bucket/northwind/
 
 echo "Buckets after setup:"
 mc ls local/

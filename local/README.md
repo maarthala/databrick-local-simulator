@@ -70,6 +70,3 @@ Then:
 ## Notes
 - The Keycloak↔Unity Catalog governance (OIDC + per-user RBAC + MinIO credential
   vending) is validated in compose and works the same as k8s.
-- The legacy Northwind/Kafka streaming scenario and its challenges (`Tasks.md`) were
-  removed when the stack was standardized on the governed lakehouse; `Tasks.md` is
-  kept for reference only.

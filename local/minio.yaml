@@ -23,7 +23,6 @@ services:
       - sparknet
 
   # One-shot: waits for MinIO, then creates the demo buckets and uploads the
-  # sample Northwind parquet files (parity with the old LocalStack init script).
   minio-init:
     container_name: minio-init
     image: minio/mc:latest
