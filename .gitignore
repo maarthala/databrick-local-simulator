@@ -88,5 +88,9 @@ stack/code/notebook/output.ipynb
 # into this repo.
 local/code/notebook/repo/
 
+# Local env holds the git PAT (GIT_TOKEN) + host config — never commit it.
+# Copy local/.env.example -> local/.env and fill it in.
+local/.env
+
 # Misc
 notes.txt

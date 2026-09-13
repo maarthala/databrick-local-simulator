@@ -13,15 +13,15 @@ if [ "${GIT_AUTOPUSH:-0}" = "1" ] && [ -n "${GIT_REPO_URL:-}" ]; then
   if [ -z "$TOKEN" ] && [ -n "${GIT_TOKEN_FILE:-}" ] && [ -f "$GIT_TOKEN_FILE" ]; then
     TOKEN="$(cat "$GIT_TOKEN_FILE")"
   fi
+fi
+
+if [ "${GIT_AUTOPUSH:-0}" = "1" ] && [ -n "${GIT_REPO_URL:-}" ] && [ -z "${TOKEN:-}" ]; then
+  echo "[entrypoint] GIT_AUTOPUSH=1 but no token (GIT_TOKEN / GIT_TOKEN_FILE) — auto-push disabled"
+elif [ "${GIT_AUTOPUSH:-0}" = "1" ] && [ -n "${GIT_REPO_URL:-}" ]; then
   GIT_USER="${GIT_USERNAME:-x-access-token}"
   BRANCH="${GIT_BRANCH:-main}"
   HOSTPATH="${GIT_REPO_URL#https://}"
-  if [ -n "$TOKEN" ]; then
-    AUTH_URL="https://${GIT_USER}:${TOKEN}@${HOSTPATH}"
-  else
-    AUTH_URL="$GIT_REPO_URL"
-    echo "[entrypoint] WARNING: no token found — push will only work for a public/writable remote"
-  fi
+  AUTH_URL="https://${GIT_USER}:${TOKEN}@${HOSTPATH}"
 
   mkdir -p "$(dirname "$REPO_DIR")"
   if [ ! -d "$REPO_DIR/.git" ]; then

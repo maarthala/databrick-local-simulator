@@ -27,6 +27,7 @@ landing page.
 
 ## Run
 ```bash
+cp .env.example .env   # first time: create your env (gitignored); set GIT_TOKEN to enable notebook auto-push
 make init   # first time: download base JARs (into ../common/dockerfiles/tmp)
 make docs   # build the training course site (../training -> ../training/site)
 make up     # build the compose images + start everything
@@ -72,16 +73,19 @@ Jupyter clones a repo into `/home/jovyan/work/repo` and, on every save, commits 
 the file. Save notebooks under the repo's `notebooks/` folder. Config is in
 `local/jupyter.yaml` (`GIT_REPO_URL`, `GIT_BRANCH`, `GIT_AUTHOR_NAME/EMAIL`).
 
-The **token = the pushing account** and must have **Contents: Read+Write** on the repo.
-Supply it from your **shell**, never a committed file (`local/.env` is tracked):
+Config lives in **`local/.env`** (copy from `.env.example`; `.env` is gitignored, so the
+token never lands in git):
 ```bash
-GIT_TOKEN=$(gh auth token) docker compose up -d --force-recreate jupyter   # or: ... make up
+cp .env.example .env         # first time
+# edit .env → set GIT_TOKEN (the pushing account; needs Contents: Read+Write on the repo)
+#   quick fill: GIT_TOKEN=$(gh auth token)
+make up                      # or: docker compose up -d --force-recreate jupyter
 ```
-To switch account/repo: edit `GIT_REPO_URL` in `jupyter.yaml`, then bring it up with the new
-`GIT_TOKEN`; delete the stale clone first so it re-clones:
+Blank `GIT_TOKEN` = auto-push disabled. To switch account/repo: edit `GIT_REPO_URL` /
+`GIT_TOKEN` in `.env`, delete the stale clone, and recreate:
 ```bash
 docker exec jupyter rm -rf /home/jovyan/work/repo
-GIT_TOKEN=<NEW_PAT> docker compose up -d --force-recreate jupyter
+docker compose up -d --force-recreate jupyter
 ```
 
 ## Notes
