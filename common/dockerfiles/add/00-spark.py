@@ -16,6 +16,8 @@ try:
 
     @register_cell_magic
     def sql(line, cell):  # usage:  %%sql \n SELECT ... FROM iceberg.gold.tbl
-        return spark.sql(cell)
+        # Return a pandas DataFrame so the notebook renders a real table (not just
+        # the Spark schema repr). Capped at 1000 rows for display, like Databricks.
+        return spark.sql(cell).limit(1000).toPandas()
 except Exception:  # not in IPython, or spark missing
     pass
