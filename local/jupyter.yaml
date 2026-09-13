@@ -22,10 +22,13 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_REGION=us-east-1
       - AWS_S3_ENDPOINT=http://minio:9000
-      # --- Auto-push on save (reuses the same repo/PAT as the k8s git-sync) ---
-      # Set GIT_TOKEN in local/.env (a WRITE-scoped PAT). The entrypoint clones
-      # the repo into /home/jovyan/work/repo; notebooks saved there are committed
-      # + pushed on every save. Leave GIT_TOKEN empty to disable pushing.
+      # --- Auto-push on save (same repo/token as k8s) ---
+      # Supply GIT_TOKEN from your SHELL, never a committed file (local/.env is
+      # tracked). e.g. bring the stack up with:
+      #   GIT_TOKEN=$(gh auth token) make up
+      # The entrypoint clones the repo into /home/jovyan/work/repo; notebooks
+      # saved under notebooks/ are committed + pushed on every save. Empty token
+      # = pushing disabled.
       - GIT_AUTOPUSH=1
       - GIT_REPO_URL=https://github.com/dev-epireum-com/de-lab.git
       - GIT_BRANCH=main
