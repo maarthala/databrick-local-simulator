@@ -28,78 +28,54 @@ You never grant a user directly — access flows **user → principal-role → c
 analyst (principal) ─► analyst_role ─► sales_reader (catalog-role) ─► TABLE_READ_DATA + LIST on demo.sales
 ```
 
-## Do it — grant analyst read-only on `demo.sales`
+!!! note "Permissions are set in the Console UI"
+    Polaris manages its own RBAC — you grant access in the **Polaris Console**, *not*
+    with SQL. `GRANT` in Spark or Trino does **not** work against Polaris (the engines
+    only read/write data; the catalog owns access control).
 
-### In the Polaris Console
-1. **Catalogs → `<your catalog>` → Catalog Roles → Create** → `sales_reader`
-2. On `sales_reader` → **Grant Privilege** (one per privilege):
-    - Table `demo.sales` → **`TABLE_READ_DATA`**
-    - Table `demo.sales` → **`TABLE_LIST`**
-    - Namespace `demo` → **`TABLE_LIST`**   *(so it shows in `SHOW TABLES`)*
-    - Catalog → **`NAMESPACE_LIST`**   *(so the `demo` namespace is discoverable)*
-3. On `sales_reader` → **manage principal roles → Grant to Principal Role → `analyst_role`**
+## Do it — grant analyst read-only on `demo.sales` (Console)
 
-### Or via the API
-```bash
-B=http://localhost:8185; M=$B/api/management/v1
-RT=$(curl -s "$B/api/catalog/v1/oauth/tokens" --user root:s3cr3t -H 'Polaris-Realm: POLARIS' \
-     -d grant_type=client_credentials -d scope=PRINCIPAL_ROLE:ALL \
-     | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
-H=(-H "Authorization: Bearer $RT" -H "Content-Type: application/json" -H "Polaris-Realm: POLARIS")
+Sign in to the Console (<http://localhost:8189>) as `root` / `s3cr3t`.
 
-CAT=learn   # your catalog
-curl -s "${H[@]}" -X POST "$M/catalogs/$CAT/catalog-roles" -d '{"catalogRole":{"name":"sales_reader"}}'
-G="$M/catalogs/$CAT/catalog-roles/sales_reader/grants"
-curl -s "${H[@]}" -X PUT "$G" -d '{"grant":{"type":"table","namespace":["demo"],"tableName":"sales","privilege":"TABLE_READ_DATA"}}'
-curl -s "${H[@]}" -X PUT "$G" -d '{"grant":{"type":"table","namespace":["demo"],"tableName":"sales","privilege":"TABLE_LIST"}}'
-curl -s "${H[@]}" -X PUT "$G" -d '{"grant":{"type":"namespace","namespace":["demo"],"privilege":"TABLE_LIST"}}'
-curl -s "${H[@]}" -X PUT "$G" -d '{"grant":{"type":"catalog","privilege":"NAMESPACE_LIST"}}'
-curl -s "${H[@]}" -X PUT "$M/principal-roles/analyst_role/catalog-roles/$CAT" -d '{"catalogRole":{"name":"sales_reader"}}'
-```
+**1. Create the catalog role:** Catalogs → `<your catalog>` → **Catalog Roles → Create** → name it `sales_reader`.
 
-## Verify — read works, write blocked
+**2. Add these grants** — on `sales_reader` → **Grant Privilege** (one grant per row):
 
-Get a token **as analyst** and exercise the table:
+| Scope | Resource | Privilege | Why |
+|---|---|---|---|
+| Table | `demo.sales` | **`TABLE_READ_DATA`** | read the rows |
+| Table | `demo.sales` | **`TABLE_LIST`** | see the table |
+| Namespace | `demo` | **`TABLE_LIST`** | list tables in `demo` |
+| Catalog | — | **`NAMESPACE_LIST`** | discover the `demo` namespace |
 
-```bash
-C=http://localhost:8185/api/catalog/v1
-AT=$(curl -s "$C/oauth/tokens" --user analyst:analyst -H 'Polaris-Realm: POLARIS' \
-     -d grant_type=client_credentials -d scope=PRINCIPAL_ROLE:ALL \
-     | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
-A=(-H "Authorization: Bearer $AT" -H 'Polaris-Realm: POLARIS')
+**3. Bind it to the persona:** on `sales_reader` → **manage principal roles → Grant to Principal Role → `analyst_role`**.
 
-curl -s -o /dev/null -w "list tables : %{http_code}\n" "${A[@]}" "$C/learn/namespaces/demo/tables"      # 200 (can browse)
-curl -s -o /dev/null -w "read table  : %{http_code}\n" "${A[@]}" "$C/learn/namespaces/demo/tables/sales" # 200 (can read)
-curl -s -o /dev/null -w "drop table  : %{http_code}\n" -X DELETE "${A[@]}" "$C/learn/namespaces/demo/tables/sales" # 403 (read-only)
-```
+That's it — analyst now has read-only access, granted through the role.
 
-Expected: browse **200**, read **200**, write/drop **403**.
+## Verify (in the UI)
 
-## Query as the user
+Sign out and **sign back in to the Console as `analyst` / `analyst`**:
 
-Reading through Polaris vends **short-lived, scoped MinIO credentials** — so the query
-only works for tables the user is granted. To query *as analyst* from an engine, point
-it at the catalog with **analyst's** client id/secret:
+- You can **see** the `demo` namespace and the `sales` table, and **open** it → ✅ read works.
+- **Create / Delete** actions on it are unavailable → ⛔ it's read-only.
 
-```python
-# Spark: a catalog wired with the analyst persona's credentials
-r = (spark.newSession() if False else spark)  # illustrative
-spark.conf  # in practice, launch Spark/Trino with:
-#   catalog.<name>.credential = analyst:analyst
-# then:  SELECT * FROM <name>.demo.sales   -> works (granted); other tables -> denied
-```
+Log back in as `root` to keep administering.
 
-In this stack the pre-wired notebook `spark` connects as **root** (full access), so it's
-for building/teaching; to *demonstrate* per-user enforcement, use the persona's
-credentials (client id/secret) in the engine config or the Console's **Sign in** — the
-persona then sees exactly what it's granted.
+## Query it
+
+Reading through Polaris vends **short-lived, scoped credentials** — a user can only read
+tables they're granted. Whoever queries as **analyst** (signed into the Console, or an
+engine configured with analyst's client id/secret) sees exactly `demo.sales` and nothing
+they weren't granted. The pre-wired notebook `spark` connects as **root** (full access),
+so use it for building/teaching; to *demonstrate* per-user enforcement, sign in as the
+persona.
 
 ## Revoke
-Remove a grant, unbind the role, or delete the catalog-role — access disappears
-immediately (grants are checked per request).
+In the Console, remove a grant, unbind the role, or delete the catalog-role — access
+disappears immediately (grants are checked per request).
 
 ## 🎯 This runs unchanged on Azure, Databricks, Snowflake & Fabric
-This is `GRANT SELECT ON <table> TO <role>` — Databricks Unity Catalog and Snowflake use
+This is `GRANT SELECT ON <table> TO <role>` — the Databricks catalog and Snowflake use
 the exact same *grant-to-a-role, read-vs-usage* model; only the syntax differs.
 
 ## You can now…

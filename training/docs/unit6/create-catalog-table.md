@@ -105,7 +105,7 @@ one governed copy, every engine.
 
 ## 🎯 This runs unchanged on Azure, Databricks, Snowflake & Fabric
 `catalog → schema → table` with `CREATE NAMESPACE` / `CREATE TABLE … USING iceberg` is
-the same in **Databricks Unity Catalog** and **Snowflake** (Snowflake calls it
+the same in **the Databricks catalog** and **Snowflake** (Snowflake calls it
 database → schema → table). Only the catalog name and storage URL change.
 
 ## You can now…

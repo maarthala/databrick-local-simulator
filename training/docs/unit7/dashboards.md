@@ -188,8 +188,8 @@ That link is the product your entire pipeline — Bronze ingest, Silver cleaning
 to deliver. Everything upstream was in service of this one page an exec can read in seconds.
 
 !!! note "Governance & BI (model vs this stack)"
-    On **Databricks**, a BI tool reads Gold through a SQL warehouse and **Unity Catalog enforces
-    the grants automatically** — an analyst's dashboard can only surface what their role may read
+    On **Databricks**, a BI tool reads Gold through a SQL warehouse and **the Databricks catalog
+    enforces the grants automatically** — an analyst's dashboard can only surface what their role may read
     (the [Unit 6](../unit6/rbac.md) policy). On this OSS compose stack, Trino/Superset query the
     **Apache Polaris**-backed `iceberg` catalog without per-user enforcement wired into the query
     path, so *by convention* you point BI at **Gold only** and never grant a BI account more than
@@ -244,7 +244,7 @@ refreshes. This challenge builds one.
     **What you just did:** connected a BI tool to the governed Gold layer over SQL and built an
     executive dashboard.
 
-    - **Azure Databricks** — **AI/BI Dashboards** read Unity Catalog Gold tables through a **SQL
+    - **Azure Databricks** — **AI/BI Dashboards** read the Databricks catalog's Gold tables through a **SQL
       Warehouse** — the same "SQL over governed Gold" path.
     - **Microsoft Fabric** — **Power BI** on the Lakehouse in **Direct Lake** mode reads OneLake
       Delta directly (no import) — the closest analogue to Superset-over-Trino live queries.

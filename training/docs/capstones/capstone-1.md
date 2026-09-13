@@ -107,8 +107,8 @@ Add a new Gold mart `iceberg.gold.daily_cancellations` and expose it in Superset
 
         analyst  →  USE CATALOG iceberg  →  USE SCHEMA gold  →  SELECT on daily_cancellations
 
-    This records the least-privilege policy (analyst reads Gold only). On managed **Databricks
-    Unity Catalog** the engines enforce it automatically; on this OSS stack it documents the intent
+    This records the least-privilege policy (analyst reads Gold only). On the managed **Databricks
+    catalog** the engines enforce it automatically; on this OSS stack it documents the intent
     (see the honest note in [6.2](../unit6/rbac.md)).
 
     **4. Superset**
@@ -129,7 +129,7 @@ Add a new Gold mart `iceberg.gold.daily_cancellations` and expose it in Superset
     - **Transform:** the identical PySpark runs unchanged as an **Azure Databricks** or **Fabric**
       notebook; in pure **ADF** it's a Mapping Data Flow (Aggregate + Derived Column).
     - **Orchestrate:** the task becomes a **Databricks Workflow**, a **Fabric/ADF pipeline** activity.
-    - **Govern:** the `SELECT`-on-Gold grant is the same **Unity Catalog `GRANT`** (Databricks) /
+    - **Govern:** the `SELECT`-on-Gold grant is the same **Databricks catalog `GRANT`** (Databricks) /
       role `GRANT` (Snowflake).
     - **BI:** the chart becomes a **Databricks AI/BI** tile or **Power BI (Direct Lake)** on Fabric.
     - **Snowflake:** one stack — Snowpark/SQL builds the mart, a **Task** schedules it, a role

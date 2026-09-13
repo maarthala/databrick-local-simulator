@@ -122,7 +122,7 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
         # analyst reads gold only — least privilege
         analyst   →  USE CATALOG iceberg  →  USE SCHEMA gold    →  SELECT
 
-    This defines the least-privilege policy. On managed **Databricks Unity Catalog** the engines
+    This defines the least-privilege policy. On the managed **Databricks catalog** the engines
     enforce it automatically (and you'd grant **groups**, not users); on this OSS stack it records
     the intent — see the honest note in [6.2](../unit6/rbac.md).
 
@@ -154,7 +154,7 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
     - **Upsert (the crux):** your `MERGE INTO … WHEN MATCHED/NOT MATCHED` is **Delta `MERGE`**
       verbatim on **Databricks/Fabric**; in ADF it's a Mapping Data Flow **Alter Row (upsert)**.
     - **Affected-partition overwrite:** Iceberg `overwritePartitions()` ↔ Delta **`replaceWhere`**.
-    - **Govern:** engineer-Silver / analyst-Gold is the same **Unity Catalog `GRANT`** (groups on
+    - **Govern:** engineer-Silver / analyst-Gold is the same **Databricks catalog `GRANT`** (groups on
       Databricks) / role `GRANT` (Snowflake) / Purview + Entra (Fabric).
     - **Schedule + reprocess:** the `catchup=False` DAG → **Databricks Workflows** / **ADF
       Tumbling-Window** for bounded, idempotent backfills.

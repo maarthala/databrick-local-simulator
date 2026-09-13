@@ -91,7 +91,7 @@ cloud money on the managed layer, not on relearning the basics.
     `MERGE INTO` = Snowflake `MERGE`*).
 
     The governance model here (**Apache Polaris** — Iceberg-native, maps to **Snowflake
-    Open Catalog**) is *identical in shape* to Databricks **Unity Catalog** (catalog →
+    Open Catalog**) is *identical in shape* to **the Databricks catalog** (catalog →
     schema → table with RBAC), and **Medallion** (Bronze/Silver/Gold) is Databricks'
     own terminology — so parts of this course are already Databricks & Snowflake, verbatim.
 

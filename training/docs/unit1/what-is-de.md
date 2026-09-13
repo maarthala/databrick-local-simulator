@@ -190,7 +190,7 @@ fundamentals are solid.
     When you move ShopFlow to the cloud later, here's who does each step:
 
     - **Azure Data Factory** — *ingest* + *orchestrate* (Copy activity, Pipelines, triggers); no BI or governance of its own.
-    - **Azure Databricks** — *store / transform / serve* on the same Spark, plus Workflows (orchestrate) and Unity Catalog (govern).
+    - **Azure Databricks** — *store / transform / serve* on the same Spark, plus Workflows (orchestrate) and the Databricks catalog (govern).
     - **Snowflake** — *store / transform / serve* with SQL + Snowpark, Streams & Tasks (orchestrate), roles (govern); pair with Snowpipe or a tool for *ingest*.
     - **Microsoft Fabric** — all five in one tenant: Data Factory (ingest), Lakehouse/Spark (transform), Power BI (serve), Workspaces + Purview (govern).
 

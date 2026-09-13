@@ -97,12 +97,6 @@ narrower scope = tighter least-privilege.
 - **Rotate a leaked secret** → the principal's **Rotate** action.
 - **Remove access** → revoke the role, or **Delete Principal** to remove the user.
 
-## Prefer to script it?
-
-Every click above is also a REST call, so onboarding can be automated (CI,
-reproducible setups). The stack's own `common/polaris/seed-polaris.sh` is a worked
-example that creates the personas, pins their logins, and grants access end-to-end.
-
 ## You can now…
 
 - Create a **user** (principal) in the Polaris Console and read back its login

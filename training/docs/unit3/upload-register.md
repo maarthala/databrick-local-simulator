@@ -90,7 +90,7 @@ The view disappears when the kernel stops; a catalog table persists and is share
 
 ## 🎯 This runs unchanged on Azure, Databricks, Snowflake & Fabric
 Upload to **ADLS / S3**, then `CREATE TABLE … AS SELECT` or `writeTo(...).createOrReplace()` into
-**Unity Catalog** (Databricks) / **Snowflake** / **Fabric** — the exact same read-then-register
+**the Databricks catalog** / **Snowflake** / **Fabric** — the exact same read-then-register
 pattern; only the storage URL and catalog name change.
 
 ## You can now…
