@@ -12,8 +12,10 @@ Thumbs.db
 # Docker / env
 *.log
 docker-compose.override.yml
+# Real env files are ignored; .env.example templates are committed.
 .env
 .env.*
+!.env.example
 temp/
 # Terraform (local state must never be committed)
 *.tfstate
