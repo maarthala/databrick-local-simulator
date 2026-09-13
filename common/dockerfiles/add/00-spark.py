@@ -9,3 +9,13 @@ try:
 except Exception as _e:  # noqa: BLE001
     print(f"⚠ `spark` not created ({_e}).")
     print("  Start it once spark-connect is up: spark = SparkSession.builder.getOrCreate()")
+
+# Databricks-style `%%sql` cell magic — runs Spark SQL over any catalog table or view.
+try:
+    from IPython.core.magic import register_cell_magic
+
+    @register_cell_magic
+    def sql(line, cell):  # usage:  %%sql \n SELECT ... FROM iceberg.gold.tbl
+        return spark.sql(cell)
+except Exception:  # not in IPython, or spark missing
+    pass
