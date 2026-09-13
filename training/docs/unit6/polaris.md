@@ -29,7 +29,7 @@ persona = a Polaris principal (analyst / engineer / lead)
    │                                      │  identifies the principal + its roles,
    │                                      │  checks grants, vends MinIO credentials
    ▼                                      ▼
- governed reads/writes  ◄───────────  MinIO (Iceberg tables under demo-bucket/polaris/)
+ governed reads/writes  ◄───────────  MinIO (Iceberg tables under demo-bucket/warehouse/)
 ```
 - **Catalog** `polaris_lake` on MinIO · namespaces `bronze` / `silver` / `gold`
 - **Console UI**: <http://localhost:8189> (local) or `http://polaris-console.de.lan` (k8s)
