@@ -48,10 +48,10 @@ S3-compatible storage. Browse it at the **MinIO console** (<http://localhost:900
   - **`shopflow/history/orders/`** — **raw historical orders** as Parquet, partitioned by `dt=`
     (~11.7k rows). Read directly: `s3a://demo-bucket/shopflow/history/orders`. This is the
     "years of history" source, alongside live Postgres.
-  - **`iceberg/`** — the **warehouse** where the catalog's table files physically live (Bronze/
-    Silver/Gold Parquet + Iceberg metadata). You normally read these *through the catalog*, not by
-    path.
-  - other prefixes (`polaris/`, `warehouse/`, `lakehouse/`, `hive/`, …) are warehouse/scratch dirs.
+  - **`polaris/`** — the **warehouse** where the catalog's table files physically live (Bronze/
+    Silver/Gold Parquet + Iceberg metadata, e.g. `polaris/gold/daily_sales`). You normally read
+    these *through the catalog*, not by path.
+  - **`northwind/`** — a small extra sample dataset (parquet/CSV) for ad-hoc practice.
 
 **Reach it:** `spark.read.parquet("s3a://demo-bucket/…")` in a notebook ([3.9](../unit3/upload-register.md)),
 or the MinIO console to browse/upload.
