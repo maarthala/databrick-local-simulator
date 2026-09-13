@@ -6,9 +6,9 @@ for **Apache Spark** — a distributed engine whose DataFrame API deliberately e
 runs across a cluster. This page is a gentle first contact from the notebook; **[Unit 4](../unit4/fundamentals.md)**
 goes deep and builds the whole ShopFlow lakehouse with it.
 
-On our stack the notebook is a lightweight **Spark Connect** client: it sends your code to the
+On our stack the notebook is a lightweight **Spark Connect** client with a ready-made `spark` session: it sends your code to the
 cluster's Connect server, which already has the **`iceberg`** lakehouse catalog configured. So
-connecting is one line.
+`spark` is pre-created for you — nothing to connect.
 
 ### What Spark is (and why it's "lazy")
 Spark is a **distributed** engine: it splits a job into pieces and runs them across **many
@@ -40,29 +40,36 @@ or an action (runs it)?** We'll flag every call.
 
 ## Lab
 
-### Connect
-```python
-from pyspark.sql import SparkSession, functions as F
+### Connect — it's already done for you
 
-spark = SparkSession.builder.getOrCreate()   # Spark Connect client → the cluster
-print(spark.version)
+On this stack, **`spark` is pre-created in every notebook** — just like Databricks. Open a notebook
+and the session is ready; no builder, no URL:
+
+```python
+from pyspark.sql import functions as F   # the column-functions library, nicknamed F
+
+print(spark.version)   # `spark` already exists — quick "am I connected?" check
 ```
 
-Every Spark program starts by getting a **`SparkSession`** — your handle to the cluster. Every
-DataFrame, every `spark.sql(...)`, every read and write goes through this one object.
+The **`spark`** object (a **`SparkSession`**) is your handle to the cluster — every DataFrame, every
+`spark.sql(...)`, every read and write goes through it. It's a **Spark Connect** client: a thin
+local object that ships your code to the remote cluster's Connect server (pre-wired to
+`sc://spark-connect:15002`), and the cluster already has the **`iceberg`** lakehouse catalog configured.
 
-**Read it step by step:**
+!!! info "How `spark` gets there"
+    The notebook image runs a small startup script that does
+    `spark = SparkSession.builder.getOrCreate()` on kernel start (`getOrCreate` reuses the session
+    if one exists). So you *can* still call it yourself, but you never need to — `spark` is waiting
+    for you. This mirrors Databricks, where `spark` (and `dbutils`) are pre-defined.
 
-- **`from pyspark.sql import SparkSession, functions as F`** — imports the session class and the
-  library of built-in column functions, nicknamed **`F`**. You'll write `F.col(...)`, `F.sum(...)`
-  and so on throughout.
-- **`SparkSession.builder.getOrCreate()`** — reuse the existing session if one is already running,
-  otherwise create it. On this stack it hands you a **Spark Connect** client: a thin local object
-  that ships your code over the network to the remote cluster's Connect server (elsewhere you might
-  see an explicit URL like `sc://host:15002`; here it's pre-wired, so one line is enough). The
-  cluster it connects to already has the **`iceberg`** lakehouse catalog configured.
-- **`spark.version`** — just prints the Spark version, a quick "am I really connected?" check. This
-  line does contact the cluster, so it doubles as a connection test.
+!!! tip "You also get `%%sql`"
+    A `%%sql` cell magic is pre-loaded too — put it on the first line of a cell and write plain SQL
+    against any catalog table:
+    ```sql
+    %%sql
+    SELECT * FROM iceberg.gold.daily_sales LIMIT 10
+    ```
+    Results render as a table. See **[3.8](sql-magic.md)** for more.
 
 ### A Spark DataFrame feels like pandas…
 Here we build a tiny DataFrame by hand (real data comes from the lakehouse in the next cell) and
@@ -209,7 +216,7 @@ sorted by revenue.
 | **Distributed** | Work + data are spread over a **cluster** of machines and run in parallel (vs pandas, which is single-machine) |
 | **Spark DataFrame** | A table that *looks* like pandas but lives **across the cluster**; pandas-like verbs, cluster scale |
 | **SparkSession** (`spark`) | Your handle to the cluster — every DataFrame, `spark.sql`, read and write goes through it |
-| **Spark Connect** | Lightweight client that ships your code to a **remote** Spark cluster's Connect server (here, one line: `getOrCreate()`) |
+| **Spark Connect** | Lightweight client that ships your code to a **remote** Spark cluster's Connect server (here `spark` is pre-created for you) |
 | **Transformation** | A **lazy** step (`select`, `filter`/`where`, `groupBy`, `withColumn`, `join`) — builds the plan, runs nothing |
 | **Action** | The step that **triggers** the computation (`show`, `count`, `collect`, `write`, `toPandas`) |
 | **Lazy evaluation** | Spark stacks up transformations and only runs when an **action** asks for a result — letting it optimise the whole plan |
