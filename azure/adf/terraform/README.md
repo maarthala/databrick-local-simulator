@@ -28,8 +28,19 @@ cd ../databricks && terraform init && terraform apply -var-file=../common.tfvars
 cd ../sql-seed   && terraform init && terraform apply -var-file=../common.tfvars  # optional
 ```
 
-Destroy in reverse (`sql-seed` → `databricks` → `sql` → `base-setup` last, since it
-owns the resource group).
+## Destroy
+
+Destroy in **reverse** — `base-setup` last, since it owns the shared `rg-adf`:
+
+```bash
+cd azure/adf/terraform
+cd sql-seed     && terraform destroy -var-file=../common.tfvars  # if deployed
+cd ../databricks && terraform destroy -var-file=../common.tfvars
+cd ../sql         && terraform destroy -var-file=../common.tfvars
+cd ../base-setup  && terraform destroy -var-file=../common.tfvars  # removes rg-adf
+```
+
+Or nuke everything at once (irreversible): `az group delete --name rg-adf --yes`.
 
 ## Prerequisites
 
