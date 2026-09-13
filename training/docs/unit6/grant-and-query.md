@@ -35,17 +35,20 @@ analyst (principal) ─► analyst_role ─► sales_reader (catalog-role) ─�
 
 ## Do it — grant analyst read-only on `demo.sales` (Console)
 
-Sign in to the Console (<http://localhost:8189>) as `root` / `s3cr3t`, then:
+Sign in to the Console (<http://localhost:8189>) as `root` / `s3cr3t`.
 
-1. **Catalogs → `<your catalog>` → Catalog Roles → Create** → name it `sales_reader`.
-2. On `sales_reader` → **Grant Privilege** — add these (one grant per privilege):
-    | Scope | Resource | Privilege | Why |
-    |---|---|---|---|
-    | Table | `demo.sales` | **`TABLE_READ_DATA`** | read the rows |
-    | Table | `demo.sales` | **`TABLE_LIST`** | see the table |
-    | Namespace | `demo` | **`TABLE_LIST`** | list tables in `demo` |
-    | Catalog | — | **`NAMESPACE_LIST`** | discover the `demo` namespace |
-3. On `sales_reader` → **manage principal roles → Grant to Principal Role → `analyst_role`**.
+**1. Create the catalog role:** Catalogs → `<your catalog>` → **Catalog Roles → Create** → name it `sales_reader`.
+
+**2. Add these grants** — on `sales_reader` → **Grant Privilege** (one grant per row):
+
+| Scope | Resource | Privilege | Why |
+|---|---|---|---|
+| Table | `demo.sales` | **`TABLE_READ_DATA`** | read the rows |
+| Table | `demo.sales` | **`TABLE_LIST`** | see the table |
+| Namespace | `demo` | **`TABLE_LIST`** | list tables in `demo` |
+| Catalog | — | **`NAMESPACE_LIST`** | discover the `demo` namespace |
+
+**3. Bind it to the persona:** on `sales_reader` → **manage principal roles → Grant to Principal Role → `analyst_role`**.
 
 That's it — analyst now has read-only access, granted through the role.
 
