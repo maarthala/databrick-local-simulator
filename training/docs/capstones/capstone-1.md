@@ -36,7 +36,7 @@ Add a new Gold mart `iceberg.gold.daily_cancellations` and expose it in Superset
    `--catalog` like the other jobs, and write with Iceberg `createOrReplace` (idempotent).
 2. **Airflow.** Add a `gold_cancellations` task to your `shopflow_medallion` DAG ([5.2](../unit5/medallion-dag.md)),
    depending on `silver`.
-3. **Governance.** Define the analyst grant in Apache Polaris ([6.2](../unit6/rbac.md)): analyst gets
+3. **Governance.** Define the analyst grant in Apache Polaris ([6.2](../unit6/polaris-admin.md)): analyst gets
    `SELECT` on the new Gold table — nothing more.
 4. **BI.** Add a Superset **Dataset** on `gold.daily_cancellations` and a **line chart** of
    `cancellation_rate` over `order_date`, on the executive dashboard.
@@ -102,14 +102,14 @@ Add a new Gold mart `iceberg.gold.daily_cancellations` and expose it in Superset
 
     In the Polaris catalog, grant the **analyst** principal `SELECT` (via the Gold
     schema's read privilege) on the new `gold.daily_cancellations` table — and nothing
-    more. This is the same grant chain you built in [6.2](../unit6/rbac.md), pointed at the
+    more. This is the same grant chain you built in [6.2](../unit6/polaris-admin.md), pointed at the
     new mart:
 
         analyst  →  USE CATALOG iceberg  →  USE SCHEMA gold  →  SELECT on daily_cancellations
 
     This records the least-privilege policy (analyst reads Gold only). On the managed **Databricks
     catalog** the engines enforce it automatically; on this OSS stack it documents the intent
-    (see the honest note in [6.2](../unit6/rbac.md)).
+    (see the honest note in [6.2](../unit6/polaris-admin.md)).
 
     **4. Superset**
 

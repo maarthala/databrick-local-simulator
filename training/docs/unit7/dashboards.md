@@ -190,7 +190,7 @@ to deliver. Everything upstream was in service of this one page an exec can read
 !!! note "Governance & BI (model vs this stack)"
     On **Databricks**, a BI tool reads Gold through a SQL warehouse and **the Databricks catalog
     enforces the grants automatically** — an analyst's dashboard can only surface what their role may read
-    (the [Unit 6](../unit6/rbac.md) policy). On this OSS compose stack, Trino/Superset query the
+    (the [Unit 6](../unit6/polaris.md) policy). On this OSS compose stack, Trino/Superset query the
     **Apache Polaris**-backed `iceberg` catalog without per-user enforcement wired into the query
     path, so *by convention* you point BI at **Gold only** and never grant a BI account more than
     read on Gold. The **pattern** — BI reads the small, safe, governed Gold layer — is what transfers.

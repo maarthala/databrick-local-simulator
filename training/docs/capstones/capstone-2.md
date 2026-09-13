@@ -115,7 +115,7 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
     **3 — RBAC, two blast radii (Apache Polaris, from Unit 6; per-principal grants):**
 
     Grant each Polaris principal exactly the blast radius its role needs — the same grant
-    chain from [6.2](../unit6/rbac.md), applied to two schemas:
+    chain from [6.2](../unit6/polaris-admin.md), applied to two schemas:
 
         # engineer works in silver
         engineer  →  USE CATALOG iceberg  →  USE SCHEMA silver  (read + write)
@@ -124,7 +124,7 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
 
     This defines the least-privilege policy. On the managed **Databricks catalog** the engines
     enforce it automatically (and you'd grant **groups**, not users); on this OSS stack it records
-    the intent — see the honest note in [6.2](../unit6/rbac.md).
+    the intent — see the honest note in [6.2](../unit6/polaris-admin.md).
 
     **4 — Airflow, idempotent + no catchup:**
 

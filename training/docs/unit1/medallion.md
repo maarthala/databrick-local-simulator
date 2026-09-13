@@ -62,7 +62,7 @@ category — the exact answers the [scenario](../scenario.md) asked for.
 | **Trust & debuggability** | If Gold looks wrong, trace back through Silver to Bronze to the raw source |
 | **Reprocessing** | Keep raw Bronze → rebuild Silver/Gold whenever logic changes, no re-ingest |
 | **Separation of concerns** | Each layer has one job; changes stay contained |
-| **Access control** | Grant analysts **Gold** only; engineers work in **Silver**; **Bronze** stays restricted (you enforce this in the [Governance unit](../unit6/rbac.md)) |
+| **Access control** | Grant analysts **Gold** only; engineers work in **Silver**; **Bronze** stays restricted (you enforce this in the [Governance unit](../unit6/polaris.md)) |
 | **Performance** | Consumers hit small, pre-aggregated Gold, not billions of raw rows |
 
 !!! note "It's a guideline, not a law"
@@ -82,7 +82,7 @@ Same architecture, running continuously instead of on a schedule.
 | **Bronze** | ingestion (Spark) | Apache Polaris | [3](../unit4/read-bronze.md), [4](../unit5/basics.md) |
 | **Silver** | Spark / SQL transforms | Apache Polaris | [2](../unit2/intro.md), [3](../unit4/transform-silver.md) |
 | **Gold** | Spark / SQL aggregates | Apache Polaris | [2](../unit2/intro.md), [3](../unit4/spark-sql-gold.md) |
-| **Serve** | Trino + Superset | RBAC on Gold | [5](../unit6/catalogs.md), [6](../unit7/dashboards.md) |
+| **Serve** | Trino + Superset | RBAC on Gold | [5](../unit6/polaris.md), [6](../unit7/dashboards.md) |
 
 !!! abstract "Where medallion lives on the cloud"
     **Medallion (Bronze/Silver/Gold) is Databricks' own term** — you'll see those exact

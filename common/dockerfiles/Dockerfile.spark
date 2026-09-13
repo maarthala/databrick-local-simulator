@@ -32,14 +32,7 @@ RUN zip -q -d /opt/spark/jars/bundle-2.24.6.jar 'io/netty/*' 'META-INF/native/li
 # Metastore with its own bundled hive-2.3.10 client; Iceberg is accessed via the
 # REST catalog (see spark-defaults.conf), so these jars are pure conflict.
 
-# Unity Catalog Spark connector (0.7.0-SNAPSHOT, built for Spark 4.0 from source and
-# patched to accept permanent MinIO creds — no STS session token). Placed in
-# /opt/spark/jars (system classpath) so hadoop-aws's S3A can load UC's vended
-# credential provider. Lets Spark read/write GOVERNED Delta tables in UC's lakehouse
-# catalog.
-COPY ./uc-jars/*.jar /opt/spark/jars/
-
-# Delta Lake (the UC lakehouse's table format). Baked onto the system classpath —
+# Delta Lake table format. Baked onto the system classpath —
 # supplying it per-job via --packages fails on local[*] because DeltaCatalog is
 # referenced during session init before the ivy jars join the driver classpath
 # (ClassNotFoundException: org.apache.spark.sql.delta.catalog.DeltaCatalog).
