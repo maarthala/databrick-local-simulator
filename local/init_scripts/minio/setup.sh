@@ -20,11 +20,6 @@ mc mb --ignore-existing local/demo-bucket
 # Upload the sample Northwind parquet/CSV data.
 mc cp --recursive /code/shared/testdata/ local/demo-bucket/northwind/
 
-# Pre-create the prefixes Hive/Iceberg expect (S3 has no real folders; markers suffice).
-printf '' | mc pipe local/demo-bucket/hive/default/.keep
-printf '' | mc pipe local/demo-bucket/warehouse/.keep
-printf '' | mc pipe local/demo-bucket/iceberg/.keep
-
 echo "Buckets after setup:"
 mc ls local/
 echo "MinIO setup complete."
