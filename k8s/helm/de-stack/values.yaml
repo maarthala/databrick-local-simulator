@@ -62,64 +62,12 @@ minio:
   rootUser: minioadmin
   rootPassword: minioadmin
 
-clickhouse:
-  enabled: false             # dropped — Trino queries the lake; ClickHouse not needed
-  image: clickhouse/clickhouse-server:latest
-  storage: 5Gi
-  user: default
-  password: default
-
-# ------------------------------------------------------------------ streaming
-# (dropped — enable these only to practice streaming/CDC pipelines)
-kafka:
-  enabled: false
-  image: confluentinc/cp-kafka:7.5.0
-  storage: 5Gi
-kafkaConnect:
-  enabled: false
-  repo: kafka-connect          # <registry>/kafka-connect
-  tag: latest
-kafkaUi:
-  enabled: false
-  image: provectuslabs/kafka-ui:latest
-
 # ------------------------------------------------------------------ lakehouse
-hiveMetastore:
-  enabled: false             # dropped — Iceberg REST is the catalog; enable for Hive tables
-  repo: hive
-  tag: latest
-icebergRest:
-  # Dropped — the pipeline now runs on the governed Polaris catalog (single catalog).
-  enabled: false
-  image: apache/iceberg-rest-fixture:latest
-  storage: 2Gi
-# Unity Catalog OSS — governed catalog + RBAC. The stock 3.1GB image spins this
-# node's overlayfs snapshotter; we use a FLATTENED single-layer build (1.7GB) that
-# imports/creates cleanly. Loaded onto the node via `ctr images import`.
-unityCatalog:
-  enabled: false
-  # Patched build: vends static permanent S3 keys (MinIO can't do STS AssumeRole,
-  # and stock UC only vends via STS/session tokens). See tools/uc-server/.
-  image: unitycatalog/unitycatalog:vendflat
-  storage: 2Gi
-  authorization: "enable"
-  # NodePort so the `uc` CLI can hit the server directly (the nginx ingress chunks
-  # responses in a way the CLI's HTTP client rejects). Use: uc --server http://uc.de.lan:30808
-  nodePort: 30808
-  # Web UI (React dev server, port 3000) — proxies /api to the unity-catalog
-  # Service. Built from ui/ with PROXY_HOST=unity-catalog, flattened to 1 layer.
-  ui:
-    enabled: false
-    # Patched build: adds a working "Continue with Keycloak" login (implicit OIDC)
-    # and Bearer-token auth so the UI works over plain http. Built from the pinned
-    # ui/ source + flattened; see docs. Rebuild: docker build --build-arg
-    # PROXY_HOST=unity-catalog -t unitycatalog/unitycatalog-ui:kc ui/ then flatten.
-    image: unitycatalog/unitycatalog-ui:kcflat
-# Apache Polaris — Iceberg-native governed catalog (the live governance solution;
-# UC is paused above). Persistence in Postgres (db polarisdb), Keycloak SSO, MinIO
-# storage with static creds. Console UI is a LOCAL build (common/polaris-console/).
-# Images must be imported to the node (kubelet pulls corrupt containerd snapshots):
-#   docker save apache/polaris:latest | ssh sysadmin@<node> microk8s ctr images import -
+# Apache Polaris — Iceberg-native governed catalog (the live governance solution).
+# Persistence in Postgres (db polarisdb), MinIO storage with static creds. Console
+# UI is a local build. Images are imported to the node (kubelet pulls corrupt
+# containerd snapshots on this LXC):
+#   docker save apache/polaris:latest | ssh sysadmin@<node> microk8s images import /dev/stdin
 polaris:
   enabled: true
   image: apache/polaris:latest
@@ -129,25 +77,6 @@ polaris:
 trino:
   enabled: true
   image: trinodb/trino:473
-
-# Keycloak — OIDC provider for Unity Catalog per-user access control. Dev mode,
-# realm re-imported from files/keycloak/de-stack-realm.json on every start (users
-# analyst/engineer/lead, confidential client "unity-catalog"). Issuer: http://auth.de.lan/realms/de-stack.
-keycloak:
-  # Dropped from the stack — Polaris uses internal principal logins (client id/secret),
-  # no external IdP. Re-enable (with UC) when human SSO is needed again.
-  enabled: false
-  image: quay.io/keycloak/keycloak:26.0
-  adminUser: admin
-  adminPassword: admin
-  # OIDC client the UC server + `uc` CLI use (must match the realm JSON).
-  clientId: unity-catalog
-  clientSecret: unity-catalog-secret
-  # Pinned ClusterIP for the keycloak Service. The UC pod gets a hostAlias mapping
-  # auth.de.lan -> this IP so its JWKS fetch hits Keycloak directly (nginx mangles
-  # the chunked response and UC's Armeria client rejects it). Must be free in the
-  # service CIDR (10.152.183.0/24 on this MicroK8s node).
-  clusterIP: 10.152.183.249
 
 # ------------------------------------------------------------------ compute
 spark:
@@ -181,10 +110,6 @@ jupyter:
   repo: jupyter
   tag: latest
   token: "123456"
-generators:
-  enabled: false             # dropped — sample-data generators (were for Kafka streaming)
-  repo: app
-  tag: latest
 
 # ------------------------------------------------------------------ UIs
 superset:

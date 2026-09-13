@@ -3,8 +3,6 @@
   ansible.builtin.shell: >
     helm template {{ helm_release }} {{ chart_dir }}
     {% if global_image_registry is defined %}--set global.imageRegistry={{ global_image_registry }} {% endif %}
-    {% if uc_image is defined %}--set unityCatalog.image={{ uc_image }} {% endif %}
-    {% if uc_ui_image is defined %}--set unityCatalog.ui.image={{ uc_ui_image }} {% endif %}
     {% for t in wave.templates %}-s templates/{{ t }} {% endfor %}
     | kubectl -n {{ namespace }} apply -f -
   changed_when: true

@@ -1,7 +1,7 @@
 # Databrick Local Simulator
 
 A hands-on Data Engineering learning environment — a **governed lakehouse**
-(MinIO, Iceberg, Unity Catalog, Keycloak SSO, Spark, Trino, Superset, Airflow,
+(MinIO, Apache Polaris governed Iceberg catalog, Spark, Trino, Superset, Airflow,
 Jupyter) that you can run two ways with the **same stack**:
 
 ## 📚 Training course
@@ -41,8 +41,8 @@ a registry for bigger clusters).
 ```
 local/    Docker Compose stack + its setup, config, and challenges (Tasks.md)
 k8s/      Helm chart (k8s/helm) + Ansible bootstrap (k8s/ansible)
-common/   Shared by both: Dockerfiles for the custom images, Unity Catalog
-          image patches (uc-server, uc-ui), and helper tools (uc-cli, uc-spark)
+common/   Shared by both: Dockerfiles for the custom images, the Polaris seed
+          (common/polaris), and the Polaris Console build (common/polaris-console)
 ```
 
 Both environments deploy the **same governed-lakehouse component set** and are

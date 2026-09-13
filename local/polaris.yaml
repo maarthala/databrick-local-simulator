@@ -1,8 +1,7 @@
 services:
   # Apache Polaris — Iceberg-native governed REST catalog (RBAC + credential
-  # vending). SPIKE: evaluated alongside Unity Catalog to teach the full catalog
-  # concept for BOTH Trino and Spark on the existing Iceberg lakehouse.
-  # In-memory persistence for now (metadata resets on restart; MinIO data persists).
+  # vending). The live governance for the stack: one governed catalog for BOTH
+  # Trino and Spark on the Iceberg lakehouse. Persistence in Postgres (db polarisdb).
   polaris:
     image: apache/polaris:latest
     container_name: polaris
@@ -77,7 +76,7 @@ services:
       - "8080"
     environment:
       # Read at container start to generate /config.js (window.APP_CONFIG).
-      # API is same-origin via the proxy (:8189); OIDC = Keycloak SSO.
+      # API is same-origin via the proxy (:8189); auth = Polaris client id/secret.
       VITE_POLARIS_API_URL: http://localhost:8189
       VITE_POLARIS_REALM: POLARIS
       VITE_POLARIS_PRINCIPAL_SCOPE: PRINCIPAL_ROLE:ALL

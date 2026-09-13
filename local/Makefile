@@ -16,7 +16,7 @@ COMPOSE = docker compose
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init up down restart ps logs config clean docs polaris-seed uc-seed
+.PHONY: help init up down restart ps logs config clean docs polaris-seed
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -45,9 +45,6 @@ docs: ## Build the training site (../training -> ../training/site), served by ho
 
 polaris-seed: ## Provision the governed Polaris catalog + personas/RBAC (Unit 6, the live governance)
 	bash ../common/polaris/seed-polaris.sh
-
-uc-seed: ## (paused) Provision the governed Unity Catalog — only if UC is re-enabled
-	bash ../common/uc-cli/seed-governance.sh
 
 config: ## Validate the merged compose configuration
 	$(COMPOSE) config -q && echo "compose config OK"

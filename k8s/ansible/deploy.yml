@@ -9,7 +9,6 @@
 #
 # Registry-based environments: set the chart's registry, e.g.
 #   ansible-playbook deploy.yml -e global_image_registry=<REGISTRY>
-# (only add -e uc_image=… / -e uc_ui_image=… if you've re-enabled Unity Catalog)
 
 - name: Deploy the stack + seed Polaris (from the Mac)
   hosts: build_host

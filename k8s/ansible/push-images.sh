@@ -20,9 +20,6 @@ mappings=(
   "ghcr.io/maarthala/de-stack/superset:latest=superset:latest"
   "ghcr.io/maarthala/de-stack/airflow-slim:latest=airflow-slim:latest"
   "ghcr.io/maarthala/de-stack/home:latest=home:latest"
-  # Unity Catalog images — only needed if you re-enable UC (uncomment + build them):
-  # "unitycatalog/unitycatalog:vendflat=unity-catalog:vendflat"
-  # "unitycatalog/unitycatalog-ui:kcflat=unity-catalog-ui:kcflat"
 )
 
 for m in "${mappings[@]}"; do
@@ -40,10 +37,7 @@ cat <<EOF
 
 All images pushed to $REGISTRY. Deploy on a registry-pulling cluster with:
 
-  ansible-playbook deploy.yml \\
-    -e global_image_registry=$REGISTRY \\
-    -e uc_image=$REGISTRY/unity-catalog:vendflat \\
-    -e uc_ui_image=$REGISTRY/unity-catalog-ui:kcflat
+  ansible-playbook deploy.yml -e global_image_registry=$REGISTRY
 
 (imagePullPolicy is IfNotPresent, so the kubelet pulls these from the registry
 when they aren't already present on the node.)

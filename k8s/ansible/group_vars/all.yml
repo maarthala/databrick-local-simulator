@@ -15,14 +15,10 @@ chart_dir: "{{ repo_root }}/k8s/helm/de-stack"
 stage_dir_local: "/tmp/de-stack-images"
 stage_dir_node: "/tmp/de-stack-images"
 
-# Unity Catalog source (pinned) — the patched server + UI are built from here.
-uc_repo: "https://github.com/unitycatalog/unitycatalog.git"
-uc_commit: "58d5c7b2867d76801dc991b055d6ea2c70d2d811"    # v0.7.0-SNAPSHOT
-uc_build_dir: "/tmp/de-stack-uc-src"
-
 # ---------------------------------------------------------------------------
-# Custom images built directly from stack/dockerfiles (context = that dir), then
-# tagged to the refs the Helm chart expects. (spark bakes the UC connector jars.)
+# Custom images built directly from common/dockerfiles (context = that dir), then
+# tagged to the refs the Helm chart expects. All stock/governance images (incl.
+# apache/polaris) are pulled by the kubelet — nothing is built from source.
 # ---------------------------------------------------------------------------
 dockerfiles_dir: "{{ repo_root }}/common/dockerfiles"
 build_images:
@@ -31,24 +27,13 @@ build_images:
   - { dockerfile: "Dockerfile.superset",     ref: "ghcr.io/maarthala/de-stack/superset:latest",     flatten: false }
   - { dockerfile: "Dockerfile.airflow-slim", ref: "ghcr.io/maarthala/de-stack/airflow-slim:latest", flatten: false }
 
-# ---------------------------------------------------------------------------
-# Patched images built from source + flattened for the node's overlayfs snapshotter.
-# The governed catalog is now Apache Polaris (stock apache/polaris image, no patch),
-# so there are no source-built images to make. The Unity Catalog server/UI images
-# are only needed if you re-enable UC (unityCatalog.enabled + keycloak.enabled in
-# values.yaml); see git history for their build spec.
-# ---------------------------------------------------------------------------
-source_images: []
-
 # The home image bakes the built training site (context = training/, not the
 # shared dockerfiles dir), so it's built by its own task rather than the loop.
 home_image: "ghcr.io/maarthala/de-stack/home:latest"
 
 # All image refs to save on the Mac + import on the node.
 load_images: >-
-  {{ (build_images | map(attribute='ref') | list)
-     + (source_images | map(attribute='ref') | list)
-     + [home_image] }}
+  {{ (build_images | map(attribute='ref') | list) + [home_image] }}
 
 # ---------------------------------------------------------------------------
 # Deploy waves — applied in order; each waits for readiness before the next.
@@ -64,9 +49,7 @@ deploy_waves:
   - name: "apps"
     templates: [airflow.yaml, jupyter.yaml, superset.yaml, home.yaml, configmaps.yaml]
 # NOTE: only ENABLED templates belong here — `helm template -s <t>` on a disabled
-# service renders nothing and `kubectl apply` then errors on empty input. Keycloak,
-# iceberg-rest, and unity-catalog(-ui) are disabled in values.yaml (Polaris replaced
-# them); add their templates back to a wave only if you re-enable them.
+# service renders nothing and `kubectl apply` then errors on empty input.
 
 # ---------------------------------------------------------------------------
 # Polaris seed (run once Polaris + its bootstrap Job are up). The chart's

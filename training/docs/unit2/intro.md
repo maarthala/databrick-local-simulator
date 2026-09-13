@@ -37,7 +37,7 @@ its own schemas and tables. `SHOW CATALOGS` lists them. On our stack:
     - **schemas and tables** in the lakehouse — with Spark in
       [Unit 4](../unit4/read-bronze.md) (`CREATE SCHEMA`, `CREATE TABLE`);
     - governed **schemas and tables** in the **Apache Polaris** catalog — in
-      [Unit 6](../unit6/catalogs.md).
+      [Unit 6](../unit6/polaris.md).
 
 So in this unit you'll **explore ShopFlow's raw source with SQL** — the exact
 [tables from the schema page](../unit0/schema.md) — *before* building the lakehouse. Every table
@@ -220,7 +220,7 @@ SELECT * FROM iceberg.my_lab.first_table ORDER BY id;
     On this learning stack, Trino/Spark write to `iceberg` **freely** — the engines aren't wired to
     per-user enforcement, so you can experiment without permission errors. On a
     *governed* platform an admin would `GRANT` you `CREATE` on a schema first — the access model you'll
-    meet in [Unit 6](../unit6/rbac.md).
+    meet in [Unit 6](../unit6/polaris.md).
 
 ## Challenge
 Using only the `orders` table: list the **5 most recent cancelled orders placed on the

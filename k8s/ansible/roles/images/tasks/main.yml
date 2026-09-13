@@ -18,28 +18,6 @@
   loop: "{{ build_images }}"
   loop_control: { label: "{{ item.ref }}" }
 
-# Only needed when source_images is non-empty (i.e. UC re-enabled). Skipped for
-# the Polaris stack, which uses the stock apache/polaris image.
-- name: Clone Unity Catalog source (if absent)
-  ansible.builtin.command: "git clone {{ uc_repo }} {{ uc_build_dir }}"
-  args:
-    creates: "{{ uc_build_dir }}/.git"
-  when: source_images | length > 0
-
-- name: Check out the pinned UC commit
-  ansible.builtin.command: "git checkout {{ uc_commit }}"
-  args:
-    chdir: "{{ uc_build_dir }}"
-  changed_when: false
-  when: source_images | length > 0
-
-- name: Build patched images from source (skips if the image already exists)
-  ansible.builtin.include_tasks: build_source_image.yml
-  loop: "{{ source_images }}"
-  loop_control:
-    loop_var: img
-    label: "{{ img.ref }}"
-
 - name: Build the home image (nginx + baked training site; context = training/)
   ansible.builtin.command: >
     docker build --platform linux/amd64

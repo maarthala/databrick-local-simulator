@@ -66,13 +66,6 @@ spec:
     metadata:
       labels: {{- include "de-stack.selector" (dict "app" "polaris") | nindent 8 }}
     spec:
-      {{- if .Values.keycloak.enabled }}
-      # Fetch Keycloak JWKS straight from the keycloak Service (the nginx ingress
-      # chunks responses the JWKS client rejects) while keeping the auth.de.lan issuer.
-      hostAliases:
-        - ip: {{ .Values.keycloak.clusterIP | quote }}
-          hostnames: ["auth.{{ .Values.ingress.baseHost }}"]
-      {{- end }}
       containers:
         - name: polaris
           image: {{ .Values.polaris.image }}

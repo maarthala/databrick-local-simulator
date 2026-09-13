@@ -22,9 +22,9 @@ Namespace `de-stack` on the cluster:
 | Orchestration / apps | **Airflow**, **Jupyter**, **Superset** |
 | Commodity | **Postgres**, **Redis**, an **nginx** landing page |
 
-(Unity Catalog + Keycloak, ClickHouse, Kafka, Hive Metastore, Iceberg-REST, Hue are in
-the chart but disabled by default in `k8s/helm/de-stack/values.yaml` — Polaris replaced
-UC/Keycloak; flip `enabled: true` to use any of the others.)
+(Unity Catalog, Keycloak, ClickHouse, Kafka, Hive Metastore, Iceberg-REST, and Hue were
+removed — Polaris replaced UC/Keycloak and the rest were unused. See git history to
+restore any of them.)
 
 ## 2. Prerequisites
 - A **MicroK8s node** with addons `ingress`, `hostpath-storage`, `metrics-server`,
@@ -33,8 +33,8 @@ UC/Keycloak; flip `enabled: true` to use any of the others.)
 - **DNS:** a wildcard `*.de.lan → <node-ip>` (a Pi-hole `address=/de.lan/<node-ip>`
   entry) so all the `*.de.lan` UIs resolve.
 - **On your workstation:** `kubectl` + `helm` with `KUBECONFIG` pointing at the
-  cluster (this repo assumes `~/.kube/config-de-node`), plus `docker`, `git`,
-  `ansible`, and the `uc` CLI (`brew install unitycatalog`).
+  cluster (this repo assumes `~/.kube/config-de-node`), plus `docker`, `git`, and
+  `ansible`.
 
 ## 3. Deploy
 Use the Ansible bootstrap ([full details](ansible/README.md)). Short version:
@@ -123,11 +123,9 @@ custom ones are built from `common/dockerfiles` by the Ansible `images` role:
 - **Jupyter** — thin Spark Connect client + notebook auto-push (`Dockerfile.jupyter`).
 - **Superset**, **airflow-slim**, **home** (nginx + baked training site).
 
-If you re-enable Unity Catalog (`unityCatalog.enabled` + `keycloak.enabled` in
-`values.yaml`), its patched server/UI images are built from source — restore the
-`source_images` entries in `k8s/ansible/group_vars/all.yml` (see git history) and the
-runbooks in [`common/uc-server`](../common/uc-server/README.md) /
-[`common/uc-ui`](../common/uc-ui/README.md).
+Unity Catalog + Keycloak have been removed (Polaris is the governance). To bring them
+back, restore their chart templates, `values.yaml` blocks, and the ansible
+`source_images` build spec from git history.
 
 ## 7. Teardown
 ```bash
@@ -139,7 +137,7 @@ kubectl delete namespace de-stack
 ```
 k8s/helm/de-stack/    Helm umbrella chart (templates, values, config files)
 k8s/ansible/          bootstrap: build-load.yml, deploy.yml, push-images.sh
-common/dockerfiles/   Dockerfiles for the custom images (+ uc-jars/)
-common/uc-server, common/uc-ui   Unity Catalog server + UI image patches
-common/uc-cli, common/uc-spark   runtime helper scripts
+common/dockerfiles/   Dockerfiles for the custom images (spark, jupyter, superset, …)
+common/polaris/       seed-polaris.sh (catalog + personas + RBAC)
+common/polaris-console/  Polaris Console image build
 ```

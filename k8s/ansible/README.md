@@ -29,7 +29,6 @@ REGISTRY=ghcr.io/<you>/de-stack ./push-images.sh       # publish to your registr
 ansible-playbook deploy.yml --ask-vault-pass \
   -e global_image_registry=$REGISTRY
 ```
-(If you re-enable Unity Catalog, also pass `-e uc_image=…` / `-e uc_ui_image=…`.)
 
 ## Prerequisites
 - **On the Mac (control node):** `ansible`, `docker`, `helm`, `kubectl`, `git`,
@@ -50,24 +49,23 @@ ansible-vault encrypt group_vars/vault.yml
 
 ## Notes on speed
 First build is slow — it builds the Spark/Jupyter/Superset/Airflow/home images (the Spark
-image is large). Re-runs are fast: builds hit the docker layer cache. (No source builds
-for the default Polaris stack; those only run if you re-enable Unity Catalog.)
+image is large). Re-runs are fast: builds hit the docker layer cache. All governance
+images (apache/polaris) are stock and pulled by the kubelet — nothing is built from source.
 
 Tags let you run one phase: `--tags images|load|secrets|deploy|seed`.
 
 ## What each phase does
 | Phase | Where | Action |
 |---|---|---|
-| **images** | Mac | `init.sh` (fetch base jars) → build `spark/jupyter/superset/airflow-slim/home` → `docker save` (plus UC server/UI source builds only if `source_images` is set) |
+| **images** | Mac | `init.sh` (fetch base jars) → build `spark/jupyter/superset/airflow-slim/home` → `docker save` |
 | **load** | node | copy tarballs → `microk8s ctr images import` (sudo) → clean up |
 | **secrets** | Mac | create the `de-stack-git-token` secret from the vault |
 | **deploy** | Mac | `helm template … \| kubectl apply` in waves — commodity → catalog (Polaris) → compute → apps — waiting for readiness between each |
 | **seed** | Mac | wait for Polaris + its bootstrap Job, then run `common/polaris/seed-polaris.sh` (catalog, bronze/silver/gold namespaces, analyst/engineer/lead personas, graded RBAC) via a port-forward |
 
 ## Config
-Everything is in `group_vars/all.yml` — image matrix, deploy waves, and the Polaris seed
-settings (`polaris_seed_script`, `polaris_local_port`). `source_images` is empty for the
-Polaris stack (set it to build the patched UC images if you re-enable UC).
+Everything is in `group_vars/all.yml` — the image matrix (`build_images`), deploy waves,
+and the Polaris seed settings (`polaris_seed_script`, `polaris_local_port`).
 
 ## Caveats
 - **First container start after import can be very slow / wedge** on a large image (the
