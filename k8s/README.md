@@ -95,8 +95,32 @@ All UIs are at `https?://<name>.de.lan`. Default credentials (change for anythin
    a Delta table in `lakehouse.sales`, then watch RBAC — analyst can `SELECT`, engineer is denied.
 4. **Query the lake with SQL** — Trino (`iceberg` catalog) via the CLI, or Superset's SQL
    Lab (Trino → Iceberg connection is pre-configured).
-5. **Schedule / notebooks** — Airflow DAGs + Jupyter (Spark Connect) run shared code
-   git-synced from the `de-lab` repo.
+5. **Schedule / notebooks** — Airflow DAGs are git-synced (read-only) from the `de-lab`
+   repo; Jupyter clones the same repo and **auto-pushes every notebook save** (see below).
+
+### Notebook auto-push (git commit + push on save)
+Jupyter clones `git.repoUrl` into a writable dir and, on every save, commits + pushes the
+file. Save notebooks under the repo's `notebooks/` folder. Enabled by `git.autopush: true`.
+
+**Requirements:** the `de-stack-git-token` PAT must have **Contents: Read and write** on the
+repo, and its **account must have write access** to the repo (a fine-grained PAT can't exceed
+the account's repo role).
+
+**Point it at a different account / repo:**
+```bash
+# 1. edit k8s/helm/de-stack/values.yaml → git.repoUrl / git.branch
+#    (commit author name/email are in templates/jupyter.yaml env)
+
+# 2. swap the token (the token = the pushing account)
+kubectl -n de-stack create secret generic de-stack-git-token \
+  --from-literal=token='<NEW_PAT>' --dry-run=client -o yaml | kubectl -n de-stack apply -f -
+
+# 3. apply + restart (pod re-clones on start)
+helm template de-stack k8s/helm/de-stack -s templates/jupyter.yaml | kubectl -n de-stack apply -f -
+kubectl -n de-stack rollout restart deploy jupyter
+```
+Note: `git.repoUrl` + this secret are **shared with Airflow's DAG git-sync**, so changing
+them repoints both Jupyter and Airflow.
 
 ## 6. How the custom pieces are built
 Most images are stock. The non-trivial ones are built from source with small patches,

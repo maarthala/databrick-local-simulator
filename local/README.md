@@ -67,6 +67,23 @@ Then:
 - **CLI** against `http://localhost:8081`:
   `UC_URL=http://localhost:8081 KC_URL=http://keycloak:8080/realms/de-stack/protocol/openid-connect/token ../common/uc-cli/login.sh analyst`
 
+## Notebook auto-push (git commit + push on save)
+Jupyter clones a repo into `/home/jovyan/work/repo` and, on every save, commits + pushes
+the file. Save notebooks under the repo's `notebooks/` folder. Config is in
+`local/jupyter.yaml` (`GIT_REPO_URL`, `GIT_BRANCH`, `GIT_AUTHOR_NAME/EMAIL`).
+
+The **token = the pushing account** and must have **Contents: Read+Write** on the repo.
+Supply it from your **shell**, never a committed file (`local/.env` is tracked):
+```bash
+GIT_TOKEN=$(gh auth token) docker compose up -d --force-recreate jupyter   # or: ... make up
+```
+To switch account/repo: edit `GIT_REPO_URL` in `jupyter.yaml`, then bring it up with the new
+`GIT_TOKEN`; delete the stale clone first so it re-clones:
+```bash
+docker exec jupyter rm -rf /home/jovyan/work/repo
+GIT_TOKEN=<NEW_PAT> docker compose up -d --force-recreate jupyter
+```
+
 ## Notes
 - The Keycloak↔Unity Catalog governance (OIDC + per-user RBAC + MinIO credential
   vending) is validated in compose and works the same as k8s.
