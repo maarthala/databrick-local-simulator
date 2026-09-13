@@ -1,16 +1,35 @@
 # Azure ADF — Terraform
 
 Infrastructure-as-Code for the Azure Data Factory learning environment, split into
-small independent **stacks** (each with its own state — deploy/destroy separately).
+small **stacks** (each with its own state).
 
 ```
 base-setup/   ADF factory (+ GitHub) + ADLS Gen2 data lake   (free until pipelines run)
-sql/          Azure SQL logical server + database             (billable ~US$5/mo)
-sql-seed/     runs seed.sql into the SQL db (optional)        (needs sqlcmd, or use a GUI)
+sql/          Azure SQL server + AdventureWorks sample DB     (billable ~US$5/mo)
+databricks/   Workspace + smallest serverless SQL warehouse   (free until compute runs)
+sql-seed/     creates + seeds a ShopFlow DB (optional)         (needs sqlcmd, or use a GUI)
 ```
 
-Naming is driven by a single **`prefix`** variable (default `epireum`), so resources
-get static names: `epireum-adf`, `epireumdl`, `epireum-sql`.
+Naming is driven by a single **`prefix`** variable (default `epireum`) → static names
+`epireum-adf`, `epireumdl`, `epireum-sql`, `epireum-dbw`.
+
+**One resource group** (`rg-adf`) holds everything: **`base-setup` creates it**, the
+other stacks reference it. So `base-setup` must be applied **first**.
+
+## Deploy order
+
+```bash
+cd azure/adf/terraform
+cp common.tfvars.example common.tfvars     # edit values once
+
+cd base-setup   && terraform init && terraform apply -var-file=../common.tfvars  # creates rg-adf
+cd ../sql        && terraform init && terraform apply -var-file=../common.tfvars
+cd ../databricks && terraform init && terraform apply -var-file=../common.tfvars
+cd ../sql-seed   && terraform init && terraform apply -var-file=../common.tfvars  # optional
+```
+
+Destroy in reverse (`sql-seed` → `databricks` → `sql` → `base-setup` last, since it
+owns the resource group).
 
 ## Prerequisites
 
@@ -44,31 +63,6 @@ Each stack uses the variables it declares; any it doesn't just print a harmless
 **shared** values here (`subscription_id`, `prefix`, SQL creds, git). Values that
 **differ** per stack (location, resource group, database name) are NOT in the file —
 they come from each stack's own defaults in `variables.tf`.
-
-## Deploy
-
-```bash
-cd azure/adf/terraform
-cp common.tfvars.example common.tfvars     # edit values
-
-# 1. base (ADF + data lake) — free
-cd base-setup && terraform init && terraform apply -var-file=../common.tfvars
-
-# 2. SQL server + AdventureWorks sample DB — billable
-cd ../sql && terraform init && terraform apply -var-file=../common.tfvars
-
-# 3. optional ShopFlow DB + seed (needs sqlcmd, or seed in a GUI)
-cd ../sql-seed && terraform init && terraform apply -var-file=../common.tfvars
-```
-
-## Destroy
-
-Each stack independently (SQL is the only one that costs money):
-
-```bash
-cd sql        && terraform destroy -var-file=../common.tfvars
-cd ../base-setup && terraform destroy -var-file=../common.tfvars
-```
 
 ## Notes
 
