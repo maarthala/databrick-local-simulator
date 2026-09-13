@@ -8,7 +8,7 @@ flowchart LR
   PG[(Postgres<br/>OLTP source)] -->|ingest| LAKE
   subgraph LAKE["MinIO — the data lake (demo-bucket)"]
     RAW[raw history<br/>Parquet files]
-    ICE[iceberg/ warehouse<br/>catalog table files]
+    ICE[polaris/ warehouse<br/>catalog table files]
   end
   ICE -. governed by .- POL[(Apache Polaris<br/>iceberg catalog)]
   POL --> ENG[Trino · Spark · Superset]
@@ -59,7 +59,7 @@ or the MinIO console to browse/upload.
 ## 3. The `iceberg` catalog — governed lakehouse tables
 
 The **medallion tables** your pipeline builds, registered in the **Apache Polaris** catalog and
-addressed as **`iceberg.<namespace>.<table>`**. The files sit in MinIO (`demo-bucket/iceberg/…`);
+addressed as **`iceberg.<namespace>.<table>`**. The files sit in MinIO (`demo-bucket/polaris/…`);
 the catalog makes them governed, shared tables.
 
 | Namespace | Holds | Example tables |
@@ -88,7 +88,7 @@ dashboards, and the Polaris Console — one governed copy, every engine.
 |---|---|---|
 | **Postgres** (`shopflow`) | live OLTP source — 12 tables | Trino `shopflow.*`, JDBC |
 | **MinIO** `demo-bucket/shopflow/history` | raw history (Parquet) | `s3a://…` in Spark |
-| **MinIO** `demo-bucket/iceberg` | catalog table files | via the catalog (not by path) |
+| **MinIO** `demo-bucket/polaris` | catalog table files | via the catalog (not by path) |
 | **`iceberg` catalog** (Polaris) | Bronze/Silver/Gold tables | `%%sql`, Spark, Trino, Superset |
 
 **The flow:** raw data starts in **Postgres** (live) and **MinIO history** (Parquet) → the pipeline
