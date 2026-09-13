@@ -98,12 +98,15 @@ nav:
       - "3.5 Consuming APIs (requests)": unit3/apis.md
       - "3.6 SQL from Python (Postgres & lakehouse)": unit3/databases.md
       - "3.7 Spark from a notebook": unit3/spark.md
+      - "3.8 Query tables with %%sql": unit3/sql-magic.md
+      - "3.9 Upload a file & register it as a table": unit3/upload-register.md
   - "4 · Spark":
       - "4.1 Spark fundamentals": unit4/fundamentals.md
       - "4.2 Read the lake (Bronze)": unit4/read-bronze.md
       - "4.3 Transform to Silver": unit4/transform-silver.md
       - "4.4 Spark SQL & aggregates (Gold)": unit4/spark-sql-gold.md
       - "4.5 Challenge: build a Gold mart": unit4/challenge.md
+      - "4.6 Spark performance & tuning": unit4/performance.md
   - "5 · Orchestration (Airflow)":
       - "5.1 Airflow basics": unit5/basics.md
       - "5.2 Build the medallion DAG": unit5/medallion-dag.md
