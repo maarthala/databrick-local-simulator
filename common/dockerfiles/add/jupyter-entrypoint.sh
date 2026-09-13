@@ -25,8 +25,8 @@ if [ "${GIT_AUTOPUSH:-0}" = "1" ] && [ -n "${GIT_REPO_URL:-}" ]; then
 
   mkdir -p "$(dirname "$REPO_DIR")"
   if [ ! -d "$REPO_DIR/.git" ]; then
-    echo "[entrypoint] cloning ${GIT_REPO_URL} (${BRANCH}) -> ${REPO_DIR}"
-    git clone --branch "$BRANCH" "$AUTH_URL" "$REPO_DIR" \
+    echo "[entrypoint] cloning ${GIT_REPO_URL} -> ${REPO_DIR}"
+    git clone "$AUTH_URL" "$REPO_DIR" \
       || echo "[entrypoint] clone failed — continuing without autopush repo"
   else
     git -C "$REPO_DIR" remote set-url origin "$AUTH_URL" || true
@@ -36,7 +36,16 @@ if [ "${GIT_AUTOPUSH:-0}" = "1" ] && [ -n "${GIT_REPO_URL:-}" ]; then
     git -C "$REPO_DIR" config user.name  "${GIT_AUTHOR_NAME:-notebook}"
     git -C "$REPO_DIR" config user.email "${GIT_AUTHOR_EMAIL:-notebook@de.lan}"
     git -C "$REPO_DIR" config pull.rebase true
-    git -C "$REPO_DIR" checkout "$BRANCH" 2>/dev/null || true
+    # push to the same branch we're on; create it upstream on first push if missing.
+    git -C "$REPO_DIR" config push.default current
+    git -C "$REPO_DIR" config push.autoSetupRemote true
+    git -C "$REPO_DIR" fetch -q origin || true
+    # check out the target branch — track the remote one if it exists, else create it.
+    if git -C "$REPO_DIR" show-ref --verify --quiet "refs/remotes/origin/${BRANCH}"; then
+      git -C "$REPO_DIR" checkout -q "$BRANCH"
+    else
+      git -C "$REPO_DIR" checkout -q -B "$BRANCH"
+    fi
     echo "[entrypoint] autopush ready on ${REPO_DIR} (branch ${BRANCH})"
   fi
 fi
