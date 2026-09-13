@@ -27,6 +27,7 @@ landing page.
 
 ## Run
 ```bash
+cp .env.example .env   # first time: create your env (gitignored); set GIT_TOKEN to enable notebook auto-push
 make init   # first time: download base JARs (into ../common/dockerfiles/tmp)
 make docs   # build the training course site (../training -> ../training/site)
 make up     # build the compose images + start everything
@@ -66,6 +67,26 @@ Then:
 - **Query the lake** with Trino (`iceberg` catalog) or Superset SQL Lab.
 - **CLI** against `http://localhost:8081`:
   `UC_URL=http://localhost:8081 KC_URL=http://keycloak:8080/realms/de-stack/protocol/openid-connect/token ../common/uc-cli/login.sh analyst`
+
+## Notebook auto-push (git commit + push on save)
+Jupyter clones a repo into `/home/jovyan/work/repo` and, on every save, commits + pushes
+the file. Save notebooks under the repo's `notebooks/` folder. Config is in
+`local/jupyter.yaml` (`GIT_REPO_URL`, `GIT_BRANCH`, `GIT_AUTHOR_NAME/EMAIL`).
+
+Config lives in **`local/.env`** (copy from `.env.example`; `.env` is gitignored, so the
+token never lands in git):
+```bash
+cp .env.example .env         # first time
+# edit .env → set GIT_TOKEN (the pushing account; needs Contents: Read+Write on the repo)
+#   quick fill: GIT_TOKEN=$(gh auth token)
+make up                      # or: docker compose up -d --force-recreate jupyter
+```
+Blank `GIT_TOKEN` = auto-push disabled. To switch account/repo: edit `GIT_REPO_URL` /
+`GIT_TOKEN` in `.env`, delete the stale clone, and recreate:
+```bash
+docker exec jupyter rm -rf /home/jovyan/work/repo
+docker compose up -d --force-recreate jupyter
+```
 
 ## Notes
 - The Keycloak↔Unity Catalog governance (OIDC + per-user RBAC + MinIO credential

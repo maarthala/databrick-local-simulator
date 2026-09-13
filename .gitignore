@@ -12,8 +12,10 @@ Thumbs.db
 # Docker / env
 *.log
 docker-compose.override.yml
+# Real env files are ignored; .env.example templates are committed.
 .env
 .env.*
+!.env.example
 temp/
 # Terraform (local state must never be committed)
 *.tfstate
@@ -82,6 +84,15 @@ tmp
 # material. Only checkpoints and papermill-generated output are ignored.
 **/.ipynb_checkpoints/
 stack/code/notebook/output.ipynb
+
+# Auto-push: the de-lab clone that local Jupyter creates for save-and-push.
+# It has its own git remote (and a token in its .git/config) — never commit it
+# into this repo.
+local/code/notebook/repo/
+
+# Local env holds the git PAT (GIT_TOKEN) + host config — never commit it.
+# Copy local/.env.example -> local/.env and fill it in.
+local/.env
 
 # Misc
 notes.txt
