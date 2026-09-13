@@ -7,7 +7,6 @@
 # Common usage:
 #   make init        # download required JARs/tarballs (first time only)
 #   make up          # build + start the whole stack
-#   make connectors  # register Kafka -> ClickHouse / S3 sink connectors
 #   make ps          # show running services
 #   make logs        # tail logs for all services
 #   make down        # stop the stack and remove volumes
@@ -17,7 +16,7 @@ COMPOSE = docker compose
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init up down restart ps logs connectors config clean docs polaris-seed uc-seed
+.PHONY: help init up down restart ps logs config clean docs polaris-seed uc-seed
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -39,9 +38,6 @@ ps: ## Show running services
 
 logs: ## Tail logs for all services (use `make logs S=kafka` for one)
 	$(COMPOSE) logs -f $(S)
-
-connectors: ## Register Kafka sink connectors (run after `make up`)
-	bash init_scripts/setup-connectors.sh
 
 docs: ## Build the training site (../training -> ../training/site), served by home at :8000/training/
 	docker run --rm -v "$(CURDIR)/../training":/docs squidfunk/mkdocs-material:9 build

@@ -1,9 +1,9 @@
-"""Supervisor: run all three Northwind data generators in one container.
+"""Supervisor: run the Northwind data generators in one container.
 
-Launches the orders, product-price, and clickstream generators as child
+Launches the orders and product-price generators as child
 processes and monitors them. If any child exits, the rest are terminated and
 the supervisor exits non-zero so Docker's `restart: always` restarts the whole
-container (keeping all three generators running as a unit).
+container (keeping the generators running as a unit).
 """
 
 import os
@@ -15,7 +15,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = [
     "orders-generator.py",
     "product-price-generator.py",
-    "user-click-sessions.py",
 ]
 
 
