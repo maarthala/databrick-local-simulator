@@ -83,5 +83,10 @@ tmp
 **/.ipynb_checkpoints/
 stack/code/notebook/output.ipynb
 
+# Auto-push: the de-lab clone that local Jupyter creates for save-and-push.
+# It has its own git remote (and a token in its .git/config) — never commit it
+# into this repo.
+local/code/notebook/repo/
+
 # Misc
 notes.txt

@@ -15,7 +15,12 @@ spec:
       # A Service named "jupyter" injects JUPYTER_PORT=tcp://... which jupyter_server
       # parses as its port number and crashes. Disable service links.
       enableServiceLinks: false
-{{- if .Values.git.enabled }}
+{{- if and .Values.git.enabled .Values.git.autopush }}
+      # fsGroup 1000 (jovyan) makes the emptyDir clone target group-writable, so
+      # the notebook user can git clone/commit/push into it.
+      securityContext:
+        fsGroup: 1000
+{{- else if .Values.git.enabled }}
       initContainers:
 {{ include "de-stack.gitsync.init" . | indent 8 }}
 {{- end }}
@@ -37,19 +42,37 @@ spec:
             # shared library code from the repo, importable in notebooks
             - { name: PYTHONPATH, value: "/home/jovyan/work/repo/{{ .Values.git.srcPath }}" }
 {{- end }}
+{{- if and .Values.git.enabled .Values.git.autopush }}
+            # Auto-push on save: entrypoint clones the repo here, the post-save
+            # hook commits + pushes each save. Needs a WRITE-scoped PAT.
+            - { name: GIT_AUTOPUSH, value: "1" }
+            - { name: GIT_REPO_URL, value: "{{ .Values.git.repoUrl }}" }
+            - { name: GIT_BRANCH, value: "{{ .Values.git.branch }}" }
+            - { name: GIT_USERNAME, value: "{{ .Values.git.username }}" }
+            - { name: GIT_TOKEN_FILE, value: "/etc/git-secret/token" }
+            - { name: GIT_AUTHOR_NAME, value: "notebook" }
+            - { name: GIT_AUTHOR_EMAIL, value: "notebook@de.lan" }
+{{- end }}
           ports:
             - { name: http, containerPort: 8888 }
           readinessProbe:
             httpGet: { path: /api, port: 8888 }
             initialDelaySeconds: 15
             periodSeconds: 15
-{{- if .Values.git.enabled }}
+{{- if and .Values.git.enabled .Values.git.autopush }}
+          volumeMounts:
+            # writable clone target + the PAT (read by the entrypoint to build an
+            # authenticated remote, then discarded — only the .git/config in the
+            # pod-local emptyDir holds it).
+            - { name: git-repo, mountPath: /home/jovyan/work }
+            - { name: git-token, mountPath: /etc/git-secret, readOnly: true }
+{{- else if .Values.git.enabled }}
           volumeMounts:
             # the synced repo appears at /home/jovyan/work/repo (read-only; devs
             # edit & push locally, the cluster only reads).
             - { name: git-repo, mountPath: /home/jovyan/work, readOnly: true }
 {{- end }}
-{{- if .Values.git.enabled }}
+{{- if and .Values.git.enabled (not .Values.git.autopush) }}
 {{ include "de-stack.gitsync.sidecar" . | indent 8 }}
 {{- end }}
       volumes:

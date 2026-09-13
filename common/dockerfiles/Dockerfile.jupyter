@@ -5,6 +5,12 @@
 # spark image (spark-connect deployment); this is just the client + notebooks.
 FROM python:3.11-slim
 
+# git + certs are needed for the auto-push-on-save workflow (clone the repo,
+# commit + push each save). ca-certificates lets git talk HTTPS to GitHub.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --no-cache-dir \
       jupyterlab \
       pyspark-client==4.0.0 \
@@ -32,10 +38,16 @@ RUN mkdir -p /home/jovyan/.ipython/profile_default/startup \
  && chown -R jovyan:jovyan /home/jovyan/.ipython
 COPY --chown=jovyan:jovyan add/00-spark.py /home/jovyan/.ipython/profile_default/startup/00-spark.py
 
+# Auto-push-on-save: the post-save hook lives in a system-level config (avoids the
+# home-dir ownership pitfalls of mounting into ~/.jupyter), and the entrypoint
+# clones/configures the repo when GIT_AUTOPUSH=1. Both are inert unless enabled.
+COPY add/jupyter_server_config.py /etc/jupyter/jupyter_server_config.py
+COPY add/jupyter-entrypoint.sh /usr/local/bin/jupyter-entrypoint.sh
+RUN chmod +x /usr/local/bin/jupyter-entrypoint.sh \
+ && mkdir -p /home/jovyan/work && chown -R jovyan:jovyan /home/jovyan/work
+
 USER jovyan
 WORKDIR /home/jovyan
 EXPOSE 8888
 
-CMD ["sh","-c","jupyter lab --ip=0.0.0.0 --port=8888 --no-browser \
-     --IdentityProvider.token=${JUPYTER_TOKEN:-123456} \
-     --ServerApp.root_dir=/home/jovyan --ServerApp.allow_origin='*'"]
+CMD ["bash","/usr/local/bin/jupyter-entrypoint.sh"]
