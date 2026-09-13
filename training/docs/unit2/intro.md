@@ -241,7 +241,7 @@ Using only the `orders` table: list the **5 most recent cancelled orders placed 
     `SELECT`s over source tables using `catalog.schema.table` names.
 
     - **Azure Databricks** — the same ANSI `SELECT / WHERE / ORDER BY` runs on a SQL
-      Warehouse; tables use the same `catalog.schema.table` naming, addressed via Unity Catalog.
+      Warehouse; tables use the same `catalog.schema.table` naming, addressed via the Databricks catalog.
     - **Snowflake** — same SQL in a Snowsight worksheet on a Virtual Warehouse; three-part
       naming is `database.schema.table`; `SHOW SCHEMAS`/`SHOW TABLES` work the same.
     - **Microsoft Fabric** — query via the Lakehouse SQL analytics endpoint over OneLake

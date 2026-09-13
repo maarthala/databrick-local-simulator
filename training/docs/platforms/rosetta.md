@@ -12,9 +12,9 @@ learn next. This page is your dictionary.
 ## Component map
 | This stack (OSS) | Databricks | Snowflake | Microsoft Fabric | Azure (native) |
 |---|---|---|---|---|
-| **MinIO** (S3 object storage) | cloud storage / UC Volumes | Stages & external volumes | **OneLake** | ADLS Gen2 |
+| **MinIO** (S3 object storage) | cloud storage / catalog Volumes | Stages & external volumes | **OneLake** | ADLS Gen2 |
 | **Iceberg** tables (via the `iceberg` REST catalog) | **Delta Lake** (native) | Iceberg & native tables | Delta on OneLake | Delta on ADLS |
-| **Apache Polaris** (Iceberg REST catalog, governance) | **Unity Catalog** | **Snowflake Open Catalog** / Database→Schema + RBAC roles | Fabric catalog + Purview | Microsoft Purview |
+| **Apache Polaris** (Iceberg REST catalog, governance) | **the Databricks catalog** | **Snowflake Open Catalog** / Database→Schema + RBAC roles | Fabric catalog + Purview | Microsoft Purview |
 | **Medallion** Bronze/Silver/Gold | **Medallion** (Databricks' term) | raw/staging/marts (same idea) | Medallion on OneLake | same pattern |
 | **Python + pandas / NumPy / PyArrow** (Jupyter) | Databricks notebooks (pandas / PySpark) | **Snowpark** (Python) | Fabric notebooks | Synapse notebooks |
 | **`requests` / REST ingest** | notebook + Auto Loader | external access + COPY INTO | Dataflows Gen2 / Copy | Data Factory REST connector |
@@ -22,13 +22,13 @@ learn next. This page is your dictionary.
 | **Trino** (SQL engine over the lake) | Databricks **SQL Warehouse** | Virtual **Warehouse** | Fabric SQL endpoint / Warehouse | Synapse SQL |
 | **Airflow** (DAGs) | Databricks **Workflows / Jobs** | Tasks & Streams (+ external orch.) | Fabric **Data Factory** pipelines | Azure **Data Factory** |
 | **Superset** (BI) | Databricks AI/BI Dashboards | Snowsight | **Power BI** (Direct Lake) | Power BI |
-| **Polaris client id/secret + RBAC** (roles/grants) | UC + SCIM/SSO (Entra/Okta) | Snowflake RBAC + SSO | Entra ID | Entra ID |
+| **Polaris client id/secret + RBAC** (roles/grants) | the Databricks catalog + SCIM/SSO (Entra/Okta) | Snowflake RBAC + SSO | Entra ID | Entra ID |
 | **SQL** (joins, CTEs, window fns, MERGE) | identical | identical | identical | identical |
 
 ## The three biggest transfers
-1. **Polaris' governance model *is* the Databricks Unity Catalog / Snowflake model** — catalog→
+1. **Polaris' governance model *is* the Databricks catalog / Snowflake model** — catalog→
    schema→table with RBAC roles and grants. You finish this course already knowing the cloud
-   governance **model**, even though the local catalog is Apache Polaris, not UC.
+   governance **model**, even though the local catalog is Apache Polaris.
 2. **Medallion / Bronze–Silver–Gold is Databricks' own vocabulary** — 1:1.
 3. **Your SQL is 100% portable** — joins, `GROUP BY`, CTEs, window functions, and `MERGE` run
    unchanged on Databricks SQL, Snowflake, and Fabric (only a few date-function *names* differ).
@@ -38,7 +38,7 @@ On this stack, **Spark builds** the medallion and **Trino/Superset read** it —
 shared **`iceberg`** catalog backed by **Apache Polaris** (Iceberg REST + MinIO). Polaris is *also*
 the governance layer that models catalogs, schemas, and grants.
 
-On **Databricks**, storage and governance are **one product**: Unity Catalog both *stores* the tables (as Delta)
+On **Databricks**, storage and governance are **one product**: the Databricks catalog both *stores* the tables (as Delta)
 and *enforces* access — the query engines call it on every read. That unification is the main thing
 the managed platform adds over this OSS stack.
 
@@ -46,7 +46,7 @@ the managed platform adds over this OSS stack.
 The **concepts, SQL, Spark code, and governance model transfer directly.** What the platforms add
 — and what you're *not* practicing here — is the **managed operational layer**:
 
-- **Engine-level governance enforcement** — on the cloud, the query engines enforce Unity Catalog
+- **Engine-level governance enforcement** — on the cloud, the query engines enforce the Databricks catalog's
   grants automatically. On this OSS stack you *define and inspect* the policy in Polaris (the
   transferable skill), but Trino/Spark aren't wired to enforce it — that wiring is the managed convenience.
 - **Serverless / auto-scaling compute** — no clusters to run; pay per query/second.

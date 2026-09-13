@@ -75,7 +75,7 @@ In the Console, remove a grant, unbind the role, or delete the catalog-role — 
 disappears immediately (grants are checked per request).
 
 ## 🎯 This runs unchanged on Azure, Databricks, Snowflake & Fabric
-This is `GRANT SELECT ON <table> TO <role>` — Databricks Unity Catalog and Snowflake use
+This is `GRANT SELECT ON <table> TO <role>` — the Databricks catalog and Snowflake use
 the exact same *grant-to-a-role, read-vs-usage* model; only the syntax differs.
 
 ## You can now…

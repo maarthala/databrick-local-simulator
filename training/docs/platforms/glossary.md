@@ -34,7 +34,7 @@ they're already familiar when you get there.
 ## Catalog, medallion & governance
 | Term | Meaning |
 |---|---|
-| **Catalog** | Top level of the namespace + governance layer (**Apache Polaris** here; **Unity Catalog** / Snowflake on the cloud). |
+| **Catalog / governance** | Top level of the namespace + governance layer (**Apache Polaris** here; the **Databricks catalog** / Snowflake on the cloud). |
 | **Namespace** | `catalog.schema.table` — the 3-level path to any table. |
 | **Medallion** | Bronze (raw) → Silver (clean) → Gold (business) layering. |
 | **Bronze / Silver / Gold** | The three medallion quality tiers. |

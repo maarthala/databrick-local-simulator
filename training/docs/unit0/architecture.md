@@ -29,7 +29,7 @@ flowchart TB
 
   subgraph GOV["③ Governance — every table, every user"]
     direction LR
-    UC[Apache Polaris<br/>Iceberg catalog + RBAC]
+    POL[Apache Polaris<br/>Iceberg catalog + RBAC]
   end
 
   subgraph USE["④ Consume — people & tools ask questions"]
@@ -45,7 +45,7 @@ flowchart TB
   HIST --> ING
   ING --> BR
   AF -.runs.-> ING
-  UC -.governs.-> LAKE
+  POL -.governs.-> LAKE
   GO --> TR
   TR --> SUP
   GO --> JUP

@@ -147,7 +147,7 @@ lakehouse, the catalog, and the lessons are identical either way.
 The stack is trimmed to the **governed lakehouse** set. These are present in the repo
 but disabled by default (re-enable if a lesson needs them):
 
-- **Unity Catalog** — an alternative catalog we evaluated; **paused** in favour of Polaris (revisit later).
+- **An alternative catalog** — evaluated earlier; **paused** in favour of Polaris (revisit later).
 - **Keycloak** — an external SSO/identity server; **dropped** for training (principals log in with a client id/secret; an IdP is the production path).
 - **iceberg-rest** — the earlier ungoverned catalog; **folded into Polaris** (one catalog now).
 - **Kafka / Kafka-Connect / Kafka-UI, ClickHouse, Hive Metastore, Hue** — not needed for this course's batch/lakehouse focus.

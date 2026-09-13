@@ -120,8 +120,8 @@ separate lake and warehouse, no copying data between them.
     managed for you:
 
     - **Azure Databricks** — *is* this pattern, coined the term: Delta tables on cloud
-      storage + **Unity Catalog** (the same `catalog.schema.table` namespace and GRANT
-      model you'll use here).
+      storage + **the Databricks catalog** (the same `catalog.schema.table` namespace and
+      GRANT model you'll use here).
     - **Microsoft Fabric** — the **OneLake** Lakehouse item: Delta files in OneLake with a
       SQL analytics endpoint over them.
     - **Snowflake** — started warehouse-first, then added the lake side with **Iceberg
