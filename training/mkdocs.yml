@@ -76,6 +76,7 @@ nav:
       - "0.5 Technical architecture": unit0/architecture.md
       - "0.6 Database schema": unit0/schema.md
       - "0.7 Stack architecture": unit0/stack.md
+      - "0.8 Data in the stack — what's where": unit0/data-inventory.md
   - "1 · Foundations":
       - "1.1 What is Data Engineering": unit1/what-is-de.md
       - "1.2 Lake vs Warehouse vs Lakehouse": unit1/lakehouse.md
