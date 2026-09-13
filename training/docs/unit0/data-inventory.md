@@ -42,7 +42,7 @@ JDBC. Example: `SELECT count(*) FROM shopflow.public.orders` → 40000.
 ## 2. MinIO — the data lake (object storage)
 
 S3-compatible storage. Browse it at the **MinIO console** (<http://localhost:9001>,
-`minioadmin`/`minioadmin`). Two buckets matter:
+`minioadmin`/`minioadmin`). One bucket holds the lake:
 
 - **`demo-bucket`** — the lake. Key paths:
   - **`shopflow/history/orders/`** — **raw historical orders** as Parquet, partitioned by `dt=`
@@ -52,7 +52,6 @@ S3-compatible storage. Browse it at the **MinIO console** (<http://localhost:900
     Silver/Gold Parquet + Iceberg metadata). You normally read these *through the catalog*, not by
     path.
   - other prefixes (`polaris/`, `warehouse/`, `lakehouse/`, `hive/`, …) are warehouse/scratch dirs.
-- **`clickstream-bucket`** — a second bucket for streaming/clickstream exercises.
 
 **Reach it:** `spark.read.parquet("s3a://demo-bucket/…")` in a notebook ([3.9](../unit3/upload-register.md)),
 or the MinIO console to browse/upload.
