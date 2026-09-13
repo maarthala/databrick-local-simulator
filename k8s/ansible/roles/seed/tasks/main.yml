@@ -1,72 +1,36 @@
 ---
-- name: Wait for Unity Catalog to be ready
-  ansible.builtin.command: "kubectl -n {{ namespace }} rollout status deploy/unity-catalog --timeout=240s"
+# Seed the governed Polaris catalog. The chart's polaris-bootstrap Job already
+# created the admin realm (root/s3cr3t); here we create the catalog, namespaces,
+# personas, and graded RBAC by running common/polaris/seed-polaris.sh against the
+# Polaris API over a local port-forward (runs on the build_host / Mac).
+
+- name: Wait for Polaris to be ready
+  ansible.builtin.command: "kubectl -n {{ namespace }} rollout status deploy/polaris --timeout=240s"
   changed_when: false
 
-- name: Read the UC admin token from the pod
-  ansible.builtin.command: "kubectl -n {{ namespace }} exec deploy/unity-catalog -- cat etc/conf/token.txt"
-  register: uc_admin
+- name: Wait for the polaris-bootstrap Job (admin realm) to complete
+  ansible.builtin.command: "kubectl -n {{ namespace }} wait --for=condition=complete job/polaris-bootstrap --timeout=180s"
   changed_when: false
-  no_log: true
 
-- name: Create UC users (idempotent)
-  ansible.builtin.shell: >
-    kubectl -n {{ namespace }} exec deploy/unity-catalog --
-    bin/uc --auth_token '{{ uc_admin.stdout }}'
-    user create --name '{{ item.name }}' --email '{{ item.email }}' || true
-  loop: "{{ seed_users }}"
-  loop_control: { label: "{{ item.email }}" }
-  changed_when: false
-  no_log: true
-
-- name: Create the catalog (idempotent)
-  ansible.builtin.shell: >
-    kubectl -n {{ namespace }} exec deploy/unity-catalog --
-    bin/uc --auth_token '{{ uc_admin.stdout }}'
-    catalog create --name {{ seed_catalog }} || true
-  changed_when: false
-  no_log: true
-
-- name: Create the schema (idempotent)
-  ansible.builtin.shell: >
-    kubectl -n {{ namespace }} exec deploy/unity-catalog --
-    bin/uc --auth_token '{{ uc_admin.stdout }}'
-    schema create --catalog {{ seed_catalog }} --name {{ seed_schema }} || true
-  changed_when: false
-  no_log: true
-
-- name: Apply grants (idempotent)
-  ansible.builtin.shell: >
-    kubectl -n {{ namespace }} exec deploy/unity-catalog --
-    bin/uc --auth_token '{{ uc_admin.stdout }}'
-    permission create --securable_type {{ item.securable }} --name '{{ item.name }}'
-    --privilege '{{ item.privilege }}' --principal '{{ item.principal }}' || true
-  loop: "{{ seed_grants }}"
-  loop_control: { label: "{{ item.principal }} :: {{ item.privilege }} on {{ item.name }}" }
-  changed_when: false
-  no_log: true
-
-- name: Read the metastore id (for the admin CREATE CATALOG grant)
-  ansible.builtin.command: >
-    kubectl -n {{ namespace }} exec deploy/unity-catalog --
-    bin/uc --auth_token {{ uc_admin.stdout }} metastore get
-  register: uc_metastore
-  changed_when: false
-  no_log: true
-
-- name: Grant the admin identity CREATE CATALOG on the metastore (idempotent)
-  ansible.builtin.shell: >
-    kubectl -n {{ namespace }} exec deploy/unity-catalog --
-    bin/uc --auth_token '{{ uc_admin.stdout }}'
-    permission create --securable_type metastore
-    --name '{{ uc_metastore.stdout | regex_search("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}") }}'
-    --privilege 'CREATE CATALOG' --principal admin@dev-epireum.com || true
-  changed_when: false
-  no_log: true
+- name: Seed the governed catalog (catalog, namespaces, personas, RBAC)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    kubectl -n {{ namespace }} port-forward svc/polaris {{ polaris_local_port }}:8181 >/tmp/de-stack-polaris-pf.log 2>&1 &
+    PF=$!
+    trap 'kill $PF 2>/dev/null || true' EXIT
+    # wait until the port-forward is actually serving (any HTTP response = up)
+    for i in $(seq 1 20); do
+      curl -s -o /dev/null "http://localhost:{{ polaris_local_port }}/api/catalog/v1/config" && break || sleep 1
+    done
+    POLARIS_URL="http://localhost:{{ polaris_local_port }}" bash "{{ polaris_seed_script }}"
+  args:
+    executable: /bin/bash
+  register: polaris_seed
+  changed_when: true
 
 - name: Seed complete
   ansible.builtin.debug:
     msg: >-
-      UC seeded: users {{ seed_users | map(attribute='email') | join(', ') }};
-      catalog {{ seed_catalog }}.{{ seed_schema }} + grants applied. Create the demo
-      table with tools/uc-spark (see tools/uc-spark/README.md).
+      Polaris seeded: catalog polaris_lake (engine name `iceberg`) with
+      bronze/silver/gold namespaces + analyst/engineer/lead personas and graded
+      RBAC. Personas log in with client id = secret = name; admin is root/s3cr3t.

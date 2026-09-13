@@ -1,5 +1,9 @@
 # Copy to vault.yml and encrypt:  ansible-vault encrypt vault.yml
 # Run with:  ansible-playbook site.yml --ask-become-pass --ask-vault-pass
 ---
-# Fine-grained, read-only GitHub PAT for git-sync (de-lab repo). See de-lab-git-workflow.
+# Fine-grained GitHub PAT for the de-lab repo (used by Airflow's read-only DAG
+# git-sync AND Jupyter's notebook auto-push). Because Jupyter pushes on save, this
+# now needs Contents: Read AND write — and the token's account must have write
+# access to the repo. Read-only is enough only if you disable jupyter auto-push
+# (git.autopush=false in values.yaml).
 git_pat_token: "github_pat_xxxxxxxxxxxxxxxxxxxxxxxx"

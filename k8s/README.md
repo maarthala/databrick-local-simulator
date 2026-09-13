@@ -1,15 +1,13 @@
 # Kubernetes setup — the governed lakehouse stack
 
 This documents the **Kubernetes** deployment of the stack (Helm chart `k8s/helm/de-stack`),
-which adds a governed Unity Catalog + single-sign-on on top of the lakehouse. It's
-separate from the docker-compose stack in the root [`Readme.md`](../Readme.md) (that one
-is the single-machine local version).
+which adds a governed **Apache Polaris** catalog (Iceberg REST + per-persona RBAC) on top
+of the lakehouse. It's separate from the docker-compose stack in the root
+[`Readme.md`](../Readme.md) (that one is the single-machine local version).
 
 - **Deploy it:** [`ansible/README.md`](ansible/README.md) — one command, two paths.
-- **Tool guides:** [`common/uc-cli`](../common/uc-cli/README.md) ·
-  [`common/uc-spark`](../common/uc-spark/README.md) ·
-  [`common/uc-server`](../common/uc-server/README.md) ·
-  [`common/uc-ui`](../common/uc-ui/README.md)
+- **Polaris seed:** [`common/polaris/seed-polaris.sh`](../common/polaris/seed-polaris.sh)
+  (catalog, namespaces, personas, RBAC).
 
 ---
 
@@ -19,14 +17,14 @@ Namespace `de-stack` on the cluster:
 | Layer | Services |
 |---|---|
 | Storage | **MinIO** (S3) |
-| Catalogs | **Iceberg REST** (the lake) · **Unity Catalog** server + web UI (governance) |
-| Identity | **Keycloak** (OIDC / single sign-on) |
+| Catalog / governance | **Apache Polaris** (governed Iceberg REST catalog + per-persona RBAC) + web **Console** |
 | Compute | **Spark** (master + worker), **Spark Connect**, **Trino** |
 | Orchestration / apps | **Airflow**, **Jupyter**, **Superset** |
 | Commodity | **Postgres**, **Redis**, an **nginx** landing page |
 
-(ClickHouse, Kafka, Hive Metastore, Hue are in the chart but disabled by default in
-`k8s/helm/de-stack/values.yaml` — flip `enabled: true` to use them.)
+(Unity Catalog + Keycloak, ClickHouse, Kafka, Hive Metastore, Iceberg-REST, Hue are in
+the chart but disabled by default in `k8s/helm/de-stack/values.yaml` — Polaris replaced
+UC/Keycloak; flip `enabled: true` to use any of the others.)
 
 ## 2. Prerequisites
 - A **MicroK8s node** with addons `ingress`, `hostpath-storage`, `metrics-server`,
@@ -44,17 +42,16 @@ Use the Ansible bootstrap ([full details](ansible/README.md)). Short version:
 **Local / offline node (this box)** — build images on the Mac, import to the node, deploy:
 ```bash
 cd k8s/ansible
-cp group_vars/vault.example.yml group_vars/vault.yml   # add git PAT; ansible-vault encrypt
+cp group_vars/vault.example.yml group_vars/vault.yml   # add git PAT (write scope); ansible-vault encrypt
 ansible-playbook build-load.yml --ask-become-pass       # build + ctr import
-ansible-playbook deploy.yml     --ask-vault-pass         # helm waves + UC seed
+ansible-playbook deploy.yml     --ask-vault-pass         # helm waves + Polaris seed
 ```
 
 **Registry-based cluster** — build, push, deploy (kubelet pulls):
 ```bash
 ansible-playbook build-load.yml --tags images
 REGISTRY=ghcr.io/<you>/de-stack ./push-images.sh
-ansible-playbook deploy.yml -e global_image_registry=$REGISTRY \
-  -e uc_image=$REGISTRY/unity-catalog:vendflat -e uc_ui_image=$REGISTRY/unity-catalog-ui:kcflat
+ansible-playbook deploy.yml -e global_image_registry=$REGISTRY
 ```
 
 Manual (no Ansible) — deploy the whole chart at once:
@@ -72,9 +69,8 @@ All UIs are at `https?://<name>.de.lan`. Default credentials (change for anythin
 | Landing page | `http://home.de.lan` | — |
 | Training course | `http://home.de.lan/training/` | — |
 | MinIO console | `http://minio.de.lan` | `minioadmin` / `minioadmin` |
-| Keycloak | `http://auth.de.lan` | `admin` / `admin` |
-| Unity Catalog UI | `http://uc-ui.de.lan` | `analyst` / `engineer` / `lead` (password = username; Keycloak) |
-| Unity Catalog API | `http://uc.de.lan:30808` | bearer token (`uc` CLI) |
+| Polaris Console | `http://polaris-console.de.lan` | `analyst`/`engineer`/`lead` (client id = secret = name); admin `root`/`s3cr3t` |
+| Polaris API | `http://polaris.de.lan` | OAuth2 client credentials (realm `POLARIS`) |
 | Trino (monitor UI) | `http://trino.de.lan/ui/` | any username, no password |
 | Superset | `http://superset.de.lan` | `admin` / `admin` |
 | Airflow | `http://airflow.de.lan` | `airflow` / `airflow` |
@@ -82,19 +78,17 @@ All UIs are at `https?://<name>.de.lan`. Default credentials (change for anythin
 | Spark master UI | `http://spark.de.lan` | — |
 
 ## 5. First steps (what to actually do)
-1. **Log in as a user** — open `http://uc-ui.de.lan`, "Continue with Keycloak", sign in
-   as `analyst`. You see only what analyst is granted (RBAC in action).
-2. **Manage the catalog with the CLI** — [`common/uc-cli`](../common/uc-cli/README.md):
-   ```bash
-   export T=$(common/uc-cli/login.sh analyst)
-   uc --server http://uc.de.lan:30808 --auth_token "$T" catalog list
-   ```
-   Create catalogs/schemas and grant/revoke access with `uc catalog|schema create` and
-   `uc permission create` (see the CLI guide).
-3. **Governed tables via Spark** — [`common/uc-spark`](../common/uc-spark/README.md): create
-   a Delta table in `lakehouse.sales`, then watch RBAC — analyst can `SELECT`, engineer is denied.
-4. **Query the lake with SQL** — Trino (`iceberg` catalog) via the CLI, or Superset's SQL
+1. **Log in as a persona** — open the Polaris Console `http://polaris-console.de.lan` and
+   sign in with a client id/secret (`analyst`/`analyst`, `engineer`/`engineer`,
+   `lead`/`lead`; admin `root`/`s3cr3t`). You browse the catalog *as that persona* — Polaris
+   applies its grants (RBAC in action).
+2. **Governed tables via Spark** — from Jupyter, `spark.sql("SHOW NAMESPACES IN iceberg")`
+   shows `bronze`/`silver`/`gold` (the seeded medallion). Spark Connect reads/writes the
+   Polaris-governed `iceberg` catalog; per-persona access is enforced by Polaris.
+3. **Query the lake with SQL** — Trino (`iceberg` catalog) via the CLI, or Superset's SQL
    Lab (Trino → Iceberg connection is pre-configured).
+4. **Manage access** — create catalogs/namespaces/principals and grant/revoke in the Polaris
+   Console, or via the REST API (see `common/polaris/seed-polaris.sh` for the API calls).
 5. **Schedule / notebooks** — Airflow DAGs are git-synced (read-only) from the `de-lab`
    repo; Jupyter clones the same repo and **auto-pushes every notebook save** (see below).
 
@@ -123,16 +117,17 @@ Note: `git.repoUrl` + this secret are **shared with Airflow's DAG git-sync**, so
 them repoints both Jupyter and Airflow.
 
 ## 6. How the custom pieces are built
-Most images are stock. The non-trivial ones are built from source with small patches,
-each with its own runbook:
-- **Unity Catalog server** — patched for MinIO static credential vending
-  ([`common/uc-server`](../common/uc-server/README.md)).
-- **UC web UI** — patched to add Keycloak login over http
-  ([`common/uc-ui`](../common/uc-ui/README.md)).
-- **Spark image** — bakes the UC connector jars (`common/dockerfiles/Dockerfile.spark`
-  + `common/dockerfiles/uc-jars/`).
+Most images are stock (incl. **Apache Polaris** — `apache/polaris:latest`, no patch). The
+custom ones are built from `common/dockerfiles` by the Ansible `images` role:
+- **Spark** — bakes the Iceberg runtime + AWS bundle jars (`Dockerfile.spark`).
+- **Jupyter** — thin Spark Connect client + notebook auto-push (`Dockerfile.jupyter`).
+- **Superset**, **airflow-slim**, **home** (nginx + baked training site).
 
-The Ansible `images` role builds all of these automatically.
+If you re-enable Unity Catalog (`unityCatalog.enabled` + `keycloak.enabled` in
+`values.yaml`), its patched server/UI images are built from source — restore the
+`source_images` entries in `k8s/ansible/group_vars/all.yml` (see git history) and the
+runbooks in [`common/uc-server`](../common/uc-server/README.md) /
+[`common/uc-ui`](../common/uc-ui/README.md).
 
 ## 7. Teardown
 ```bash
