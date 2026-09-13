@@ -105,7 +105,6 @@ spec:
                 echo "waiting for minio..."; sleep 3;
               done
               mc mb --ignore-existing m/demo-bucket
-              mc mb --ignore-existing m/clickstream-bucket
               printf '' | mc pipe m/demo-bucket/hive/default/.keep
               printf '' | mc pipe m/demo-bucket/warehouse/.keep
               printf '' | mc pipe m/demo-bucket/iceberg/.keep

@@ -16,7 +16,6 @@ echo "MinIO is ready."
 
 # Buckets (idempotent).
 mc mb --ignore-existing local/demo-bucket
-mc mb --ignore-existing local/clickstream-bucket
 
 # Upload the sample Northwind parquet/CSV data.
 mc cp --recursive /code/shared/testdata/ local/demo-bucket/northwind/
