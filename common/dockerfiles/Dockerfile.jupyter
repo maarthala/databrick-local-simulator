@@ -27,6 +27,11 @@ RUN useradd -m -u 1000 -s /bin/bash jovyan
 # SparkSession.builder.getOrCreate() and land on the remote engine.
 ENV SPARK_REMOTE=sc://spark-connect:15002
 
+# Databricks-style: pre-create `spark` in every notebook via an IPython startup script.
+RUN mkdir -p /home/jovyan/.ipython/profile_default/startup \
+ && chown -R jovyan:jovyan /home/jovyan/.ipython
+COPY --chown=jovyan:jovyan add/00-spark.py /home/jovyan/.ipython/profile_default/startup/00-spark.py
+
 USER jovyan
 WORKDIR /home/jovyan
 EXPOSE 8888
