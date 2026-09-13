@@ -16,7 +16,6 @@ variable "prefix" {
 variable "resource_group_name" {
   description = "Resource group of the existing SQL server (from the sql/ stack)."
   type        = string
-  default     = "rg-adf-sql"
 }
 
 variable "sql_database_name" {
