@@ -121,6 +121,7 @@ nav:
       - "6.1 Governed Iceberg with Apache Polaris": unit6/polaris.md
       - "6.2 Create users & assign access (UI)": unit6/polaris-admin.md
       - "6.3 Create your own catalog, namespace & table": unit6/create-catalog-table.md
+      - "6.4 Grant table access & query it": unit6/grant-and-query.md
   - "7 · Business intelligence (Superset)":
       - "7.1 Dashboards from the Gold layer": unit7/dashboards.md
   - "8 · Real-world recipes":
