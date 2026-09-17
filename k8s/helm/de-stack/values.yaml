@@ -118,6 +118,11 @@ superset:
   tag: latest
   adminUser: admin
   adminPassword: admin
+metabase:
+  enabled: true
+  image: metabase/metabase:v0.63.18   # stock image (Starburst/Trino driver is built in)
+  adminEmail: admin@de.local           # created by the metabase-admin hook Job
+  adminPassword: admin1234
 hue:
   enabled: false             # dropped — Superset's SQL Lab covers ad-hoc SQL
   repo: hue

@@ -16,7 +16,7 @@ COMPOSE = docker compose
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init up down restart ps logs config clean docs polaris-seed
+.PHONY: help init up down restart ps logs config clean docs polaris-seed metabase-admin
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -45,6 +45,9 @@ docs: ## Build the training site (../training -> ../training/site), served by ho
 
 polaris-seed: ## Provision the governed Polaris catalog + personas/RBAC (Unit 6, the live governance)
 	bash ../common/polaris/seed-polaris.sh
+
+metabase-admin: ## Create the default Metabase admin (admin@de.local / admin1234); skips if already set up
+	bash setup-metabase.sh
 
 config: ## Validate the merged compose configuration
 	$(COMPOSE) config -q && echo "compose config OK"

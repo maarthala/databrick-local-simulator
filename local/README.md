@@ -37,6 +37,7 @@ after editing the Markdown under `training/docs/`.
 | Polaris API | http://localhost:8185 | OAuth2 client credentials (realm `POLARIS`) |
 | Trino | http://localhost:8007/ui/ | any username, no password |
 | Superset | http://localhost:8004 | admin / admin |
+| Metabase | http://localhost:8003 | admin@de.local / admin1234 (via `make metabase-admin`) |
 | Airflow | http://localhost:8001 | airflow / airflow |
 | Jupyter | http://localhost:8008 | token `123456` |
 | Spark master UI | http://localhost:8002 | — |
@@ -96,6 +97,32 @@ database — handy for richer SQL practice than ShopFlow.
 has a volume, reload with: `make down` (removes volumes) → `make init` → `make up`.
 If `ruby` is missing at `make init`, the prep is skipped and the stack still starts — just
 without the `adventureworks` DB.
+
+## Metabase (query Trino from a friendly web UI)
+An alternative to Superset for querying the lake — a lighter, more approachable SQL
+editor + charting UI. The **Starburst/Trino driver is built in** (no plugin). Metabase
+keeps its own state in Postgres (the `metabase` DB, created by the init scripts).
+
+**Create the admin** (skips the setup wizard) — run once after `make up`:
+```bash
+make metabase-admin      # creates admin@de.local / admin1234 (idempotent; no-ops if already set up)
+```
+(Metabase authenticates by **email**, so log in as `admin@de.local`. Override with
+`MB_EMAIL` / `MB_PASSWORD` env vars if you want different credentials.)
+
+**Connect it to Trino** — in the UI:
+1. Open **http://localhost:8003**, log in as `admin@de.local` / `admin1234`.
+2. **Add a database** → pick **Starburst** (this is the Trino driver) and fill in:
+   | Field | Value |
+   |---|---|
+   | Host | `trino` |
+   | Port | `8080` *(the in-container port, not 8007)* |
+   | Catalog | `adventureworks` (or `iceberg`, `shopflow`) |
+   | Username | anything (e.g. `metabase`) |
+   | Password | leave blank |
+   | Use a secure connection (SSL) | **off** |
+3. Save — Metabase syncs the schema and you can query in the SQL editor or the visual
+   Question builder. Add one connection per catalog you want to browse.
 
 ## Notes
 - Governance (Polaris per-persona RBAC + MinIO credential vending) is validated in

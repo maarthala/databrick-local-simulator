@@ -1,0 +1,25 @@
+
+services:
+  # Metabase — a friendly web UI for querying Trino (and building charts/dashboards).
+  # The Starburst/Trino driver is BUILT IN (no plugin jar needed). Metabase keeps its
+  # own app state in Postgres (the `metabase` database, created by init_scripts).
+  # First run: `make metabase-admin` creates the admin (admin@de.local / admin1234),
+  # then in the UI add a Trino connection (Starburst driver) — host `trino`,
+  # port `8080`, catalog e.g. `adventureworks`.
+  metabase:
+    image: metabase/metabase:v0.63.18
+    container_name: metabase
+    restart: always
+    ports:
+      - "8003:3000"
+    environment:
+      - MB_DB_TYPE=postgres
+      - MB_DB_HOST=postgres
+      - MB_DB_PORT=5432
+      - MB_DB_DBNAME=metabase
+      - MB_DB_USER=metabase
+      - MB_DB_PASS=metabase
+    depends_on:
+      - postgres
+    networks:
+      - sparknet

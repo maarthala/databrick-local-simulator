@@ -19,7 +19,7 @@ Namespace `de-stack` on the cluster:
 | Storage | **MinIO** (S3) |
 | Catalog / governance | **Apache Polaris** (governed Iceberg REST catalog + per-persona RBAC) + web **Console** |
 | Compute | **Spark** (master + worker), **Spark Connect**, **Trino** |
-| Orchestration / apps | **Airflow**, **Jupyter**, **Superset** |
+| Orchestration / apps | **Airflow**, **Jupyter**, **Superset**, **Metabase** |
 | Commodity | **Postgres**, **Redis**, an **nginx** landing page |
 
 (Unity Catalog, Keycloak, ClickHouse, Kafka, Hive Metastore, Iceberg-REST, and Hue were
@@ -73,6 +73,7 @@ All UIs are at `https?://<name>.de.lan`. Default credentials (change for anythin
 | Polaris API | `http://polaris.de.lan` | OAuth2 client credentials (realm `POLARIS`) |
 | Trino (monitor UI) | `http://trino.de.lan/ui/` | any username, no password |
 | Superset | `http://superset.de.lan` | `admin` / `admin` |
+| Metabase | `http://metabase.de.lan` | `admin@de.local` / `admin1234` (created by the `metabase-admin` Job) |
 | Airflow | `http://airflow.de.lan` | `airflow` / `airflow` |
 | Jupyter | `http://jupyter.de.lan` | token `123456` |
 | Spark master UI | `http://spark.de.lan` | — |
