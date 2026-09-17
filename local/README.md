@@ -6,7 +6,8 @@ as [`../k8s/README.md`](../k8s/README.md), just on localhost instead of a cluste
 ## What runs
 MinIO · **Apache Polaris** (governed Iceberg catalog) + web **Console** · Spark
 (master + worker + Connect) · Trino · Superset · Airflow · Jupyter · Postgres · Redis ·
-an nginx landing page.
+an nginx landing page. Postgres also hosts the **AdventureWorks** OLTP sample DB
+(see below).
 
 ## Prerequisites
 - **Docker** + **Docker Compose** v2.
@@ -71,6 +72,30 @@ Blank `GIT_TOKEN` = auto-push disabled. To switch account/repo: edit `GIT_REPO_U
 docker exec jupyter rm -rf /home/jovyan/work/repo
 docker compose up -d --force-recreate jupyter
 ```
+
+## AdventureWorks sample database
+The full **AdventureWorks OLTP** sample (68 tables across `person`, `sales`, `production`,
+`purchasing`, `humanresources`) is loaded into the local Postgres as the `adventureworks`
+database — handy for richer SQL practice than ShopFlow.
+
+**How it's wired:**
+- `make init` downloads the Microsoft OLTP CSVs + the community Postgres port and fixes the
+  CSVs (needs **`ruby`** — ships with macOS). Data is staged under
+  `init_scripts/postgres/adventureworks/` (gitignored, ~110 MB).
+- On the **first** `make up`, `init_scripts/postgres/03_adventureworks.sh` creates the
+  `adventureworks` DB and loads it.
+- Query it from **Trino / Superset** via the `adventureworks` catalog, or directly:
+  ```bash
+  docker exec -it postgres psql -U postgres -d adventureworks -c \
+    "select top 5 firstname, lastname from person.person;"    # (or a normal LIMIT query)
+  # Trino:
+  docker exec -it trino trino --execute "SELECT count(*) FROM adventureworks.sales.salesorderheader"
+  ```
+
+⚠️ It only loads on a **fresh Postgres volume** (init scripts run once). If Postgres already
+has a volume, reload with: `make down` (removes volumes) → `make init` → `make up`.
+If `ruby` is missing at `make init`, the prep is skipped and the stack still starts — just
+without the `adventureworks` DB.
 
 ## Notes
 - Governance (Polaris per-persona RBAC + MinIO credential vending) is validated in

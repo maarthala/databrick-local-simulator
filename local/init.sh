@@ -36,3 +36,34 @@ for url in "${URLS[@]}"; do
 done
 
 echo "🎉 All downloads complete. Files saved in $TARGET_DIR"
+
+# ---------------------------------------------------------------------------
+# AdventureWorks (OLTP) sample database for the local Postgres.
+# Downloads the Microsoft OLTP CSVs + the lorint Postgres port, fixes the CSVs
+# for Postgres (needs `ruby` — ships with macOS), and stages them where the
+# Postgres init script (03_adventureworks.sh) loads them into the
+# `adventureworks` database on first `make up`. Staged data is gitignored
+# (~110 MB). Skips if already prepared.
+# ---------------------------------------------------------------------------
+AW_DIR="init_scripts/postgres/adventureworks"
+if [ -f "$AW_DIR/install.sql" ] && ls "$AW_DIR"/*.csv >/dev/null 2>&1; then
+  echo "✅ AdventureWorks sample already prepared in $AW_DIR, skipping."
+elif ! command -v ruby >/dev/null 2>&1; then
+  echo "⚠️  ruby not found — skipping AdventureWorks prep (it fixes the CSVs)."
+  echo "    Install ruby and re-run 'make init' to enable the adventureworks DB."
+else
+  echo "⬇️  Preparing AdventureWorks (Postgres) sample database ..."
+  mkdir -p "$AW_DIR"
+  tmp="$(mktemp -d)"
+  curl --max-time 300 -L --progress-bar -o "$tmp/data.zip" \
+    "https://github.com/microsoft/sql-server-samples/releases/download/adventureworks/AdventureWorks-oltp-install-script.zip"
+  curl --max-time 120 -L --progress-bar -o "$tmp/script.zip" \
+    "https://github.com/lorint/AdventureWorks-for-Postgres/archive/master.zip"
+  unzip -oq "$tmp/data.zip"  -d "$AW_DIR"        # OLTP CSVs land directly in AW_DIR
+  unzip -oq "$tmp/script.zip" -d "$tmp/script"
+  cp "$tmp"/script/AdventureWorks-for-Postgres-master/install.sql     "$AW_DIR"/
+  cp "$tmp"/script/AdventureWorks-for-Postgres-master/update_csvs.rb  "$AW_DIR"/
+  ( cd "$AW_DIR" && ruby update_csvs.rb >/dev/null )   # fix CSVs for Postgres COPY
+  rm -f "$AW_DIR/update_csvs.rb"; rm -rf "$tmp"
+  echo "🎉 AdventureWorks prepared in $AW_DIR ($(ls "$AW_DIR"/*.csv | wc -l | tr -d ' ') CSVs)."
+fi
