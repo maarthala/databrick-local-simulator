@@ -86,6 +86,7 @@ nav:
       - "2.6 MERGE & upserts": unit2/merge.md
       - "2.7 Semi-structured data (JSON)": unit2/json.md
       - "2.8 Challenge: cohort report": unit2/challenge.md
+      - "2.9 Challenge: AdventureWorks": unit2/adventureworks-challenge.md
   - "3 · Python — Notebook":
       - "3.1 Python & notebooks for DE": unit3/python-essentials.md
       - "3.2 pandas": unit3/pandas.md

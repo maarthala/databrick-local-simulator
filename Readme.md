@@ -56,6 +56,7 @@ integration-level updates (like AdventureWorks or Metabase) get an entry.
 
 | Date | Release / integration | What it adds | Scope |
 |---|---|---|---|
+| 2026-09-17 | **AdventureWorks SQL challenge** | Course unit 2.9 — 33 progressive SQL challenges (joins → CASE/COALESCE → windows → CTEs → subqueries/outer-joins → RFM capstone) with solutions | course |
 | 2026-09-17 | **AdventureWorks OLTP** | Full 68-table AdventureWorks sample DB in Postgres, queryable via Trino/Metabase/Superset | local · k8s |
 | 2026-09-17 | **Metabase** | Friendly web SQL editor & BI over Trino (Starburst driver built in), alongside Superset | local · k8s |
 | 2026-09-17 | **Spark internals lessons** | Course units 4.7 (architecture & query lifecycle) and 4.8 (data skew & salting) | course |
