@@ -103,26 +103,22 @@ An alternative to Superset for querying the lake — a lighter, more approachabl
 editor + charting UI. The **Starburst/Trino driver is built in** (no plugin). Metabase
 keeps its own state in Postgres (the `metabase` DB, created by the init scripts).
 
-**Create the admin** (skips the setup wizard) — run once after `make up`:
+**Set it up** — run once after `make up`:
 ```bash
-make metabase-admin      # creates admin@de.local / admin1234 (idempotent; no-ops if already set up)
+make metabase-admin      # idempotent; safe to re-run after every rebuild
 ```
-(Metabase authenticates by **email**, so log in as `admin@de.local`. Override with
-`MB_EMAIL` / `MB_PASSWORD` env vars if you want different credentials.)
+This creates the admin **and** adds the Trino catalog connections, so there's nothing to
+click through — it:
+- creates admin **`admin@de.local` / `admin1234`** (Metabase logs in by email), and
+- adds one **Starburst** (Trino) connection per catalog: `Trino - iceberg`,
+  `Trino - shopflow`, `Trino - adventureworks` (host `trino`, port `8080`, SSL off).
 
-**Connect it to Trino** — in the UI:
-1. Open **http://localhost:8003**, log in as `admin@de.local` / `admin1234`.
-2. **Add a database** → pick **Starburst** (this is the Trino driver) and fill in:
-   | Field | Value |
-   |---|---|
-   | Host | `trino` |
-   | Port | `8080` *(the in-container port, not 8007)* |
-   | Catalog | `adventureworks` (or `iceberg`, `shopflow`) |
-   | Username | anything (e.g. `metabase`) |
-   | Password | leave blank |
-   | Use a secure connection (SSL) | **off** |
-3. Save — Metabase syncs the schema and you can query in the SQL editor or the visual
-   Question builder. Add one connection per catalog you want to browse.
+Then just open **http://localhost:8003**, log in, and query — each catalog is already
+there under **Browse data** and in the SQL editor's database picker.
+
+Override the defaults with env vars: `MB_EMAIL`, `MB_PASSWORD`, `MB_CATALOGS`
+(space-separated). Metabase's Starburst driver is **one catalog per connection**, which is
+why each gets its own entry. A connection is skipped if it already exists (idempotent).
 
 ## Notes
 - Governance (Polaris per-persona RBAC + MinIO credential vending) is validated in

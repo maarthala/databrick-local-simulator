@@ -61,8 +61,8 @@ spec:
               service: { name: metabase, port: { number: 3000 } }
 {{- end }}
 ---
-# Complete Metabase's first-run setup (create the admin) non-interactively.
-# Idempotent: if setup is already done (no setup-token), it exits cleanly.
+# Provision Metabase non-interactively: create the admin AND add the Trino catalog
+# connections, so a fresh deploy is ready to use. Both steps are idempotent.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -87,10 +87,30 @@ spec:
             - |
               set -e
               MB=http://metabase:3000
+              EMAIL="{{ .Values.metabase.adminEmail }}"
+              PW="{{ .Values.metabase.adminPassword }}"
+              CATALOGS="{{ .Values.metabase.trinoCatalogs }}"
               echo "waiting for metabase..."
               until curl -fsS $MB/api/health >/dev/null 2>&1; do sleep 5; done
+              # 1. admin (only while the setup token exists)
               token=$(curl -fsS $MB/api/session/properties | grep -o '"setup-token":"[^"]*"' | cut -d'"' -f4)
-              if [ -z "$token" ]; then echo "metabase already set up — nothing to do"; exit 0; fi
-              curl -fsS -X POST $MB/api/setup -H 'Content-Type: application/json' -d "{\"token\":\"$token\",\"user\":{\"first_name\":\"Admin\",\"last_name\":\"User\",\"email\":\"{{ .Values.metabase.adminEmail }}\",\"password\":\"{{ .Values.metabase.adminPassword }}\",\"site_name\":\"DE Lab\"},\"prefs\":{\"site_name\":\"DE Lab\",\"allow_tracking\":false}}" >/dev/null
-              echo "metabase admin created: {{ .Values.metabase.adminEmail }}"
+              if [ -n "$token" ]; then
+                curl -fsS -X POST $MB/api/setup -H 'Content-Type: application/json' -d "{\"token\":\"$token\",\"user\":{\"first_name\":\"Admin\",\"last_name\":\"User\",\"email\":\"$EMAIL\",\"password\":\"$PW\",\"site_name\":\"DE Lab\"},\"prefs\":{\"site_name\":\"DE Lab\",\"allow_tracking\":false}}" >/dev/null
+                echo "admin created: $EMAIL"
+              else
+                echo "already set up — skipping admin creation"
+              fi
+              # 2. Trino catalog connections (idempotent)
+              session=$(curl -fsS -X POST $MB/api/session -H 'Content-Type: application/json' -d "{\"username\":\"$EMAIL\",\"password\":\"$PW\"}" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+              if [ -z "$session" ]; then echo "could not authenticate — skipping connections"; exit 0; fi
+              existing=$(curl -fsS -H "X-Metabase-Session: $session" $MB/api/database | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
+              for cat in $CATALOGS; do
+                name="Trino - $cat"
+                if echo "$existing" | grep -qxF "$name"; then echo "  $name exists — skipping"; continue; fi
+                if curl -fsS -X POST $MB/api/database -H "X-Metabase-Session: $session" -H 'Content-Type: application/json' -d "{\"name\":\"$name\",\"engine\":\"starburst\",\"details\":{\"host\":\"trino\",\"port\":8080,\"catalog\":\"$cat\",\"user\":\"metabase\",\"ssl\":false}}" >/dev/null 2>&1; then
+                  echo "  added: $name"
+                else
+                  echo "  failed to add $name (catalog may not exist) — skipping"
+                fi
+              done
 {{- end }}

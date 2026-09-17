@@ -130,6 +130,7 @@ metabase:
   image: metabase/metabase:v0.63.18   # stock image (Starburst/Trino driver is built in)
   adminEmail: admin@de.local           # created by the metabase-admin hook Job
   adminPassword: admin1234
+  trinoCatalogs: "iceberg shopflow adventureworks"  # auto-added as Trino connections
 hue:
   enabled: false             # dropped — Superset's SQL Lab covers ad-hoc SQL
   repo: hue
