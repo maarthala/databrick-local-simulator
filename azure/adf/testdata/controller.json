@@ -1,0 +1,14 @@
+[
+    { 
+        "file" : "customers.csv",
+        "pKey" : "customer_id"
+    },
+    { 
+        "file" : "orders.csv",
+        "pKey" : "order_id"
+    },
+    { 
+        "file" : "products.csv",
+        "pKey" : "product_id"
+    }
+]

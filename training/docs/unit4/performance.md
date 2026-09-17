@@ -137,6 +137,11 @@ switching to broadcast joins, handling skew — when `spark.sql.adaptive.enabled
 means the `shuffle.partitions` number matters less than it used to, but setting a sane value still
 helps on small clusters.
 
+!!! tip "Go deeper"
+    - **[4.7 How Spark runs](spark-architecture.md)** — driver vs executors, the query lifecycle,
+      how executors read the source in parallel, and the *route* of a join (broadcast vs sort-merge).
+    - **[4.8 Data skew & salting](skew.md)** — why one hot key stalls the whole job, and how to fix it.
+
 ## Quick checklist
 - Set **`spark.sql.shuffle.partitions`** sensibly (low for this stack).
 - **`coalesce`** to cut output files; **`repartition`** to add parallelism / balance skew.

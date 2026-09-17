@@ -63,6 +63,12 @@ variable "filesystems" {
   default     = ["landing"]
 }
 
+variable "landing_folders" {
+  description = "Top-level medallion folders to create in the landing container."
+  type        = list(string)
+  default     = ["source", "bronze", "silver", "gold"]
+}
+
 variable "tags" {
   description = "Tags applied to all resources."
   type        = map(string)

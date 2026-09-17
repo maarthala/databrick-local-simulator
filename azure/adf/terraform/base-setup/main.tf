@@ -61,3 +61,12 @@ resource "azurerm_storage_data_lake_gen2_filesystem" "fs" {
   storage_account_id = azurerm_storage_account.dl.id
   depends_on         = [time_sleep.wait_for_storage]
 }
+
+# Medallion folders inside the landing container (source -> bronze -> silver -> gold).
+resource "azurerm_storage_data_lake_gen2_path" "landing_folders" {
+  for_each           = toset(var.landing_folders)
+  path               = each.value
+  filesystem_name    = azurerm_storage_data_lake_gen2_filesystem.fs["landing"].name
+  storage_account_id = azurerm_storage_account.dl.id
+  resource           = "directory"
+}
