@@ -48,3 +48,26 @@ common/   Shared by both: Dockerfiles for the custom images, the Polaris seed
 Both environments deploy the **same governed-lakehouse component set** and are
 self-contained (each runs its own Postgres). What differs is only the orchestrator
 (Compose vs Kubernetes) and the hostnames (localhost ports vs `*.de.lan` ingress).
+
+## Major releases & integrations
+Notable additions — a new tool, data source, or capability — are logged here so you
+can see what's new at a glance. This is **not** a per-commit changelog; only
+integration-level updates (like AdventureWorks or Metabase) get an entry.
+
+| Date | Release / integration | What it adds | Scope |
+|---|---|---|---|
+| 2026-09-17 | **AdventureWorks OLTP** | Full 68-table AdventureWorks sample DB in Postgres, queryable via Trino/Metabase/Superset | local · k8s |
+| 2026-09-17 | **Metabase** | Friendly web SQL editor & BI over Trino (Starburst driver built in), alongside Superset | local · k8s |
+| 2026-09-17 | **Spark internals lessons** | Course units 4.7 (architecture & query lifecycle) and 4.8 (data skew & salting) | course |
+| 2026-09-13 | **Notebook auto-push** | Jupyter commits + pushes each notebook to git on every save | local · k8s |
+| 2026-09-13 | **`%%sql` cell magic** | Databricks-style SQL cells in notebooks, backed by the governed Spark session | local · k8s |
+| 2026-09-13 | **Pre-created Spark session** | A ready `spark` session on notebook open — no boilerplate | local · k8s |
+| 2026-09-12 | **Azure AdventureWorks** | AdventureWorks sample on Azure SQL for the ADF learning track | azure |
+| 2026-09-10 | **Azure ADF (Terraform)** | Provision Azure Data Factory + SQL as code (base-setup + sql stacks) | azure |
+| 2026-09-08 | **Apache Polaris governance** | Single governed Iceberg REST catalog for Spark & Trino (replaced Unity Catalog) | local · k8s |
+| 2026-09-08 | **Polaris on Kubernetes** | The governed catalog + Console added to the Helm chart | k8s |
+| 2026-09-08 | **Medallion Airflow DAG** | Bronze→Silver→Gold pipeline orchestrated end-to-end | local · k8s |
+| 2026-09-06 | **ShopFlow DE course** | Hands-on training site (units 0–10) served by the stack landing page | course |
+| 2026-09-06 | **Kubernetes deployment** | Helm umbrella chart + one-command Ansible bootstrap | k8s |
+| 2026-09-06 | **Governed lakehouse stack** | MinIO, Spark (+ Connect), Trino, Superset, Airflow, Jupyter on Compose | local |
+| 2026-09-06 | **ShopFlow dataset** | 12-table e-commerce sample seeded into Postgres + the lake | local · k8s |
