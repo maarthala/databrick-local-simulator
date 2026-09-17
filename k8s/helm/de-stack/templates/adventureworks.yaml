@@ -1,0 +1,54 @@
+{{- if .Values.adventureworks.enabled }}
+# One-shot loader: download the Microsoft OLTP CSVs + the community Postgres port,
+# ruby-fix the CSVs, and load them into the `adventureworks` database in the
+# in-cluster Postgres. Idempotent: skips if the database already exists.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: adventureworks-load
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "adventureworks-load") | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: load
+          image: {{ .Values.adventureworks.loaderImage }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: PGHOST, value: "postgres" }
+            - { name: PGUSER, value: "{{ .Values.postgres.user }}" }
+            - { name: PGPASSWORD, value: "{{ .Values.postgres.password }}" }
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -e
+              export DEBIAN_FRONTEND=noninteractive
+              echo "installing tools (curl, unzip, postgresql-client)..."
+              apt-get update -qq && apt-get install -y -qq --no-install-recommends \
+                curl ca-certificates unzip postgresql-client >/dev/null
+              echo "waiting for postgres..."
+              until pg_isready -h "$PGHOST" -U "$PGUSER" >/dev/null 2>&1; do sleep 3; done
+              if psql -h "$PGHOST" -tAc "SELECT 1 FROM pg_database WHERE datname='adventureworks'" | grep -q 1; then
+                echo "adventureworks already loaded — nothing to do"; exit 0
+              fi
+              cd /tmp
+              echo "downloading AdventureWorks data + Postgres port..."
+              curl -sSL -o data.zip   "https://github.com/microsoft/sql-server-samples/releases/download/adventureworks/AdventureWorks-oltp-install-script.zip"
+              curl -sSL -o script.zip "https://github.com/lorint/AdventureWorks-for-Postgres/archive/master.zip"
+              mkdir -p aw && unzip -oq data.zip -d aw && unzip -oq script.zip -d s
+              cp s/AdventureWorks-for-Postgres-master/install.sql    aw/
+              cp s/AdventureWorks-for-Postgres-master/update_csvs.rb aw/
+              cd aw && echo "fixing CSVs for Postgres..." && ruby update_csvs.rb >/dev/null
+              psql -h "$PGHOST" -c "CREATE DATABASE adventureworks;"
+              echo "loading (68 tables; \copy is relative, so run from the data dir)..."
+              psql -h "$PGHOST" -v ON_ERROR_STOP=1 -d adventureworks -f install.sql >/dev/null
+              echo "✅ adventureworks loaded"
+{{- end }}

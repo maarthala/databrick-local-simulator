@@ -20,6 +20,10 @@ data:
 {{ .Files.Get "files/trino/catalog/iceberg.properties" | indent 4 }}
   shopflow.properties: |
 {{ .Files.Get "files/trino/catalog/shopflow.properties" | indent 4 }}
+{{- if .Values.adventureworks.enabled }}
+  adventureworks.properties: |
+{{ .Files.Get "files/trino/catalog/adventureworks.properties" | indent 4 }}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -45,6 +49,9 @@ spec:
             - { name: cfg, mountPath: /etc/trino/jvm.config, subPath: jvm.config }
             - { name: catalog, mountPath: /etc/trino/catalog/iceberg.properties, subPath: iceberg.properties }
             - { name: catalog, mountPath: /etc/trino/catalog/shopflow.properties, subPath: shopflow.properties }
+{{- if .Values.adventureworks.enabled }}
+            - { name: catalog, mountPath: /etc/trino/catalog/adventureworks.properties, subPath: adventureworks.properties }
+{{- end }}
           readinessProbe:
             httpGet: { path: /v1/info, port: 8080 }
             initialDelaySeconds: 20

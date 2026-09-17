@@ -78,6 +78,13 @@ trino:
   enabled: true
   image: trinodb/trino:473
 
+# AdventureWorks OLTP sample DB — loaded into the in-cluster Postgres by a one-shot
+# Job (downloads the MS CSVs + the community Postgres port, ruby-fixes, loads), and
+# exposed as a Trino catalog. Query it from Trino/Metabase/Superset.
+adventureworks:
+  enabled: true
+  loaderImage: ruby:3.3-slim   # has ruby; the Job apt-installs curl/unzip/postgresql-client
+
 # ------------------------------------------------------------------ compute
 spark:
   enabled: true
