@@ -266,19 +266,20 @@ delivered %, cancelled %, and total delivered revenue. Sort by delivered revenue
 
 !!! tip "Which pieces do you need?"
     It's everything from this lesson at once: **`GROUP BY o.channel`** for one row per channel,
-    **conditional counts** (`FILTER (WHERE …)`) for delivered and cancelled, **`NULLIF(count(*),
-    0)`** to protect each percentage's denominator, and a **`SUM(CASE WHEN status = 'delivered' …)`**
-    to add up only delivered revenue.
+    **conditional counts** (`FILTER (WHERE …)`) for delivered and cancelled, **`NULLIF(…, 0)`** to
+    protect each percentage's denominator, and a **`SUM(CASE WHEN status = 'delivered' …)`** to add
+    up only delivered revenue. **Watch out:** you need `order_items` for revenue, but joining it
+    puts *one row per line item*, not per order — so count **`DISTINCT o.order_id`**, not `count(*)`.
 
 ??? note "Solution"
     ```sql
     SELECT o.channel,
-           count(*)                                        AS orders,
-           count(*) FILTER (WHERE o.status = 'delivered')  AS delivered,
-           round(100.0 * count(*) FILTER (WHERE o.status = 'delivered')
-                 / NULLIF(count(*), 0), 1)                 AS delivered_pct,
-           round(100.0 * count(*) FILTER (WHERE o.status = 'cancelled')
-                 / NULLIF(count(*), 0), 1)                 AS cancelled_pct,
+           count(DISTINCT o.order_id)                                     AS orders,
+           count(DISTINCT o.order_id) FILTER (WHERE o.status = 'delivered') AS delivered,
+           round(100.0 * count(DISTINCT o.order_id) FILTER (WHERE o.status = 'delivered')
+                 / NULLIF(count(DISTINCT o.order_id), 0), 1)              AS delivered_pct,
+           round(100.0 * count(DISTINCT o.order_id) FILTER (WHERE o.status = 'cancelled')
+                 / NULLIF(count(DISTINCT o.order_id), 0), 1)             AS cancelled_pct,
            round(sum(CASE WHEN o.status = 'delivered'
                           THEN oi.quantity*oi.unit_price ELSE 0 END), 2) AS delivered_revenue
     FROM orders o
@@ -286,6 +287,14 @@ delivered %, cancelled %, and total delivered revenue. Sort by delivered revenue
     GROUP BY o.channel
     ORDER BY delivered_revenue DESC;
     ```
+
+    !!! warning "The join fan-out trap"
+        `delivered_revenue` needs `order_items` (revenue lives on the line items), but that join
+        makes each order appear **once per line item**. So a plain `count(*)` would count *line
+        items, not orders* (here ~2.5× too high), and the percentages would be item-weighted.
+        Counting **`DISTINCT o.order_id`** restores the true per-order numbers. Rule of thumb: the
+        moment you join a one-to-many table, every parent-level `count`/`avg`/`sum(parent_col)`
+        needs a `DISTINCT` or a pre-aggregation step.
 
 !!! tip "🎯 This runs unchanged on Azure, Databricks, Snowflake & Fabric"
     **What you just did:** used `CASE`, conditional aggregation (pivot), `COALESCE`/`NULLIF`,
