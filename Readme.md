@@ -52,13 +52,13 @@ self-contained (each runs its own Postgres). What differs is only the orchestrat
 ## Major releases & integrations
 Notable additions — a new tool, data source, or capability — are logged here so you
 can see what's new at a glance. This is **not** a per-commit changelog; only
-integration-level updates (like AdventureWorks or Metabase) get an entry.
+integration-level updates (like AdventureWorks or SQLPad) get an entry.
 
 | Date | Release / integration | What it adds | Scope |
 |---|---|---|---|
 | 2026-09-17 | **AdventureWorks SQL challenge** | Course unit 2.9 — 33 progressive SQL challenges (joins → CASE/COALESCE → windows → CTEs → subqueries/outer-joins → RFM capstone) with solutions | course |
-| 2026-09-17 | **AdventureWorks OLTP** | Full 68-table AdventureWorks sample DB in Postgres, queryable via Trino/Metabase/Superset | local · k8s |
-| 2026-09-17 | **Metabase** | Friendly web SQL editor & BI over Trino (Starburst driver built in), alongside Superset | local · k8s |
+| 2026-09-20 | **SQLPad (SQL workbench)** | Web SQL editor for read **+ write** (INSERT/UPDATE/DDL) on Postgres (OLTP) & Trino (OLAP); replaced Metabase | local · k8s |
+| 2026-09-17 | **AdventureWorks OLTP** | Full 68-table AdventureWorks sample DB in Postgres, queryable via Trino/SQLPad/Superset | local · k8s |
 | 2026-09-17 | **Spark internals lessons** | Course units 4.7 (architecture & query lifecycle) and 4.8 (data skew & salting) | course |
 | 2026-09-13 | **Notebook auto-push** | Jupyter commits + pushes each notebook to git on every save | local · k8s |
 | 2026-09-13 | **`%%sql` cell magic** | Databricks-style SQL cells in notebooks, backed by the governed Spark session | local · k8s |

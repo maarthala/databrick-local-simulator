@@ -1,0 +1,51 @@
+
+services:
+  # SQLPad — a web SQL workbench for running ANY SQL (SELECT + INSERT/UPDATE/DELETE
+  # + DDL/MERGE) against both the OLTP source (Postgres) and the OLAP lakehouse
+  # (Trino/Iceberg). Unlike Superset (read-only BI), SQLPad executes raw
+  # SQL, so it's the tool for the write/DDL lessons. Connections are pre-seeded.
+  sqlpad:
+    image: sqlpad/sqlpad:7.5.7
+    container_name: sqlpad
+    restart: always
+    ports:
+      - "8003:3000"
+    environment:
+      SQLPAD_ADMIN: "admin@de.local"
+      SQLPAD_ADMIN_PASSWORD: "admin1234"
+      SQLPAD_APP_LOG_LEVEL: warn
+      SQLPAD_QUERY_RESULT_MAX_ROWS: "50000"
+      # --- pre-seeded connections (full read + write) ---
+      # OLTP — ShopFlow (Postgres)
+      SQLPAD_CONNECTIONS__shopflow__name: "ShopFlow — OLTP (Postgres)"
+      SQLPAD_CONNECTIONS__shopflow__driver: postgres
+      SQLPAD_CONNECTIONS__shopflow__host: postgres
+      SQLPAD_CONNECTIONS__shopflow__port: "5432"
+      SQLPAD_CONNECTIONS__shopflow__database: shopflow
+      SQLPAD_CONNECTIONS__shopflow__username: postgres
+      SQLPAD_CONNECTIONS__shopflow__password: postgres
+      # OLTP — AdventureWorks (Postgres)
+      SQLPAD_CONNECTIONS__adventureworks__name: "AdventureWorks — OLTP (Postgres)"
+      SQLPAD_CONNECTIONS__adventureworks__driver: postgres
+      SQLPAD_CONNECTIONS__adventureworks__host: postgres
+      SQLPAD_CONNECTIONS__adventureworks__port: "5432"
+      SQLPAD_CONNECTIONS__adventureworks__database: adventureworks
+      SQLPAD_CONNECTIONS__adventureworks__username: postgres
+      SQLPAD_CONNECTIONS__adventureworks__password: postgres
+      # OLAP — Lakehouse (Trino / Iceberg, governed by Polaris)
+      SQLPAD_CONNECTIONS__lakehouse__name: "Lakehouse — OLAP (Trino/Iceberg)"
+      SQLPAD_CONNECTIONS__lakehouse__driver: trino
+      SQLPAD_CONNECTIONS__lakehouse__host: trino
+      SQLPAD_CONNECTIONS__lakehouse__port: "8080"
+      SQLPAD_CONNECTIONS__lakehouse__username: admin
+      SQLPAD_CONNECTIONS__lakehouse__catalog: iceberg
+    volumes:
+      - sqlpad-data:/var/lib/sqlpad
+    depends_on:
+      - postgres
+      - trino
+    networks:
+      - sparknet
+
+volumes:
+  sqlpad-data:

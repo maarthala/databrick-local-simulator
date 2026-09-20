@@ -39,7 +39,7 @@ gate the Pages CI uses) before you push.
 | Polaris API | http://localhost:8185 | OAuth2 client credentials (realm `POLARIS`) |
 | Trino | http://localhost:8007/ui/ | any username, no password |
 | Superset | http://localhost:8004 | admin / admin |
-| Metabase | http://localhost:8003 | admin@de.local / admin1234 (via `make metabase-admin`) |
+| SQLPad (SQL workbench) | http://localhost:8003 | admin@de.local / admin1234 |
 | Airflow | http://localhost:8001 | airflow / airflow |
 | Jupyter | http://localhost:8008 | token `123456` |
 | Spark master UI | http://localhost:8002 | — |
@@ -100,27 +100,28 @@ has a volume, reload with: `make down` (removes volumes) → `make init` → `ma
 If `ruby` is missing at `make init`, the prep is skipped and the stack still starts — just
 without the `adventureworks` DB.
 
-## Metabase (query Trino from a friendly web UI)
-An alternative to Superset for querying the lake — a lighter, more approachable SQL
-editor + charting UI. The **Starburst/Trino driver is built in** (no plugin). Metabase
-keeps its own state in Postgres (the `metabase` DB, created by the init scripts).
+## Query tools — which to use for what
+Two complementary tools (plus a desktop option):
 
-**Set it up** — run once after `make up`:
-```bash
-make metabase-admin      # idempotent; safe to re-run after every rebuild
-```
-This creates the admin **and** adds the Trino catalog connections, so there's nothing to
-click through — it:
-- creates admin **`admin@de.local` / `admin1234`** (Metabase logs in by email), and
-- adds one **Starburst** (Trino) connection per catalog: `Trino - iceberg`,
-  `Trino - shopflow`, `Trino - adventureworks` (host `trino`, port `8080`, SSL off).
+- **Superset** (http://localhost:8004, `admin`/`admin`) — **BI / analytics**: dashboards and
+  charts over the **Gold** layer. Read-only by design.
+- **SQLPad** (http://localhost:8003, `admin@de.local`/`admin1234`) — **SQL workbench**: run
+  *any* SQL, including `INSERT`/`UPDATE`/`DELETE`/`MERGE`/DDL, against **both** the OLTP source
+  (Postgres) and the OLAP lakehouse (Trino/Iceberg). This is the tool for the write/DDL
+  lessons. Three connections come pre-wired: **ShopFlow — OLTP**, **AdventureWorks — OLTP**,
+  and **Lakehouse — OLAP (Trino/Iceberg)**.
 
-Then just open **http://localhost:8003**, log in, and query — each catalog is already
-there under **Browse data** and in the SQL editor's database picker.
+> Superset is a read-only BI tool (it only runs `SELECT`); use **SQLPad** — or DBeaver
+> below — whenever you need to write.
 
-Override the defaults with env vars: `MB_EMAIL`, `MB_PASSWORD`, `MB_CATALOGS`
-(space-separated). Metabase's Starburst driver is **one catalog per connection**, which is
-why each gets its own entry. A connection is skipped if it already exists (idempotent).
+### DBeaver Desktop (optional, on your own machine)
+Prefer a full desktop SQL IDE? [DBeaver Community](https://dbeaver.io/download/) connects
+straight to the stack (both ports are published to your host):
+
+| Connection | Driver | Host | Port | Database / Catalog | User / Pass |
+|---|---|---|---|---|---|
+| ShopFlow / AdventureWorks (OLTP) | PostgreSQL | `localhost` | `5432` | `shopflow` / `adventureworks` | `postgres` / `postgres` |
+| Lakehouse (OLAP) | Trino | `localhost` | `8007` | catalog `iceberg` (or `shopflow`) | any user, no password |
 
 ## Notes
 - Governance (Polaris per-persona RBAC + MinIO credential vending) is validated in

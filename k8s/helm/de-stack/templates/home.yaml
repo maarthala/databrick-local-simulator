@@ -11,7 +11,7 @@ data:
    | replace "http://localhost:8001" (printf "http://airflow.%s" .Values.ingress.baseHost)
    | replace "http://localhost:8002" (printf "http://spark.%s" .Values.ingress.baseHost)
    | replace "http://localhost:8004" (printf "http://superset.%s" .Values.ingress.baseHost)
-   | replace "http://localhost:8003" (printf "http://metabase.%s" .Values.ingress.baseHost)
+   | replace "http://localhost:8003" (printf "http://sqlpad.%s" .Values.ingress.baseHost)
    | replace "http://localhost:8007" (printf "http://trino.%s" .Values.ingress.baseHost)
    | replace "http://localhost:8008" (printf "http://jupyter.%s" .Values.ingress.baseHost)
    | replace "http://localhost:8189" (printf "http://polaris-console.%s" .Values.ingress.baseHost)

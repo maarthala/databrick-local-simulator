@@ -21,12 +21,12 @@ psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -c 'CREATE DATABASE adventureworks;'
 cd "$AW"
 psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d adventureworks -f install.sql >/dev/null
 
-# Make the dataset first-class for Trino/Metabase: AdventureWorks declares money
+# Make the dataset first-class for Trino/SQLPad: AdventureWorks declares money
 # columns as *unbounded* numeric, which Trino can't map (it returns them as text,
 # breaking SUM/arithmetic and BI aggregation). Bound them to numeric(38,6). The
 # convenience/reporting views depend on those columns, so drop them first (they
 # aren't needed for querying the base tables).
-echo "Bounding numeric columns for Trino/Metabase compatibility ..."
+echo "Bounding numeric columns for Trino/SQLPad compatibility ..."
 psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d adventureworks <<'SQL' >/dev/null
 DO $$ DECLARE r record; BEGIN
   FOR r IN SELECT table_schema, table_name FROM information_schema.views

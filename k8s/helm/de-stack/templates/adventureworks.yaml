@@ -50,10 +50,10 @@ spec:
               psql -h "$PGHOST" -c "CREATE DATABASE adventureworks;"
               echo "loading (68 tables; \copy is relative, so run from the data dir)..."
               psql -h "$PGHOST" -v ON_ERROR_STOP=1 -d adventureworks -f install.sql >/dev/null
-              # Bound the unbounded numeric (money) columns so Trino/Metabase see real
+              # Bound the unbounded numeric (money) columns so Trino/SQLPad see real
               # decimals (else Trino returns them as text and SUM/arithmetic break).
               # Drop the dependent convenience/reporting views first.
-              echo "bounding numeric columns for Trino/Metabase..."
+              echo "bounding numeric columns for Trino/SQLPad..."
               psql -h "$PGHOST" -v ON_ERROR_STOP=1 -d adventureworks >/dev/null <<'SQL'
               DO $$ DECLARE r record; BEGIN
                 FOR r IN SELECT table_schema, table_name FROM information_schema.views

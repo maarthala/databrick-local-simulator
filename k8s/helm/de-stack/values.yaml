@@ -80,7 +80,7 @@ trino:
 
 # AdventureWorks OLTP sample DB — loaded into the in-cluster Postgres by a one-shot
 # Job (downloads the MS CSVs + the community Postgres port, ruby-fixes, loads), and
-# exposed as a Trino catalog. Query it from Trino/Metabase/Superset.
+# exposed as a Trino catalog. Query it from Trino/SQLPad/Superset.
 adventureworks:
   enabled: true
   loaderImage: ruby:3.3-slim   # has ruby; the Job apt-installs curl/unzip/postgresql-client
@@ -125,18 +125,18 @@ superset:
   tag: latest
   adminUser: admin
   adminPassword: admin
-metabase:
+sqlpad:
   enabled: true
-  image: metabase/metabase:v0.63.18   # stock image (Starburst/Trino driver is built in)
-  adminEmail: admin@de.local           # created by the metabase-admin hook Job
+  image: sqlpad/sqlpad:7.5.7   # web SQL workbench (read+write) for Postgres (OLTP) + Trino (OLAP)
+  adminEmail: admin@de.local
   adminPassword: admin1234
-  trinoCatalogs: "iceberg shopflow adventureworks"  # auto-added as Trino connections
+  storage: 1Gi
 hue:
   enabled: false             # dropped — Superset's SQL Lab covers ad-hoc SQL
   repo: hue
   tag: latest
 home:
   enabled: true
-  # Bakes the built training site under /training/ (see common/dockerfiles/Dockerfile.home).
-  # The home-html ConfigMap still supplies index.html, rewritten to the ingress hosts.
+  # Plain nginx; the home-html ConfigMap supplies index.html (rewritten to the ingress
+  # hosts). The course is NOT baked in — it's on GitHub Pages, linked from the landing page.
   image: ghcr.io/maarthala/de-stack/home:latest

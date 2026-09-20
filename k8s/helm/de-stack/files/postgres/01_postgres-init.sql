@@ -8,10 +8,6 @@ CREATE DATABASE airflow OWNER airflow;
 CREATE USER superset WITH PASSWORD 'superset';
 CREATE DATABASE superset OWNER superset;
 
--- Metabase application/state store
-CREATE USER metabase WITH PASSWORD 'metabase';
-CREATE DATABASE metabase OWNER metabase;
-
 -- create hive user
 CREATE USER hive WITH PASSWORD 'hive';
 CREATE DATABASE metastore OWNER hive;

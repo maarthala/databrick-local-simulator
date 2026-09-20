@@ -1,0 +1,107 @@
+{{- if .Values.sqlpad.enabled }}
+# SQLPad — web SQL workbench for running ANY SQL (SELECT + INSERT/UPDATE/DELETE + DDL/MERGE)
+# against the OLTP source (Postgres) and the OLAP lakehouse (Trino/Iceberg). Connections
+# are pre-seeded via env. State (saved queries) persists on a small PVC.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sqlpad-data
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.global.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.sqlpad.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sqlpad
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "sqlpad") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "sqlpad") | nindent 8 }}
+    spec:
+      # The Service is named "sqlpad", so k8s would inject SQLPAD_PORT=tcp://…:3000 etc.
+      # SQLPad reads all SQLPAD_* env as config, so those service links break its port
+      # binding — disable them.
+      enableServiceLinks: false
+      containers:
+        - name: sqlpad
+          image: {{ .Values.sqlpad.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: SQLPAD_PORT,           value: "3000" }
+            - { name: SQLPAD_ADMIN,          value: "{{ .Values.sqlpad.adminEmail }}" }
+            - { name: SQLPAD_ADMIN_PASSWORD, value: "{{ .Values.sqlpad.adminPassword }}" }
+            - { name: SQLPAD_APP_LOG_LEVEL,  value: "warn" }
+            - { name: SQLPAD_QUERY_RESULT_MAX_ROWS, value: "50000" }
+            # OLTP — ShopFlow (Postgres)
+            - { name: SQLPAD_CONNECTIONS__shopflow__name,     value: "ShopFlow — OLTP (Postgres)" }
+            - { name: SQLPAD_CONNECTIONS__shopflow__driver,   value: "postgres" }
+            - { name: SQLPAD_CONNECTIONS__shopflow__host,     value: "postgres" }
+            - { name: SQLPAD_CONNECTIONS__shopflow__port,     value: "5432" }
+            - { name: SQLPAD_CONNECTIONS__shopflow__database, value: "shopflow" }
+            - { name: SQLPAD_CONNECTIONS__shopflow__username, value: "postgres" }
+            - { name: SQLPAD_CONNECTIONS__shopflow__password, value: "postgres" }
+            # OLTP — AdventureWorks (Postgres)
+            - { name: SQLPAD_CONNECTIONS__adventureworks__name,     value: "AdventureWorks — OLTP (Postgres)" }
+            - { name: SQLPAD_CONNECTIONS__adventureworks__driver,   value: "postgres" }
+            - { name: SQLPAD_CONNECTIONS__adventureworks__host,     value: "postgres" }
+            - { name: SQLPAD_CONNECTIONS__adventureworks__port,     value: "5432" }
+            - { name: SQLPAD_CONNECTIONS__adventureworks__database, value: "adventureworks" }
+            - { name: SQLPAD_CONNECTIONS__adventureworks__username, value: "postgres" }
+            - { name: SQLPAD_CONNECTIONS__adventureworks__password, value: "postgres" }
+            # OLAP — Lakehouse (Trino / Iceberg)
+            - { name: SQLPAD_CONNECTIONS__lakehouse__name,     value: "Lakehouse — OLAP (Trino/Iceberg)" }
+            - { name: SQLPAD_CONNECTIONS__lakehouse__driver,   value: "trino" }
+            - { name: SQLPAD_CONNECTIONS__lakehouse__host,     value: "trino" }
+            - { name: SQLPAD_CONNECTIONS__lakehouse__port,     value: "8080" }
+            - { name: SQLPAD_CONNECTIONS__lakehouse__username, value: "admin" }
+            - { name: SQLPAD_CONNECTIONS__lakehouse__catalog,  value: "iceberg" }
+          ports:
+            - { name: http, containerPort: 3000 }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/sqlpad }
+          readinessProbe:
+            httpGet: { path: /api/app, port: 3000 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - { name: data, persistentVolumeClaim: { claimName: sqlpad-data } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlpad
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "sqlpad") | nindent 4 }}
+  ports:
+    - { name: http, port: 3000, targetPort: 3000 }
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sqlpad
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: sqlpad.{{ .Values.ingress.baseHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: sqlpad, port: { number: 3000 } }
+{{- end }}
+{{- end }}

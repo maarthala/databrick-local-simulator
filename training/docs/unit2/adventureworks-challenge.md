@@ -55,11 +55,11 @@ couple of things differ from SQL Server / the docs:
     SELECT COUNT(*) FROM production.product;         -- other schema, same catalog
     ```
 
-=== "Metabase"
-    Open a **SQL query** and pick the **Trino - adventureworks** database. That connection is
-    bound to the catalog, so just write `schema.table`:
+=== "SQLPad"
+    Pick the **Lakehouse — OLAP (Trino/Iceberg)** connection, then fully-qualify with the
+    `adventureworks` catalog (it defaults to `iceberg`):
     ```sql
-    SELECT COUNT(*) FROM sales.salesorderheader;
+    SELECT COUNT(*) FROM adventureworks.sales.salesorderheader;
     ```
 
 Each challenge lists the **Tables** it uses so you know where to look. Solutions use
