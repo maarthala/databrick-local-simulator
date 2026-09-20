@@ -189,10 +189,11 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 | Service | Local URL | Login |
 |---|---|---|
 | Landing page | [http://localhost:8000](http://localhost:8000) | — |
-| Training course | http://localhost:8000/training/ | — |
+| Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | Jupyter (notebooks) | http://localhost:8008 | token `123456` |
 | Spark master UI | http://localhost:8002 | — |
 | Trino | http://localhost:8007/ui/ (CLI: `:8007`) | any username, no password |
+| SQLPad (SQL workbench) | http://localhost:8003 | `admin@de.local` / `admin1234` |
 | Superset (BI) | http://localhost:8004 | `admin` / `admin` |
 | Airflow | http://localhost:8001 | `airflow` / `airflow` |
 | Polaris Console (governance) | http://localhost:8189 | `analyst` / `analyst` (or `engineer` / `lead`; admin `root` / `s3cr3t`) |

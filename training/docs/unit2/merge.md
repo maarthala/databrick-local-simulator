@@ -57,8 +57,9 @@ wrong; `MERGE` does it in a single, all-or-nothing statement.
     `MERGE` / `UPDATE` / `DELETE` safe and atomic. No ACID table → no `MERGE`.
 
 ## Lab
-> Run these in the **Trino CLI** or **Superset SQL Lab** (see [2.1](intro.md)). This lab
-> **writes**, so it uses the `iceberg` catalog (fully qualified), not `shopflow`.
+> Run these in the **Trino CLI** or **SQLPad** (see [2.1](intro.md)) — this lab **writes**
+> (`CREATE`/`INSERT`/`MERGE`), and **Superset SQL Lab is read-only**, so it can't run it. The
+> writes go to the `iceberg` catalog (fully qualified), not `shopflow`.
 
 ### 1 · Set up a scratch table
 

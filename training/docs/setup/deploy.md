@@ -25,7 +25,6 @@ learning.
     # bring it up (all commands run from local/)
     cd local
     make init          # first run only: download base JARs into ../common/dockerfiles/tmp
-    make docs          # build the training course site (../training -> ../training/site)
     make up            # build the compose images + start every service
     make polaris-seed  # provision the governed catalog + personas/RBAC (needed for Unit 6)
     ```
@@ -98,8 +97,9 @@ learning.
 ## After it's up
 - Sign in as one of the [personas](personas.md) (`analyst` / `engineer` / `lead`) to see governance
   in action.
-- The training course itself is served **by the stack** at `/(training)/` on the landing page
-  (`http://localhost:8000/training/` locally, `http://home.de.lan/training/` on k8s).
+- The training course is published on **GitHub Pages**
+  (<https://maarthala.github.io/databrick-local-simulator/>), auto-deployed on every push to
+  `main` — and the stack's landing page links straight to it, so it's always the current version.
 
 ## You can now…
 - Bring the whole stack up with Docker Compose (`make up` + `make polaris-seed`) or on Kubernetes (Ansible)

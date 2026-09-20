@@ -59,7 +59,8 @@ flowchart TB
 
 ## Lab
 The stack is already running (see the [architecture](../unit0/architecture.md)). You'll run
-SQL two ways in this course — use whichever you prefer:
+SQL a few ways in this course — use whichever fits (for read-only queries any of them work;
+for lessons that **write** data, use the Trino CLI or SQLPad — Superset is read-only):
 
 **A. The Trino command-line client** — point the `trino` CLI at the server:
 
@@ -79,6 +80,19 @@ one-line install on macOS, Windows, or Linux.)
 `http://localhost:8004` (local) or `superset.de.lan` (k8s), sign in (`admin` / `admin`), go to
 **SQL → SQL Lab**, and pick the **shopflow** database with the **public** schema. Then paste the
 queries below (skip the `USE` line — in SQL Lab you choose the schema from the dropdown instead).
+
+**C. SQLPad — a SQL workbench that can also *write*.** Superset SQL Lab is **read-only** (it only
+runs `SELECT`); when a lesson creates or changes data (`CREATE`/`INSERT`/`UPDATE`/`MERGE`/DDL),
+use **SQLPad** (or the Trino CLI). Open it at `http://localhost:8003` (local) / `sqlpad.de.lan`
+(k8s), sign in (`admin@de.local` / `admin1234`), and pick a connection: **ShopFlow — OLTP**,
+**AdventureWorks — OLTP**, or **Lakehouse — OLAP (Trino/Iceberg)**.
+
+!!! note "SQLPad hides *empty* schemas"
+    SQLPad's left schema sidebar only lists schemas that contain at least one **table** — so a
+    freshly created empty schema (e.g. `sandbox` right after `CREATE SCHEMA`) won't show up until
+    you create a table in it. After creating tables, click the **refresh ↻** on the sidebar. You
+    can always query a schema by its full name (`iceberg.sandbox.…`) even if the sidebar hasn't
+    caught up — the sidebar is just for browsing.
 
 !!! note "The `http://localhost:8007/ui/` page is *monitoring*, not a query editor"
     That web UI shows running/finished queries and their stats — handy for seeing the engine
