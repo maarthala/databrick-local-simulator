@@ -81,6 +81,46 @@ Build a **monthly customer cohort retention report**. Requirements:
 
 Bonus: filter to `month_index <= 6` for a clean 0–6 month retention curve.
 
+## Expected output
+Here's what a correct answer produces against the ShopFlow sample data — use it to picture the
+goal *before* you start, and to check your result afterwards. Your numbers should match (the
+sample data is fixed); what matters is the **shape**.
+
+One row per **(cohort_month, month_index)**. `month_index = 0` is always 100% (everyone is
+active in their acquisition month), and each later index is the % of that cohort who came back:
+
+```text
+ cohort_month | cohort_size | month_index | active_customers | retention_pct
+--------------+-------------+-------------+------------------+---------------
+ 2023-06-01   |         668 |           0 |              668 |         100.0
+ 2023-06-01   |         668 |           1 |              373 |          55.8
+ 2023-06-01   |         668 |           2 |              395 |          59.1
+ 2023-06-01   |         668 |           3 |              361 |          54.0
+ 2023-06-01   |         668 |           4 |              393 |          58.8
+ 2023-06-01   |         668 |           5 |              355 |          53.1
+ 2023-06-01   |         668 |           6 |              371 |          55.5
+ 2023-07-01   |         366 |           0 |              366 |         100.0
+ 2023-07-01   |         366 |           1 |              162 |          44.3
+ …            |         …   |           … |                … |             …
+```
+
+Pivoted into the classic **retention triangle** (the bonus) — cohorts down the side, month
+index across the top, so you can read each cohort's curve along its row:
+
+```text
+ cohort_month | cohort_size |  m0   |  m1  |  m2  |  m3  |  m4  |  m5  |  m6
+--------------+-------------+-------+------+------+------+------+------+------
+ 2023-06-01   |         668 | 100.0 | 55.8 | 59.1 | 54.0 | 58.8 | 53.1 | 55.5
+ 2023-07-01   |         366 | 100.0 | 44.3 | 36.3 | 40.4 | 36.9 | 41.8 | 41.3
+ 2023-08-01   |         212 | 100.0 | 23.1 | 29.7 | 26.9 | 28.8 | 29.2 | 33.5
+ 2023-09-01   |         170 | 100.0 | 17.6 | 24.1 | 18.8 | 19.4 | 21.8 | 24.1
+ 2023-10-01   |         100 | 100.0 | 19.0 | 17.0 | 17.0 | 19.0 | 19.0 | 24.0
+ …
+```
+
+The **`m0` column is always 100%**; the numbers to its right are the retention curve — a
+healthy business sees them flatten out rather than fall toward zero.
+
 ??? note "Solution"
     ```sql
     USE shopflow.public;
