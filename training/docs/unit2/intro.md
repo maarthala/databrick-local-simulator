@@ -72,7 +72,7 @@ trino --server http://trino.de.lan
 ```
 
 You'll get a `trino>` prompt; type SQL and end each statement with `;`. (Don't have the CLI yet?
-See [Prerequisites → the Trino CLI](../setup/prerequisites.md#3-the-trino-cli-recommended) for the
+See [Prerequisites → the Trino CLI](../setup/prerequisites.md#2-the-trino-cli-recommended) for the
 one-line install on macOS, Windows, or Linux.)
 
 **B. Superset SQL Lab** — nothing to install, just a browser. Open Superset at
