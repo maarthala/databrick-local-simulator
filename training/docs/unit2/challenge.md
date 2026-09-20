@@ -81,6 +81,30 @@ Build a **monthly customer cohort retention report**. Requirements:
 
 Bonus: filter to `month_index <= 6` for a clean 0–6 month retention curve.
 
+!!! tip "Two things that trip people up"
+    **1. A cohort is decided by a customer's *first* order — once, forever.** The June cohort =
+    customers whose *first* delivered order was in June. Buying again later never re-buckets them:
+    someone who first bought in December but also buys in January stays in the **December** cohort
+    (their January purchase counts as *returning*, not as a new January customer).
+
+    **2. Each `month_index` is an independent "was this customer active that month?" — buckets
+    overlap.** A customer is counted **once per month they come back**, so the *same* person
+    appears at several indices. It's not "months until the next order." Consequences: `index 0`
+    is always 100%, and a later index can be **higher** than an earlier one (someone who skipped
+    a month reappears later).
+
+    Three customers in the June cohort make it concrete:
+
+    | Customer | Buys in… | Counted at index |
+    |---|---|---|
+    | Alice (buys every month) | Jun, Jul, Aug | 0, 1, 2 |
+    | Bob (skips July) | Jun, Aug | 0, 2 |
+    | Carol (one-time) | Jun | 0 |
+
+    → index 0 = **3**, index 1 = **1** (Alice), index 2 = **2** (Alice + Bob). Alice is counted
+    in every bucket; that overlap is why `active_customers` is a fresh headcount each month, not a
+    shrinking survivor count.
+
 ## Expected output
 Here's what a correct answer produces against the ShopFlow sample data — use it to picture the
 goal *before* you start, and to check your result afterwards. Your numbers should match (the
