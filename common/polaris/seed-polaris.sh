@@ -17,7 +17,7 @@ put()  { curl -s -m 10 "${H[@]}" -X PUT  "$1" -d "$2" -o /dev/null -w "%{http_co
 grant(){ put "$M/catalogs/polaris_lake/catalog-roles/$1/grants" \
          "{\"grant\":{\"type\":\"namespace\",\"namespace\":[\"$2\"],\"privilege\":\"$3\"}}"; }
 
-echo "catalog:   $(post $M/catalogs '{"catalog":{"name":"polaris_lake","type":"INTERNAL","properties":{"default-base-location":"s3://demo-bucket/warehouse"},"storageConfigInfo":{"storageType":"S3","allowedLocations":["s3://demo-bucket/warehouse"],"endpoint":"http://minio:9000","pathStyleAccess":true,"region":"us-east-1"}}}')"
+echo "catalog:   $(post $M/catalogs '{"catalog":{"name":"polaris_lake","type":"INTERNAL","properties":{"default-base-location":"s3://demo-bucket/warehouse","polaris.config.drop-with-purge.enabled":"true"},"storageConfigInfo":{"storageType":"S3","allowedLocations":["s3://demo-bucket/warehouse"],"endpoint":"http://minio:9000","pathStyleAccess":true,"region":"us-east-1"}}}')"
 echo "namespaces:$(for ns in bronze silver gold; do post $C/polaris_lake/namespaces "{\"namespace\":[\"$ns\"]}"; done)"
 echo "principals:$(for p in analyst engineer lead; do post $M/principals "{\"principal\":{\"name\":\"$p\"}}"; done)"
 # Pin known client credentials so personas log in cleanly (clientId=secret=name).
