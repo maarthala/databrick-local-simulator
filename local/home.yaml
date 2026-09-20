@@ -8,8 +8,8 @@ services:
     restart: always
     volumes:
       - ./home:/usr/share/nginx/html:ro
-      # Training site (built by `make docs`) served at http://localhost:8000/training/
-      - ../training/site:/usr/share/nginx/html/training:ro
+      # The course is on GitHub Pages (the landing page links there) — not served
+      # by the stack, so no training/site mount. Preview locally with `make docs-serve`.
     depends_on:
       - airflow-apiserver
       - superset

@@ -18,20 +18,22 @@ an nginx landing page. Postgres also hosts the **AdventureWorks** OLTP sample DB
 ```bash
 cp .env.example .env   # first time: create your env (gitignored); set GIT_TOKEN to enable notebook auto-push
 make init   # first time: download base JARs (into ../common/dockerfiles/tmp)
-make docs   # build the training course site (../training -> ../training/site)
 make up     # build the compose images + start everything
 make ps     # status      make logs S=polaris     make down   # stop + remove volumes
 ```
 
-The **hands-on Data Engineering course** ([`../training`](../training)) is served by the
-landing page at **http://localhost:8000/training/**. Run `make docs` to (re)build it
-after editing the Markdown under `training/docs/`.
+The **hands-on Data Engineering course** ([`../training`](../training)) is published to
+**[GitHub Pages](https://maarthala.github.io/databrick-local-simulator/)** (auto-deployed on
+every push to `main`), and the stack's landing page links straight there — one always-current
+source. When editing lessons under `training/docs/`: `make docs-serve` live-previews at
+**http://localhost:8010**, and `make docs` validates with `mkdocs build --strict` (the same
+gate the Pages CI uses) before you push.
 
 ## Access
 | Service | URL | Login |
 |---|---|---|
 | Landing page | http://localhost:8000 | — |
-| Training course | http://localhost:8000/training/ | — |
+| Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | MinIO console | http://localhost:9001 | minioadmin / minioadmin |
 | Polaris Console | http://localhost:8189 | analyst/engineer/lead (client id = secret = name); admin root/s3cr3t |
 | Polaris API | http://localhost:8185 | OAuth2 client credentials (realm `POLARIS`) |

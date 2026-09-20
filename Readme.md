@@ -12,7 +12,7 @@ Bronze→Silver→Gold lakehouse and map every skill to Databricks, Snowflake & 
 **→ [maarthala.github.io/databrick-local-simulator](https://maarthala.github.io/databrick-local-simulator/)**
 
 Start with **Prerequisites & setup** and **Bring up the stack**, then work through the units.
-(The same course is also served by the running stack at `http://localhost:8000/training/`.)
+The stack's landing page links straight to this course, so it's always the current version.
 
 ## 💬 Community & help
 

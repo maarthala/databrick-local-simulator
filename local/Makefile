@@ -16,7 +16,7 @@ COMPOSE = docker compose
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init up down restart ps logs config clean docs polaris-seed metabase-admin
+.PHONY: help init up down restart ps logs config clean docs docs-serve polaris-seed metabase-admin
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -39,9 +39,13 @@ ps: ## Show running services
 logs: ## Tail logs for all services (use `make logs S=kafka` for one)
 	$(COMPOSE) logs -f $(S)
 
-docs: ## Build the training site (../training -> ../training/site), served by home at :8000/training/
-	docker run --rm -v "$(CURDIR)/../training":/docs squidfunk/mkdocs-material:9 build
-	@echo "training site built -> ../training/site (browse http://localhost:8000/training/ once the stack is up)"
+docs: ## Validate the course (mkdocs build --strict — same gate as the GitHub Pages CI)
+	docker run --rm -v "$(CURDIR)/../training":/docs squidfunk/mkdocs-material:9 build --strict
+	@echo "✅ course builds strict-clean. It publishes to GitHub Pages on push to main (see .github/workflows/docs.yml)."
+
+docs-serve: ## Live-preview the course while authoring (hot-reload) at http://localhost:8010
+	@echo "Serving course at http://localhost:8010 (Ctrl-C to stop) ..."
+	docker run --rm -it -p 8010:8000 -v "$(CURDIR)/../training":/docs squidfunk/mkdocs-material:9 serve -a 0.0.0.0:8000
 
 polaris-seed: ## Provision the governed Polaris catalog + personas/RBAC (Unit 6, the live governance)
 	bash ../common/polaris/seed-polaris.sh
