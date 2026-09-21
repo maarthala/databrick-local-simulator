@@ -340,22 +340,40 @@ df["band2"] = df["amount"].apply(lambda a: "large" if a >= 100 else "small")
     genuinely can't be expressed that way.
 
 ## Challenge
-From `df`, build a **country scorecard**: per country, total delivered revenue, delivered order
-count, and average delivered order value — sorted by revenue, highest first. (This is the pandas
-version of the Unit 2 "revenue by country".)
+Build a **region scorecard**. This ties the lesson together — a **join** *and* a group-by:
+
+1. `merge` the `region` lookup (from *Join two DataFrames* above) onto the orders.
+2. Keep **delivered** orders only.
+3. Per **`region`** (not country), compute total revenue, order count, and average order value.
+4. Sort by revenue, highest first.
+
+The twist vs. the *Group & aggregate* example: you group by the **joined-in `region`**, so you
+first have to `merge`, then group.
 
 ??? note "Solution"
     ```python
-    scorecard = (
-        df[df["status"] == "delivered"]
-        .groupby("country")
-        .agg(revenue=("amount", "sum"),
-             orders=("order_id", "count"),
-             avg_order=("amount", "mean"))
-        .reset_index()
-        .sort_values("revenue", ascending=False)
+    countries = pd.DataFrame({"country": ["US", "UK", "DE"],
+                              "region":  ["NA", "EU", "EU"]})
+    enriched  = df.merge(countries, on="country", how="left")   # attach region (LEFT JOIN)
+
+    region_scorecard = (
+        enriched[enriched["status"] == "delivered"]             # delivered only
+            .groupby("region")                                  # ← the joined-in key
+            .agg(revenue=("amount", "sum"),
+                 orders=("order_id", "count"),
+                 avg_order=("amount", "mean"))
+            .reset_index()
+            .sort_values("revenue", ascending=False)
     )
-    scorecard
+    region_scorecard
+    ```
+
+    Expected result (from the 5-row sample `df`):
+
+    ```text
+    region  revenue  orders  avg_order
+        NA    420.0       2      210.0
+        EU    145.0       2       72.5
     ```
 
 !!! tip "🎯 The same shapes on Azure, Databricks, Snowflake & Fabric"
