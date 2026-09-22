@@ -25,8 +25,8 @@ COPY ./tmp/bundle-2.24.6.jar /opt/spark/jars/
 COPY ./tmp/javax.activation-api-1.2.0.jar /opt/spark/jars/
 COPY ./tmp/jaxb-api-2.3.1.jar /opt/spark/jars/
 COPY ./tmp/jaxb-impl-2.3.1.jar /opt/spark/jars/
-COPY ./tmp/iceberg-spark-runtime-4.0_2.13-1.11.0.jar /opt/spark/jars/
-COPY ./tmp/iceberg-aws-bundle-1.11.0.jar /opt/spark/jars/
+COPY ./tmp/iceberg-spark-runtime-4.0_2.13-1.10.0.jar /opt/spark/jars/
+COPY ./tmp/iceberg-aws-bundle-1.10.0.jar /opt/spark/jars/
 
 # Same jar hygiene as Dockerfile.spark so SparkSubmitOperator jobs run here:
 # strip the unrelocated io.netty from the AWS SDK bundle (it shadows Spark 4's

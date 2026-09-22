@@ -16,8 +16,12 @@ URLS=(
   "https://archive.apache.org/dist/spark/spark-4.0.0/spark-4.0.0-bin-hadoop3.tgz"
   "https://repo1.maven.org/maven2/org/apache/hive/hcatalog/hive-hcatalog-core/3.1.2/hive-hcatalog-core-3.1.2.jar"
   "https://repo1.maven.org/maven2/org/apache/hive/hive-exec/3.1.3/hive-exec-3.1.3.jar"
-  "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-4.0_2.13/1.11.0/iceberg-spark-runtime-4.0_2.13-1.11.0.jar"
-  "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.11.0/iceberg-aws-bundle-1.11.0.jar"
+  # Iceberg runtime MUST match the Spark above (4.0.0). Iceberg 1.10.0 is the last
+  # release built for Spark 4.0.0; 1.11.0+ target Spark 4.1 and reference a class
+  # (SupportsV1OverwriteWithSaveAsTable) missing from 4.0.0 -> NoClassDefFoundError on
+  # DataFrame writes. If you bump this, bump Spark to the matching 4.0.x/4.1 too.
+  "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-4.0_2.13/1.10.0/iceberg-spark-runtime-4.0_2.13-1.10.0.jar"
+  "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.10.0/iceberg-aws-bundle-1.10.0.jar"
 )
 
 

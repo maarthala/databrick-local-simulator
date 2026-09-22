@@ -14,8 +14,8 @@ COPY ./tmp/hadoop-aws-3.4.1.jar /opt/spark/jars/
 COPY ./tmp/javax.activation-api-1.2.0.jar /opt/spark/jars/
 COPY ./tmp/jaxb-api-2.3.1.jar /opt/spark/jars/
 COPY ./tmp/jaxb-impl-2.3.1.jar /opt/spark/jars/
-COPY ./tmp/iceberg-spark-runtime-4.0_2.13-1.11.0.jar /opt/spark/jars/
-COPY ./tmp/iceberg-aws-bundle-1.11.0.jar /opt/spark/jars/
+COPY ./tmp/iceberg-spark-runtime-4.0_2.13-1.10.0.jar /opt/spark/jars/
+COPY ./tmp/iceberg-aws-bundle-1.10.0.jar /opt/spark/jars/
 
 # The AWS SDK v2 "bundle" ships an *unrelocated, older* io.netty that lacks
 # PlatformDependent.newFixedMpscUnpaddedQueue(int). Because it sorts before
@@ -36,7 +36,11 @@ RUN zip -q -d /opt/spark/jars/bundle-2.24.6.jar 'io/netty/*' 'META-INF/native/li
 # supplying it per-job via --packages fails on local[*] because DeltaCatalog is
 # referenced during session init before the ivy jars join the driver classpath
 # (ClassNotFoundException: org.apache.spark.sql.delta.catalog.DeltaCatalog).
-ARG DELTA_VER=4.3.1
+# Delta MUST match Spark 4.0.0. Delta 4.0.0 is the release for Spark 4.0.0; 4.1.x/4.3.x
+# target Spark 4.1 and reference SupportsV1OverwriteWithSaveAsTable, a class missing from
+# Spark 4.0.0 -> NoClassDefFoundError as soon as Delta's data-source discovery runs (e.g. any
+# spark.read). Keep this in lockstep with the Spark version above.
+ARG DELTA_VER=4.0.0
 RUN cd /opt/spark/jars && \
     base=https://repo1.maven.org/maven2/io/delta && \
     curl -fsSL -O $base/delta-spark_2.13/${DELTA_VER}/delta-spark_2.13-${DELTA_VER}.jar 2>/dev/null || \
