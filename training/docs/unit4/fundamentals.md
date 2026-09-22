@@ -163,19 +163,6 @@ print("partitions:", orders.select(spark_partition_id()).distinct().count())
 orders.groupBy("status").count().show()
 ```
 
-!!! warning "Why not `orders.rdd.getNumPartitions()`? — you're on Spark Connect"
-    The classic way to count partitions is `df.rdd.getNumPartitions()`. It **fails here**:
-    ```
-    PySparkAttributeError: [JVM_ATTRIBUTE_NOT_SUPPORTED] Attribute `rdd` is not supported in Spark Connect …
-    ```
-    This notebook is a **Spark Connect** client (`sc://spark-connect:15002`) — it talks to the
-    cluster over gRPC and has **no JVM handle**, so the whole low-level RDD API (`.rdd`,
-    `spark.sparkContext`) is unavailable. Stay in the **DataFrame API**: `spark_partition_id()` tags
-    each row with the partition it lives in, and `distinct().count()` counts them. (Small nuance: this
-    counts **non-empty** partitions and runs a tiny job, whereas `getNumPartitions()` was instant
-    metadata that also counted empty partitions — for reasoning about parallelism, equivalent.)
-    This is the same everywhere on this stack: Databricks/Fabric notebooks are Connect clients too.
-
 **Read it step by step:**
 
 - **`orders.select(spark_partition_id()).distinct().count()`** — reports how many **partitions**
