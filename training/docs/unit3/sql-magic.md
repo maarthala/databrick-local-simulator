@@ -11,9 +11,40 @@ No setup, no connection — `spark` and `%%sql` are already there when the noteb
 > `%%sql` is for **quick exploration** in a notebook. When you *build* Gold tables with the same
 > SQL — `spark.sql("…")` in a real pipeline — that's [4.4](../unit4/spark-sql-gold.md).
 
+!!! info "Three rules for every `%%sql` cell"
+    1. **Qualify with the catalog** — `iceberg.<namespace>.<table>`. A bare `SHOW SCHEMAS` or
+       `orders` targets Spark's *default* catalog (not the lakehouse) and errors.
+    2. **No trailing `;`** — `%%sql` runs one `spark.sql(...)`, and Spark's parser rejects a
+       trailing semicolon.
+    3. **One statement per cell** — unlike SQLPad, you can't stack several with `;`.
+
 ## Lab
 
-### Query any catalog table directly
+### 1 · See what's already there
+Before querying, look at what the catalog holds. `SHOW SCHEMAS IN iceberg` lists the
+**namespaces** — the [medallion](../unit1/medallion.md) tiers `bronze` / `silver` / `gold`
+(raw → cleaned → business-ready):
+
+```sql
+%%sql
+SHOW SCHEMAS IN iceberg
+```
+> `SHOW NAMESPACES IN iceberg` is the same command — Iceberg calls schemas **namespaces**. These
+> list **even when empty**, so a namespace you just created shows here (SQLPad's sidebar, by
+> contrast, hides empty ones). On a fresh k8s stack the tiers exist but may be empty until the
+> pipeline runs.
+
+Then drill in — the tables in a namespace, and a table's columns:
+```sql
+%%sql
+SHOW TABLES IN iceberg.gold
+```
+```sql
+%%sql
+DESCRIBE iceberg.gold.daily_sales
+```
+
+### 2 · Query a table
 Catalog tables need **no registration** — reference them as `iceberg.<namespace>.<table>`:
 
 ```sql
@@ -26,21 +57,7 @@ LIMIT 10
 The cell returns the rows as a rendered table (a pandas DataFrame under the hood, capped at 1000
 rows for display).
 
-### Explore what's there
-```sql
-%%sql
-SHOW NAMESPACES IN iceberg
-```
-```sql
-%%sql
-SHOW TABLES IN iceberg.gold
-```
-```sql
-%%sql
-DESCRIBE iceberg.gold.daily_sales
-```
-
-### Real analysis — joins & aggregation
+### 3 · Joins & aggregation
 `%%sql` handles full SQL, joins across namespaces included:
 
 ```sql
@@ -51,6 +68,52 @@ JOIN iceberg.silver.customers c ON c.customer_id = o.customer_id
 GROUP BY c.country
 ORDER BY revenue DESC
 ```
+
+### 4 · Create your own schema & table
+`%%sql` isn't read-only — you can **create** objects too. Make a scratch **namespace**, add a
+table, and put a couple of rows in it (one statement per cell, no `;`):
+
+```sql
+%%sql
+CREATE SCHEMA IF NOT EXISTS iceberg.sandbox
+```
+> `CREATE SCHEMA` = `CREATE NAMESPACE` = `CREATE DATABASE` in Spark — all synonyms.
+> `IF NOT EXISTS` makes it safe to re-run.
+
+```sql
+%%sql
+CREATE TABLE IF NOT EXISTS iceberg.sandbox.dim_customer (
+  customer_id int,
+  full_name   string,
+  country     string
+)
+```
+> Note Spark's type names: **`string`** (not `varchar`), `int`, `double`, `date`, … Because the
+> `iceberg` catalog *is* an Iceberg catalog, the table is created as **Iceberg** automatically —
+> no `USING iceberg` needed.
+
+```sql
+%%sql
+INSERT INTO iceberg.sandbox.dim_customer VALUES
+  (1, 'Ada Lovelace', 'UK'),
+  (2, 'Alan Turing',  'UK')
+```
+```sql
+%%sql
+SELECT * FROM iceberg.sandbox.dim_customer
+```
+
+Your table is now a **real, governed Iceberg table** — visible to Trino, Superset, SQLPad, and the
+Polaris Console, exactly like the pipeline's tables. Tidy up when done:
+```sql
+%%sql
+DROP TABLE iceberg.sandbox.dim_customer
+```
+
+!!! warning "On k8s the lakehouse is governed"
+    Creating a schema or table needs the right **Polaris grant** (`CREATE_NAMESPACE` /
+    `TABLE_CREATE`). If you get a **403 / not-authorized** (rather than a SQL error), that's RBAC,
+    not your SQL — see [Unit 6](../unit6/polaris.md). Locally you have full access.
 
 ### `%%sql` vs `spark.sql(...)`
 Two ways to run SQL — pick by what you need next:
@@ -88,7 +151,8 @@ notebooks — write SQL against the catalog, get a table back. The `catalog.sche
 identical.
 
 ## You can now…
-- Run SQL in a notebook with `%%sql`, against any `iceberg` catalog table — no setup
-- Explore with `SHOW NAMESPACES / SHOW TABLES / DESCRIBE`
+- Run SQL in a notebook with `%%sql` — qualifying the `iceberg` catalog, no `;`, one per cell
+- **Discover** what exists with `SHOW SCHEMAS / SHOW TABLES / DESCRIBE IN iceberg`
+- **Create** your own namespace, table, and rows (`CREATE SCHEMA` / `CREATE TABLE` / `INSERT`)
 - Choose `%%sql` (display) vs `spark.sql()` (capture & keep working) appropriately
 - Register a raw file as a temp view to `%%sql` it
