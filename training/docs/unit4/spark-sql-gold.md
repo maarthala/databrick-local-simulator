@@ -49,7 +49,7 @@ readable, so we lean on `spark.sql()` and reuse Unit 2's skills verbatim.
 ### Partitioning on write
 Gold tables always sliced by date benefit from **partitioning** the physical files by that column
 so queries prune to just the periods they need. Iceberg does this with a *transform* like
-`F.months("order_date")` — you keep the daily grain, but files are grouped by month.
+`partitioning.months("order_date")` — you keep the daily grain, but files are grouped by month.
 
 ## Lab
 Assume the `spark` session and a populated `iceberg.silver.orders` from
@@ -59,7 +59,7 @@ This first cell sets up the Gold schema and a small helper we'll reuse for every
 write the "save it as an Iceberg table" logic once.
 
 ```python
-from pyspark.sql import functions as F
+from pyspark.sql.functions import partitioning
 
 spark.sql("CREATE SCHEMA IF NOT EXISTS iceberg.gold")
 
@@ -73,9 +73,10 @@ def write_gold(df, table, partition=None):
 
 **Read it step by step:**
 
-- **`from pyspark.sql import functions as F`** — imports Spark's function library under the short
-  name `F`. We use it here only for the partition transform `F.months(...)`; everything else is done
-  in SQL strings.
+- **`from pyspark.sql.functions import partitioning`** — Spark 4's partition-transform helpers
+  (`years` / `months` / `days` / `hours` / `bucket`). We use it only for `partitioning.months(...)`;
+  everything else is done in SQL strings. *(In Spark 3 these lived on `functions` as `F.months(...)`;
+  they moved to this module in 4.0 — the old names still work but warn.)*
 - **`spark.sql("CREATE SCHEMA IF NOT EXISTS iceberg.gold")`** — creates the `gold` schema (a
   namespace for tables) inside the `iceberg` catalog. `IF NOT EXISTS` makes it safe to re-run.
 - **`def write_gold(df, table, partition=None)`** — a helper that takes a DataFrame `df`, a target
@@ -110,7 +111,7 @@ daily = spark.sql("""
     GROUP BY order_date
     ORDER BY order_date
 """)
-write_gold(daily, "daily_sales", partition=F.months("order_date"))
+write_gold(daily, "daily_sales", partition=partitioning.months("order_date"))
 ```
 
 **Read it step by step:**
@@ -127,13 +128,13 @@ write_gold(daily, "daily_sales", partition=F.months("order_date"))
 - **`count(DISTINCT order_id) AS orders`** — count the **unique** orders. As in Unit 2, `DISTINCT`
   matters: a single order can span several line-item rows, so plain `count(order_id)` would over-count.
 - **`ORDER BY order_date`** — sort the mart chronologically.
-- **`write_gold(daily, "daily_sales", partition=F.months("order_date"))`** — save it as
+- **`write_gold(daily, "daily_sales", partition=partitioning.months("order_date"))`** — save it as
   `iceberg.gold.daily_sales`, partitioned by month.
 
-!!! note "`partition=F.months("order_date")` — keep the grain, group the files"
+!!! note "`partition=partitioning.months("order_date")` — keep the grain, group the files"
     The table still has one row per *day*, but Iceberg physically groups the files by *month*. When a
     dashboard asks for "last March," Spark reads only March's files and skips the rest — that's
-    **partition pruning**. `F.months(...)` is an Iceberg *transform*: you partition by a derived value
+    **partition pruning**. `partitioning.months(...)` is an Iceberg *transform*: you partition by a derived value
     (the month) without adding a month column to your data.
 
 ### gold.top_products — ranked with a window function
@@ -288,7 +289,7 @@ country**, for delivered orders only, sorted by month then revenue. Use `spark.s
 | **Grain** | What one output row represents (per day / per product / per customer) |
 | **CTE (`WITH …`)** | A named sub-query that makes multi-step SQL readable |
 | **`createOrReplace()`** | Write the DataFrame as an Iceberg table, replacing any prior version (idempotent) |
-| **`partitionedBy(F.months(…))`** | Iceberg transform partitioning for pruned reads |
+| **`partitionedBy(partitioning.months(…))`** | Iceberg transform partitioning for pruned reads |
 | **Window function** | Compute across related rows without collapsing (from [2.3](../unit2/window-functions.md)) |
 | **Shared catalog** | Spark writes `iceberg.gold.*`; Trino reads the same tables |
 

@@ -53,7 +53,7 @@ dominate on any given day.
 ### Starter scaffold
 
 ```python
-from pyspark.sql import functions as F
+from pyspark.sql.functions import partitioning
 spark.sql("CREATE SCHEMA IF NOT EXISTS iceberg.gold")
 # TODO: aggregate, add pct_of_day via a window, write the Iceberg table.
 ```
@@ -68,7 +68,7 @@ building it, confirm the **same** table is readable from Trino (it should be —
 
 ??? note "Solution"
     ```python
-    from pyspark.sql import functions as F
+    from pyspark.sql.functions import partitioning
 
     cat_daily = spark.sql("""
         WITH agg AS (
@@ -97,7 +97,7 @@ building it, confirm the **same** table is readable from Trino (it should be —
 
     (cat_daily.writeTo("iceberg.gold.category_daily_revenue")
         .using("iceberg")
-        .partitionedBy(F.months("order_date"))
+        .partitionedBy(partitioning.months("order_date"))
         .createOrReplace())
 
     # verify
@@ -148,7 +148,7 @@ building it, confirm the **same** table is readable from Trino (it should be —
       category first within each day. It doesn't change the stored data.
     - **Write (`writeTo(...).createOrReplace()`).** `writeTo("iceberg.gold.category_daily_revenue")`
       targets the Gold schema in the shared catalog; `.using("iceberg")` writes it as an Iceberg
-      table (so Trino and Spark read the identical files); `.partitionedBy(F.months("order_date"))`
+      table (so Trino and Spark read the identical files); `.partitionedBy(partitioning.months("order_date"))`
       satisfies requirement 4 — Iceberg buckets the data files by *month of* `order_date`, so a
       query filtered to one month prunes straight to the right files instead of scanning the whole
       table. `.createOrReplace()` makes the write **idempotent**: rerun the pipeline and it
@@ -188,7 +188,7 @@ building it, confirm the **same** table is readable from Trino (it should be —
 | **`… OVER (PARTITION BY …)`** | Window: per-group total alongside detail rows, no self-join |
 | **`pct_of_day`** | A baked-in business ratio: a category's share of its day's revenue |
 | **`writeTo(...).createOrReplace()`** | Idempotent write — rebuild the mart cleanly on every run |
-| **`partitionBy` / `F.months(...)`** | Split output files by a column (here, month) for pruned reads |
+| **`partitionBy` / `partitioning.months(...)`** | Split output files by a column (here, month) for pruned reads |
 | **Shared catalog** | One Iceberg table, written by Spark and read by Trino |
 
 ## You can now…
