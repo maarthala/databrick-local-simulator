@@ -20,58 +20,28 @@ No setup, no connection — `spark` and `%%sql` are already there when the noteb
 
 ## Lab
 
-### 1 · See what's already there
-Before querying, look at what the catalog holds. `SHOW SCHEMAS IN iceberg` lists the
-**namespaces** — the [medallion](../unit1/medallion.md) tiers `bronze` / `silver` / `gold`
-(raw → cleaned → business-ready):
+### 1 · See what namespaces exist
+First, look at what the catalog holds. `SHOW SCHEMAS IN iceberg` lists the **namespaces** — the
+[medallion](../unit1/medallion.md) tiers `bronze` / `silver` / `gold` (raw → cleaned →
+business-ready):
 
 ```sql
 %%sql
 SHOW SCHEMAS IN iceberg
 ```
-> `SHOW NAMESPACES IN iceberg` is the same command — Iceberg calls schemas **namespaces**. These
-> list **even when empty**, so a namespace you just created shows here (SQLPad's sidebar, by
-> contrast, hides empty ones). On a fresh k8s stack the tiers exist but may be empty until the
-> pipeline runs.
+> `SHOW NAMESPACES IN iceberg` is the same command — Iceberg calls schemas **namespaces**. They
+> list **even when empty** (SQLPad's sidebar, by contrast, hides empty ones).
 
-Then drill in — the tables in a namespace, and a table's columns:
-```sql
-%%sql
-SHOW TABLES IN iceberg.gold
-```
-```sql
-%%sql
-DESCRIBE iceberg.gold.daily_sales
-```
+!!! note "The medallion tiers are empty right now — that's expected"
+    `bronze` / `silver` / `gold` are **built later, in [Unit 4](../unit4/fundamentals.md)** (Spark
+    reads the sources and writes these tables). Following the course in order, they exist as
+    namespaces but hold **no tables yet** — so `SELECT * FROM iceberg.gold.…` would say *table not
+    found*. No problem: below you'll **create your own schema and data** to practise on, then meet
+    the pipeline's tables in Unit 4.
 
-### 2 · Query a table
-Catalog tables need **no registration** — reference them as `iceberg.<namespace>.<table>`:
-
-```sql
-%%sql
-SELECT * FROM iceberg.gold.daily_sales
-ORDER BY order_date DESC
-LIMIT 10
-```
-
-The cell returns the rows as a rendered table (a pandas DataFrame under the hood, capped at 1000
-rows for display).
-
-### 3 · Joins & aggregation
-`%%sql` handles full SQL, joins across namespaces included:
-
-```sql
-%%sql
-SELECT c.country, count(*) AS orders, sum(o.amount) AS revenue
-FROM iceberg.silver.orders o
-JOIN iceberg.silver.customers c ON c.customer_id = o.customer_id
-GROUP BY c.country
-ORDER BY revenue DESC
-```
-
-### 4 · Create your own schema & table
-`%%sql` isn't read-only — you can **create** objects too. Make a scratch **namespace**, add a
-table, and put a couple of rows in it (one statement per cell, no `;`):
+### 2 · Create your own schema, table & data
+`%%sql` isn't read-only — you can **create** objects. Make a scratch **namespace**, add a table,
+and insert a few rows (one statement per cell, no `;`):
 
 ```sql
 %%sql
@@ -95,25 +65,69 @@ CREATE TABLE IF NOT EXISTS iceberg.sandbox.dim_customer (
 ```sql
 %%sql
 INSERT INTO iceberg.sandbox.dim_customer VALUES
-  (1, 'Ada Lovelace', 'UK'),
-  (2, 'Alan Turing',  'UK')
-```
-```sql
-%%sql
-SELECT * FROM iceberg.sandbox.dim_customer
-```
-
-Your table is now a **real, governed Iceberg table** — visible to Trino, Superset, SQLPad, and the
-Polaris Console, exactly like the pipeline's tables. Tidy up when done:
-```sql
-%%sql
-DROP TABLE iceberg.sandbox.dim_customer
+  (1, 'Ada Lovelace',      'UK'),
+  (2, 'Alan Turing',       'UK'),
+  (3, 'Grace Hopper',      'US'),
+  (4, 'Katherine Johnson', 'US')
 ```
 
 !!! warning "On k8s the lakehouse is governed"
     Creating a schema or table needs the right **Polaris grant** (`CREATE_NAMESPACE` /
     `TABLE_CREATE`). If you get a **403 / not-authorized** (rather than a SQL error), that's RBAC,
     not your SQL — see [Unit 6](../unit6/polaris.md). Locally you have full access.
+
+### 3 · Explore & query your data
+`sandbox` now has a table — discover and query it exactly as you would any catalog table:
+
+```sql
+%%sql
+SHOW TABLES IN iceberg.sandbox          -- your new table shows up
+```
+```sql
+%%sql
+DESCRIBE iceberg.sandbox.dim_customer   -- columns + types
+```
+```sql
+%%sql
+SELECT * FROM iceberg.sandbox.dim_customer
+```
+```sql
+%%sql
+SELECT country, count(*) AS customers
+FROM iceberg.sandbox.dim_customer
+GROUP BY country
+ORDER BY customers DESC
+```
+
+The result renders as a table (a pandas DataFrame under the hood, ≤1000 rows for display). Your
+table is a **real, governed Iceberg table** — visible to Trino, Superset, SQLPad, and the Polaris
+Console. Tidy up when you're done experimenting:
+```sql
+%%sql
+DROP TABLE iceberg.sandbox.dim_customer
+```
+
+### 4 · The same `%%sql`, on the pipeline's tables (after Unit 4)
+Once [Unit 4](../unit4/fundamentals.md) has built Bronze → Silver → Gold, the **identical** `%%sql`
+queries them — no new skills, just real tables. A Gold lookup:
+
+```sql
+%%sql
+SELECT * FROM iceberg.gold.daily_sales
+ORDER BY order_date DESC
+LIMIT 10
+```
+
+…and a join across namespaces (Silver):
+
+```sql
+%%sql
+SELECT c.country, count(*) AS orders, sum(o.amount) AS revenue
+FROM iceberg.silver.orders o
+JOIN iceberg.silver.customers c ON c.customer_id = o.customer_id
+GROUP BY c.country
+ORDER BY revenue DESC
+```
 
 ### `%%sql` vs `spark.sql(...)`
 Two ways to run SQL — pick by what you need next:
@@ -128,9 +142,11 @@ So explore with `%%sql`; when you need to **use** the result (transform, join in
 back), switch to `spark.sql(...)`:
 
 ```python
-df = spark.sql("SELECT * FROM iceberg.gold.daily_sales WHERE order_date >= '2023-08-01'")
-df.groupBy().sum("revenue").show()      # keep working with the DataFrame
+df = spark.sql("SELECT * FROM iceberg.sandbox.dim_customer WHERE country = 'UK'")
+df.count()                              # keep working with the DataFrame in Python
 ```
+(After Unit 4 the same pattern captures a Gold table:
+`spark.sql("SELECT * FROM iceberg.gold.daily_sales")`.)
 
 !!! tip "Raw files need a view first"
     `%%sql` works on **catalog tables** with no setup. To `%%sql` a raw file in object storage,
