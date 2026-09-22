@@ -54,13 +54,56 @@ df.writeTo("iceberg.bronze.customers_upload").createOrReplace()
 - **`.createOrReplace()`** — create it (or replace if re-running). The data is written as Iceberg
   files in MinIO and the table is registered in Polaris.
 
-!!! tip "SQL-only alternative"
-    Same result without the DataFrame step:
+#### SQL-only alternative — and getting the **column names** right
+You can register the file without the DataFrame step, but there's a trap. The obvious one-liner
+**does not work well for CSVs with a header**:
+
+```sql
+%%sql
+-- DON'T: the csv.`path` shorthand accepts NO options, so it can't set header=true
+CREATE TABLE iceberg.bronze.customers_upload USING iceberg AS
+SELECT * FROM csv.`s3a://demo-bucket/uploads/customers.csv`
+```
+Because that shorthand can't be told that row 1 is a header, you get generic columns
+**`_c0, _c1, _c2`** *and* the header line (`id,name,country`) lands as a **data row**:
+
+| _c0 | _c1  | _c2     |
+|-----|------|---------|
+| id  | name | country |  ← the header, now a row 😱
+| 1   | Ada  | UK      |
+
+**The fix: register a temp view with `USING csv OPTIONS (...)` first, then `CREATE TABLE … AS`.**
+The options are where `header`/`inferSchema` live (`%%sql` is one statement per cell, so this is two
+cells):
+
+```sql
+%%sql
+CREATE TEMPORARY VIEW customers_raw USING csv
+OPTIONS (path 's3a://demo-bucket/uploads/customers.csv', header 'true', inferSchema 'true')
+```
+```sql
+%%sql
+CREATE TABLE iceberg.bronze.customers_upload USING iceberg AS
+SELECT * FROM customers_raw
+```
+Now the columns take their **names from the header** (`id`, `name`, `country`) with inferred types —
+no stray header row.
+
+- **`header 'true'`** — treat row 1 as column names (and skip it from the data).
+- **`inferSchema 'true'`** — detect types (`int`/`double`/…); omit it and every column is `string`.
+- For Parquet there's no header problem — a Parquet file already carries names and types built in,
+  so the plain `parquet.<path>` shorthand works fine (no options needed).
+
+!!! tip "Define the columns yourself (explicit names + types)"
+    Don't want inferred names/types? **Declare the schema on the view** and keep `header 'true'` so
+    the first row is still skipped:
     ```sql
     %%sql
-    CREATE TABLE iceberg.bronze.customers_upload USING iceberg AS
-    SELECT * FROM csv.`s3a://demo-bucket/uploads/customers.csv`
+    CREATE TEMPORARY VIEW customers_raw (id INT, name STRING, country STRING) USING csv
+    OPTIONS (path 's3a://demo-bucket/uploads/customers.csv', header 'true')
     ```
+    This is the SQL twin of the DataFrame reader's `.option("header", True)` / `.schema(...)` — the
+    header/options `spark.read` sets in Python become the `OPTIONS (...)` clause in SQL.
 
 ### 4 · Access it — SQL and Spark
 It's now a normal catalog table. Query it any way:
@@ -101,4 +144,5 @@ pattern; only the storage URL and catalog name change.
 - Upload a file to the data lake via the MinIO console
 - Read a CSV/Parquet from `s3a://…` in a notebook
 - **Register** it as a governed `iceberg` catalog table (`writeTo().createOrReplace()` or `CREATE TABLE AS`)
+- In SQL-only mode, get **column names right** with `CREATE TEMPORARY VIEW … USING csv OPTIONS (header 'true', …)` — or declare an explicit schema — instead of the header-losing `csv.<path>` shorthand
 - Query it from SQL, Spark, Trino, and Superset — and know when a **temp view** is enough instead
