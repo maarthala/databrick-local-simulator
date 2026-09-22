@@ -1,10 +1,13 @@
 # 4.1 Spark fundamentals
 
 ## Concept
-In [Unit 2](../unit2/intro.md) you queried the lake with **SQL** through Trino. Now you meet
-**Apache Spark** — a distributed compute engine that runs SQL *and* Python (and Scala/Java)
-over the same lakehouse. Spark is what you'll use to **build** the tables (Bronze → Silver →
-Gold from the [medallion](../unit1/medallion.md)), where Trino was mostly for **reading** them.
+You already met **Spark** in [3.7](../unit3/spark.md) — the pre-created `spark` session,
+DataFrames that feel like pandas, and the **transformations vs actions** rule. That page was
+*how to use it from a notebook*; this unit is **how it actually works, and how to build a
+lakehouse with it.** Where [Unit 2](../unit2/intro.md)'s Trino was mostly for **reading** the
+lake, Spark is the distributed engine you'll use to **build** the medallion tables (Bronze →
+Silver → Gold, from the [medallion](../unit1/medallion.md)). This page goes under the hood: the
+**driver/executor** split, **partitions**, and *why* laziness makes Spark fast.
 
 ### What "distributed" means
 Spark splits your data into **partitions** and processes them in parallel. A cluster has one
@@ -28,7 +31,8 @@ the cluster. You transform it with method chains (`.filter()`, `.select()`, `.gr
 with SQL via `spark.sql(...)`.
 
 ### Transformations vs actions (lazy evaluation)
-The single most important Spark idea:
+You met this in [3.7](../unit3/spark.md); here's what's happening underneath — the single most
+important Spark idea:
 
 - **Transformations** (`filter`, `select`, `withColumn`, `join`, `groupBy`) are **lazy** —
   they only build up a *plan*. Nothing runs yet.

@@ -8,6 +8,10 @@ addressable as `iceberg.<namespace>.<table>`.
 Three moves: **upload → read → register**. Then it's a first-class table in the `iceberg` catalog,
 visible to notebooks, Trino, Superset, and the Polaris Console.
 
+> This is the ad-hoc *"someone handed me a file"* version. Ingesting ShopFlow's own sources
+> (Postgres + Parquet) into Bronze systematically — the pipeline version — is
+> [4.2](../unit4/read-bronze.md).
+
 ## Lab
 
 ### 1 · Upload the file to the lake (MinIO)

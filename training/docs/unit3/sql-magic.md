@@ -8,6 +8,9 @@ the Spark jobs use. Results render as a table.
 
 No setup, no connection — `spark` and `%%sql` are already there when the notebook opens.
 
+> `%%sql` is for **quick exploration** in a notebook. When you *build* Gold tables with the same
+> SQL — `spark.sql("…")` in a real pipeline — that's [4.4](../unit4/spark-sql-gold.md).
+
 ## Lab
 
 ### Query any catalog table directly
