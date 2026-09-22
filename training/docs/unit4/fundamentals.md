@@ -50,8 +50,8 @@ and avoid reading data you don't need — warehouse-grade optimization on lake f
 
 ### Partitions
 Partitions are the unit of parallelism. More partitions = more parallelism (up to a point);
-too many tiny partitions = overhead. You'll rarely tune this early, but knowing
-`df.rdd.getNumPartitions()` exists helps you reason about performance later.
+too many tiny partitions = overhead. You'll rarely tune this early, but being able to *see* how
+many partitions a DataFrame has (the lab shows how) helps you reason about performance later.
 
 ## Lab
 Connect to Spark from **Jupyter** at [http://localhost:8008](http://localhost:8008) (token
@@ -157,16 +157,31 @@ delivered.explain()
 Peek at partitioning and a first aggregation:
 
 ```python
-print("partitions:", orders.rdd.getNumPartitions())
+from pyspark.sql.functions import spark_partition_id
+
+print("partitions:", orders.select(spark_partition_id()).distinct().count())
 orders.groupBy("status").count().show()
 ```
 
+!!! warning "Why not `orders.rdd.getNumPartitions()`? — you're on Spark Connect"
+    The classic way to count partitions is `df.rdd.getNumPartitions()`. It **fails here**:
+    ```
+    PySparkAttributeError: [JVM_ATTRIBUTE_NOT_SUPPORTED] Attribute `rdd` is not supported in Spark Connect …
+    ```
+    This notebook is a **Spark Connect** client (`sc://spark-connect:15002`) — it talks to the
+    cluster over gRPC and has **no JVM handle**, so the whole low-level RDD API (`.rdd`,
+    `spark.sparkContext`) is unavailable. Stay in the **DataFrame API**: `spark_partition_id()` tags
+    each row with the partition it lives in, and `distinct().count()` counts them. (Small nuance: this
+    counts **non-empty** partitions and runs a tiny job, whereas `getNumPartitions()` was instant
+    metadata that also counted empty partitions — for reasoning about parallelism, equivalent.)
+    This is the same everywhere on this stack: Databricks/Fabric notebooks are Connect clients too.
+
 **Read it step by step:**
 
-- **`orders.rdd.getNumPartitions()`** — reports how many **partitions** this DataFrame is split
-  into (its slices of parallelism). For a tiny in-memory sample it'll be small; on real lake
-  files Spark chooses this from the data size. You rarely tune it early — this is just to *see*
-  that a DataFrame is physically chunked.
+- **`orders.select(spark_partition_id()).distinct().count()`** — reports how many **partitions**
+  this DataFrame is split into (its slices of parallelism). On real lake files Spark chooses this
+  from the data size. You rarely tune it early — this is just to *see* that a DataFrame is
+  physically chunked.
 - **`orders.groupBy("status")`** — a **transformation** (lazy). It buckets rows by `status`,
   the DataFrame equivalent of SQL's `GROUP BY`. Nothing runs yet.
 - **`.count()`** — here `count()` chained after `groupBy` is a **transformation**: it declares

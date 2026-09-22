@@ -13,9 +13,19 @@ A Spark DataFrame is split into **partitions** — chunks processed **in paralle
 the cluster's cores. Partitions are *the* reason Spark scales.
 
 ```python
+from pyspark.sql.functions import spark_partition_id
+
 df = spark.read.parquet("s3a://demo-bucket/shopflow/history/orders")
-print(df.rdd.getNumPartitions())   # how many chunks this DataFrame is split into
+# how many chunks this DataFrame is split into
+print(df.select(spark_partition_id()).distinct().count())
 ```
+
+!!! warning "Not `df.rdd.getNumPartitions()` — this stack uses Spark Connect"
+    `df.rdd.getNumPartitions()` raises `PySparkAttributeError: [JVM_ATTRIBUTE_NOT_SUPPORTED]` — the
+    notebook is a **Spark Connect** client with no JVM handle, so the RDD API (`.rdd`,
+    `spark.sparkContext`) is off-limits. Count partitions with the DataFrame API instead:
+    `spark_partition_id()` tags each row with its partition; `distinct().count()` counts them
+    (non-empty ones). See [4.1](fundamentals.md) for the full note.
 
 - **Too few** partitions → cores sit idle, no parallelism, big tasks.
 - **Too many** tiny partitions → scheduling overhead dominates ("small files problem").
