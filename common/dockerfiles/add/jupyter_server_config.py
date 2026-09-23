@@ -52,3 +52,32 @@ def post_save_hook(model, os_path, contents_manager, **kwargs):
 
 c = get_config()  # noqa: F821  (provided by Jupyter's config loader)
 c.FileContentsManager.post_save_hook = post_save_hook
+
+# ---------------------------------------------------------------------------
+# jupyter-fs: browse the MinIO data lake as a drive in the left file browser
+# (no code). MetaManager wraps the default local file manager and adds the
+# S3/fsspec resources below as extra "drives". Because MetaManager builds its
+# local drive from root_manager_class(**kwargs) with this same config, the
+# post_save_hook above still fires for notebooks saved under the local repo.
+# Creds + endpoint come from the pod env (same MinIO the Spark jobs use).
+# ---------------------------------------------------------------------------
+# jupyter-fs ships no auto-enable config.d entry, so enable its server extension
+# explicitly — it installs the /jupyterfs/resources handler the left-panel browser
+# calls (without it the UI 404s and no drive appears).
+c.ServerApp.jpserver_extensions = {"jupyterfs.extension": True}
+c.ServerApp.contents_manager_class = "jupyterfs.metamanager.MetaManager"
+c.JupyterFs.resources = [
+    {
+        "name": "lake (minio)",
+        "url": "s3://demo-bucket",
+        "type": "fsspec",
+        "auth": "none",
+        "kwargs": {
+            "key": os.environ.get("AWS_ACCESS_KEY_ID", "minioadmin"),
+            "secret": os.environ.get("AWS_SECRET_ACCESS_KEY", "minioadmin"),
+            "client_kwargs": {
+                "endpoint_url": os.environ.get("AWS_S3_ENDPOINT", "http://minio:9000"),
+            },
+        },
+    }
+]
