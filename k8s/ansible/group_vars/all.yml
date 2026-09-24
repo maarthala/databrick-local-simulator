@@ -47,7 +47,7 @@ deploy_waves:
   - name: "compute"
     templates: [spark.yaml, spark-connect.yaml, trino.yaml]
   - name: "apps"
-    templates: [airflow.yaml, jupyter.yaml, superset.yaml, home.yaml, configmaps.yaml]
+    templates: [airflow.yaml, jupyter.yaml, superset.yaml, home.yaml, sqlpad.yaml, configmaps.yaml]
 # NOTE: only ENABLED templates belong here — `helm template -s <t>` on a disabled
 # service renders nothing and `kubectl apply` then errors on empty input.
 
