@@ -63,6 +63,18 @@
       background:rgba(57,208,196,.1); border:1px solid rgba(57,208,196,.25);
       padding:2px 8px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 
+    /* Polaris logins table */
+    .creds{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:6px 6px 14px; overflow-x:auto}
+    .creds table{border-collapse:collapse; width:100%; font-size:.88rem; min-width:520px}
+    .creds th,.creds td{text-align:left; padding:10px 14px; border-bottom:1px solid var(--line)}
+    .creds th{color:var(--muted); font-weight:700; font-size:.72rem; letter-spacing:1.5px; text-transform:uppercase}
+    .creds tbody td:first-child{font-weight:700}
+    .creds tr:last-child td{border-bottom:none}
+    .creds code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent2);
+      background:rgba(57,208,196,.1); border:1px solid rgba(57,208,196,.25); padding:1px 7px; border-radius:6px; font-size:.82rem}
+    .creds .adm{color:var(--accent)}
+    .creds .note{margin:12px 14px 0; color:var(--muted); font-size:.8rem}
+
     footer{margin-top:44px; text-align:center; color:var(--muted); font-size:.9rem}
     footer a{color:var(--accent); font-weight:600}
     @media (max-width:520px){ .brand{font-size:1.9rem} .hero{padding:20px} }
@@ -132,6 +144,22 @@
         <div class="ico">🪣</div>
         <div><h3>Storage</h3><p><b>MinIO</b> — S3-compatible object storage — the lake.</p><span class="cred">minioadmin / minioadmin</span></div>
       </a>
+    </div>
+
+    <div class="section-title">Polaris logins — governed catalog users</div>
+    <div class="creds">
+      <table>
+        <thead>
+          <tr><th>Principal</th><th>Client ID / Secret</th><th>Access — bronze / silver / gold</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="adm">root</td><td><code>root</code> / <code>s3cr3t</code></td><td>Admin — manages the catalog + full content (runs the ingest/build pipeline)</td></tr>
+          <tr><td>analyst</td><td><code>analyst</code> / <code>analyst</code></td><td>gold: read only</td></tr>
+          <tr><td>engineer</td><td><code>engineer</code> / <code>engineer</code></td><td>gold: read · silver: read + write + create</td></tr>
+          <tr><td>lead</td><td><code>lead</code> / <code>lead</code></td><td>bronze + silver + gold: full read + write + create</td></tr>
+        </tbody>
+      </table>
+      <p class="note">Personas log in with <b>client id = secret = name</b> (Polaris Console &amp; API). Realm <code>POLARIS</code>, catalog <code>polaris_lake</code>. Dev defaults — not for production.</p>
     </div>
 
     <footer>
