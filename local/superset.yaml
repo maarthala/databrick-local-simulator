@@ -17,9 +17,11 @@ services:
       - CSRF_ENABLED=False
       - WTF_CSRF_ENABLED=False
       - TALISMAN_ENABLED=False
-    depends_on:
-      - postgres
-      - redis
+    depends_on:              # healthy, not just started — else `superset db upgrade` races Postgres init
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: >
       /bin/bash -c "
         superset db upgrade &&

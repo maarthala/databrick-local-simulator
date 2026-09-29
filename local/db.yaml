@@ -3,18 +3,21 @@ services:
 
   postgres:
     container_name: postgres
-    image: postgres:15
+    image: postgres:18
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres || exit 1"]
+      # -h 127.0.0.1 = check over TCP. Over the default Unix socket pg_isready already says
+      # "ready" while the init scripts run on a socket-only temporary server, so dependants
+      # (airflow-init, polaris-bootstrap) raced it and got "Connection refused".
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d postgres || exit 1"]
       interval: 10s
       retries: 5
       start_period: 60s
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"   # override in .env if 5432 is taken
     volumes:
       - ./code:/code
       - ./init_scripts/postgres:/docker-entrypoint-initdb.d
@@ -23,7 +26,7 @@ services:
 
   redis:
     container_name: redis
-    image: redis:latest
+    image: redis:8.10.1
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

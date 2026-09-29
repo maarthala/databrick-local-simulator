@@ -12,4 +12,4 @@
 #
 # Build context is irrelevant (nothing is copied in):
 #   docker build -f common/dockerfiles/Dockerfile.home -t <ref> .
-FROM nginx:latest
+FROM nginx:1.31.5

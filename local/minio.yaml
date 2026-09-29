@@ -3,7 +3,10 @@ services:
   # S3-compatible object storage (replaces LocalStack). Console UI at :9001.
   minio:
     container_name: minio
-    image: minio/minio:latest
+    # MinIO stopped publishing community images and deleted minio/minio + minio/mc from
+    # Docker Hub (2026-09). These are unmodified mirrors of the last releases (AGPL-3.0,
+    # source: github.com/minio/minio) — frozen: no further upstream fixes.
+    image: ghcr.io/maarthala/de-stack/minio:RELEASE.2025-09-07T16-13-09Z
     restart: always
     command: server /data --console-address ":9001"
     environment:
@@ -25,7 +28,7 @@ services:
   # One-shot: waits for MinIO, then creates the demo buckets and uploads the
   minio-init:
     container_name: minio-init
-    image: minio/mc:latest
+    image: ghcr.io/maarthala/de-stack/mc:RELEASE.2025-08-13T08-35-41Z   # mirror, see minio above
     depends_on:
       - minio
     entrypoint: ["/bin/sh", "/init_scripts/setup.sh"]
@@ -40,7 +43,7 @@ services:
   # Catalog metadata is persisted in a SQLite file on a volume; table data lives
   # in MinIO (s3://demo-bucket/iceberg/). Runs as root so it can write /persist.
   trino:
-    image: trinodb/trino:473
+    image: trinodb/trino:483
     restart: always
     container_name: trino
     ports:

@@ -46,7 +46,7 @@ the same logic, packaged so `spark-submit` can run it. Now test the script **two
 **a) Fast inner-loop — VS Code + Spark Connect** (develop from your editor, run on the cluster):
 
 ```bash
-pip install "pyspark-client==4.0.0"          # once, in your project venv (match the cluster's Spark)
+pip install "pyspark-client==4.1.3"          # once, in your project venv (match the cluster's Spark)
 export SPARK_REMOTE=sc://localhost:15002      # the published Spark Connect port
 python code/shared/jobs/ingest_bronze.py --catalog iceberg
 ```
