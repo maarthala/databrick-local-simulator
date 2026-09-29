@@ -20,3 +20,19 @@
 .mermaid span {
   font-size: 15px;
 }
+
+/* Home page: make each card in `.unit-cards` fully clickable. The card's single
+   link is stretched over the whole box (::after overlay), plus a hover lift. */
+.md-typeset .unit-cards > ul > li {
+  position: relative;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.md-typeset .unit-cards > ul > li:hover {
+  transform: translateY(-2px);
+  border-color: var(--md-accent-fg-color);
+}
+.md-typeset .unit-cards > ul > li a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}

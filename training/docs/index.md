@@ -1,102 +1,141 @@
 # Data Engineering — hands-on with a governed lakehouse
 
-Learn Data Engineering the way it's actually practiced: by **building a real data
-pipeline** for a fictional e-commerce company, **ShopFlow**, on a lakehouse you run
-yourself — object storage, a governed catalog, Spark, SQL, orchestration, and BI.
+Learn the core concepts of Data Engineering — ingestion, the lakehouse, data modelling,
+transformation at scale, orchestration, governance and reporting — **without spending a
+cent on the cloud**. Everything runs on your own machine, so you can experiment, break
+things and try again for free. Build real expertise here first, then step onto any cloud
+platform already knowing *why* things work — not just which buttons to press.
 
-By the end you'll have built this, end to end:
+[▶ Start with Unit 0](setup/prerequisites.md){ .md-button .md-button--primary }
+[💬 Join the Discord](https://discord.gg/2B5mTgGjM){ .md-button }
 
-```mermaid
-flowchart LR
-  A[(Postgres OLTP)] --> B
-  H[S3 history] --> B
-  subgraph Lakehouse
-    B[Bronze<br/>raw] --> S[Silver<br/>clean] --> G[Gold<br/>business marts]
-  end
-  G --> D[Superset<br/>dashboards]
-  PC[(Apache Polaris<br/>governance + RBAC)] -.governs.- B & S & G
-  AF[Airflow] -.schedules.- B & S & G
-```
+## Course units
 
-## Start here
+<div class="grid cards unit-cards" markdown>
 
-<div class="grid cards" markdown>
-
--   📦 **Meet ShopFlow**
+-   🚀 **Unit 0 · Getting started**
 
     ---
 
-    The company, its data, and the questions the pipeline has to answer.
+    Set up the stack, meet ShopFlow, and see how it all fits together.
 
-    [The scenario →](scenario.md)
+    [8 lessons →](setup/prerequisites.md)
 
--   🚀 **Get the stack running**
-
-    ---
-
-    You're reading this *on* the stack — but here's how to bring it up yourself.
-
-    [Prerequisites & setup →](setup/prerequisites.md)
-
--   🗺️ **See how it's wired**
+-   🧭 **Unit 1 · Foundations**
 
     ---
 
-    The tools, how data moves, and the deployment map.
+    What Data Engineering is, the lakehouse, medallion and data modelling.
 
-    [Stack architecture →](unit0/architecture.md)
+    [5 lessons →](unit1/what-is-de.md)
 
--   ▶️ **Begin the course**
+-   🔎 **Unit 2 · SQL on big data**
 
     ---
 
-    Start with the foundations — what DE is and the lakehouse idea.
+    Query the lake — joins, window functions, CTEs, MERGE and JSON.
 
-    [Unit 1 →](unit1/what-is-de.md)
+    [9 lessons →](unit2/intro.md)
+
+-   🐍 **Unit 3 · Python in notebooks**
+
+    ---
+
+    Python for data work — dataframes, files, APIs and databases.
+
+    [9 lessons →](unit3/python-essentials.md)
+
+-   ⚡ **Unit 4 · Spark**
+
+    ---
+
+    Distributed processing — build Bronze → Silver → Gold and tune it.
+
+    [8 lessons →](unit4/fundamentals.md)
+
+-   ⏱️ **Unit 5 · Orchestration**
+
+    ---
+
+    Turn jobs into scheduled, dependable pipelines.
+
+    [4 lessons →](unit5/basics.md)
+
+-   🛡️ **Unit 6 · Data governance**
+
+    ---
+
+    Catalogs, users, roles and who can see which data.
+
+    [4 lessons →](unit6/polaris.md)
+
+-   📊 **Unit 7 · Business intelligence**
+
+    ---
+
+    Turn the Gold layer into dashboards people use.
+
+    [1 lesson →](unit7/dashboards.md)
+
+-   🧰 **Unit 8 · Real-world recipes**
+
+    ---
+
+    Event triggers, SCD2, data quality and reverse-ETL.
+
+    [5 lessons →](recipes/excel.md)
+
+-   🏁 **Unit 9 · Capstones**
+
+    ---
+
+    Prove it end to end — two projects, easy and medium.
+
+    [2 projects →](capstones/capstone-1.md)
+
+-   🌉 **Unit 10 · Bridge to the platforms**
+
+    ---
+
+    Map every skill to Databricks, Snowflake, Fabric and Azure.
+
+    [2 lessons →](platforms/rosetta.md)
 
 </div>
 
-## The path
+## Help & community
 
-1. **[The ShopFlow scenario](scenario.md)** — the company and its data
-2. **[Architecture](unit0/architecture.md)** — the tools, the [schema](unit0/schema.md), and the [full stack](unit0/stack.md)
-3. **Foundations → SQL → Python → Spark → Orchestration → Governance → BI** — the seven units
-4. **Two capstone projects** to prove it all
-5. **[Bridge to the platforms](platforms/rosetta.md)** — your OSS ⇄ cloud dictionary
+<div class="grid cards unit-cards" markdown>
 
-Stuck at any point? The **[Help & community](help.md)** page has our Discord.
+-   💬 **Join the Discord**
+
+    ---
+
+    Ask questions, get unstuck, share what you built and help others.
+
+    [Join the community →](https://discord.gg/2B5mTgGjM)
+
+-   🎓 **Learn with us**
+
+    ---
+
+    Instructor-led Data Engineering training for students and career-changers.
+
+    [Training & courses →](help.md#training-courses-for-learners)
+
+-   🏢 **Hire our team**
+
+    ---
+
+    Data Engineering talent, or a team to deliver your data platform.
+
+    [For companies →](help.md#for-companies-de-talent-delivery)
+
+</div>
+
+All the ways to reach us are on the **[Help & community](help.md)** page.
 
 ## How each lesson works
 
-Every lesson follows the same rhythm:
-
-1. **Concept** — the idea and why it matters
-2. **Lab** — copy-runnable steps on your own stack
-3. **Challenge** — you solve a variation (solutions provided, hidden — try first!)
-4. **You can now…** — the concrete skills you've gained
-
-## Why open-source first (your cloud rehearsal)
-
-We learn on a **free, open-source stack on purpose.** Every concept — ingestion,
-Iceberg tables, Spark transforms, SQL, orchestration, catalog governance, BI — is the
-*same* on the cloud platforms; only the buttons and the bill change. So you practice
-here for **$0**, then re-implement the very same ShopFlow pipeline on **Azure Data
-Factory**, **Databricks**, **Fabric**, and **Snowflake** already fluent — spending
-cloud money on the managed layer, not on relearning the basics.
-
-!!! abstract "🎯 This maps 1:1 to the cloud platforms"
-    Most lessons end with a box titled **"This runs unchanged on Azure, Databricks,
-    Snowflake & Fabric"** — mapping the *exact activity* you just did to the feature that
-    does it on each platform (e.g. *this MERGE = ADF Data Flow "Alter Row" = Databricks
-    `MERGE INTO` = Snowflake `MERGE`*).
-
-    The governance model here (**Apache Polaris** — Iceberg-native, maps to **Snowflake
-    Open Catalog**) is *identical in shape* to **the Databricks catalog** (catalog →
-    schema → table with RBAC), and **Medallion** (Bronze/Silver/Gold) is Databricks'
-    own terminology — so parts of this course are already Databricks & Snowflake, verbatim.
-
-## Prerequisites
-
-Basic SQL helps but isn't required. No prior Spark, cloud, or DE experience needed.
-The stack you're reading this on is already running — get oriented with the
-**[stack architecture](unit0/architecture.md)** before the first unit.
+**Concept** → **Lab** on your own stack → **Challenge** (solutions hidden — try first!) →
+**You can now…** — the concrete skills you've gained.
