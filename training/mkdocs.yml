@@ -55,6 +55,9 @@ extra_css:
 
 extra:
   generator: false          # remove the "Made with Material for MkDocs" footer notice
+  analytics:                # Google Analytics 4 — Material injects gtag.js and tracks page views + site search
+    provider: google
+    property: G-YJG2RDY33C
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/maarthala/databrick-local-simulator
