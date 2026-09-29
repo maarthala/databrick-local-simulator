@@ -3,7 +3,7 @@ services:
   # vending). The live governance for the stack: one governed catalog for BOTH
   # Trino and Spark on the Iceberg lakehouse. Persistence in Postgres (db polarisdb).
   polaris:
-    image: apache/polaris:latest
+    image: apache/polaris:1.8.0
     container_name: polaris
     ports:
       - "8185:8181"   # catalog + management REST API (host :8185)
@@ -42,7 +42,7 @@ services:
       retries: 6
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
       polaris-bootstrap:
         condition: service_completed_successfully
     networks:
@@ -50,7 +50,7 @@ services:
 
   # One-shot: bootstrap the Polaris schema + realm into Postgres (runs before polaris).
   polaris-bootstrap:
-    image: apache/polaris-admin-tool:latest
+    image: apache/polaris-admin-tool:1.8.0
     container_name: polaris-bootstrap
     environment:
       POLARIS_PERSISTENCE_TYPE: relational-jdbc
@@ -62,7 +62,7 @@ services:
     restart: "no"
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
     networks:
       - sparknet
 
@@ -92,7 +92,7 @@ services:
   # the browser makes only same-origin calls (works around Polaris's fixed CORS).
   # Access the UI at http://localhost:8189.
   polaris-proxy:
-    image: nginx:alpine
+    image: nginx:1.31.5-alpine
     container_name: polaris-proxy
     ports:
       - "8189:8189"

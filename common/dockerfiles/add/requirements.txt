@@ -1,4 +1,6 @@
-apache-airflow-providers-apache-spark==4.0.0
-papermill==2.6.0
-ipykernel==6.23.1
+apache-airflow-providers-apache-spark==6.3.2
+# Spark Connect client MUST equal the Spark server version (the provider only asks >=4.0.0)
+pyspark-client==4.1.3
+papermill==2.7.0
+ipykernel==7.3.0
 jupyter==1.1.1

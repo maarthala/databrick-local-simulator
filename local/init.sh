@@ -8,20 +8,20 @@ mkdir -p "$TARGET_DIR"
 # List of files (deduplicated)
 URLS=(
   "https://jdbc.postgresql.org/download/postgresql-42.6.0.jar"
-  "https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.24.6/bundle-2.24.6.jar"
-  "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar"
+  "https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.29.52/bundle-2.29.52.jar"
+  "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.2/hadoop-aws-3.4.2.jar"
   "https://repo1.maven.org/maven2/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0.jar"
   "https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.3.1/jaxb-api-2.3.1.jar"
   "https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-impl/2.3.1/jaxb-impl-2.3.1.jar"
-  "https://archive.apache.org/dist/spark/spark-4.0.0/spark-4.0.0-bin-hadoop3.tgz"
+  "https://archive.apache.org/dist/spark/spark-4.1.3/spark-4.1.3-bin-hadoop3.tgz"
   "https://repo1.maven.org/maven2/org/apache/hive/hcatalog/hive-hcatalog-core/3.1.2/hive-hcatalog-core-3.1.2.jar"
   "https://repo1.maven.org/maven2/org/apache/hive/hive-exec/3.1.3/hive-exec-3.1.3.jar"
-  # Iceberg runtime MUST match the Spark above (4.0.0). Iceberg 1.10.0 is the last
-  # release built for Spark 4.0.0; 1.11.0+ target Spark 4.1 and reference a class
-  # (SupportsV1OverwriteWithSaveAsTable) missing from 4.0.0 -> NoClassDefFoundError on
-  # DataFrame writes. If you bump this, bump Spark to the matching 4.0.x/4.1 too.
-  "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-4.0_2.13/1.10.0/iceberg-spark-runtime-4.0_2.13-1.10.0.jar"
-  "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.10.0/iceberg-aws-bundle-1.10.0.jar"
+  # Iceberg runtime MUST match the Spark above (4.1.x): use the *-4.1_2.13 artifact.
+  # Iceberg 1.11 has no Spark 4.2 runtime yet — don't bump Spark past 4.1 until it does.
+  # hadoop-aws MUST equal Spark's bundled hadoop-client (3.4.2 in Spark 4.1.3), and the
+  # AWS SDK bundle MUST be the one hadoop-aws 3.4.2 was built with (2.29.52).
+  "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-4.1_2.13/1.11.0/iceberg-spark-runtime-4.1_2.13-1.11.0.jar"
+  "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.11.0/iceberg-aws-bundle-1.11.0.jar"
 )
 
 

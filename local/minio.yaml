@@ -3,6 +3,8 @@ services:
   # S3-compatible object storage (replaces LocalStack). Console UI at :9001.
   minio:
     container_name: minio
+    # MinIO stopped publishing community images (Docker Hub pulls are denied since late
+    # 2025); :latest only works from a local cache. Needs a replacement — see upgrade notes.
     image: minio/minio:latest
     restart: always
     command: server /data --console-address ":9001"
@@ -40,7 +42,7 @@ services:
   # Catalog metadata is persisted in a SQLite file on a volume; table data lives
   # in MinIO (s3://demo-bucket/iceberg/). Runs as root so it can write /persist.
   trino:
-    image: trinodb/trino:473
+    image: trinodb/trino:483
     restart: always
     container_name: trino
     ports:

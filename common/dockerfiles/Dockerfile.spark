@@ -1,4 +1,4 @@
-FROM spark:4.0.0-python3
+FROM spark:4.1.3-python3
 
 USER root
 
@@ -9,22 +9,24 @@ RUN apt-get update && \
 # postgres JDBC, AWS SDK v2 bundle + hadoop-aws (for s3a:// to MinIO),
 # JAXB (Hive metastore client on Java 11+), and Apache Iceberg (REST catalog).
 COPY ./tmp/postgresql-42.6.0.jar /opt/spark/jars/
-COPY ./tmp/bundle-2.24.6.jar /opt/spark/jars/
-COPY ./tmp/hadoop-aws-3.4.1.jar /opt/spark/jars/
+COPY ./tmp/bundle-2.29.52.jar /opt/spark/jars/
+COPY ./tmp/hadoop-aws-3.4.2.jar /opt/spark/jars/
 COPY ./tmp/javax.activation-api-1.2.0.jar /opt/spark/jars/
 COPY ./tmp/jaxb-api-2.3.1.jar /opt/spark/jars/
 COPY ./tmp/jaxb-impl-2.3.1.jar /opt/spark/jars/
-COPY ./tmp/iceberg-spark-runtime-4.0_2.13-1.10.0.jar /opt/spark/jars/
-COPY ./tmp/iceberg-aws-bundle-1.10.0.jar /opt/spark/jars/
+COPY ./tmp/iceberg-spark-runtime-4.1_2.13-1.11.0.jar /opt/spark/jars/
+COPY ./tmp/iceberg-aws-bundle-1.11.0.jar /opt/spark/jars/
 
 # The AWS SDK v2 "bundle" ships an *unrelocated, older* io.netty that lacks
 # PlatformDependent.newFixedMpscUnpaddedQueue(int). Because it sorts before
 # netty-common on the /opt/spark/jars/* classpath, that stale netty wins and
 # breaks Spark 4's netty RPC ("NoSuchMethodError ... newFixedMpscUnpaddedQueue"),
 # killing the executor<->worker handshake and, in turn, every Spark job.
-# Strip io.netty from the bundle so Spark's own netty-common-4.1.118 is
+# Strip io.netty from the bundle so Spark's own netty-common-4.2.x is
 # authoritative; S3A uses the Apache (sync) HTTP client, so it needs no netty.
-RUN zip -q -d /opt/spark/jars/bundle-2.24.6.jar 'io/netty/*' 'META-INF/native/libnetty*' || true
+# (bundle 2.29.x already relocates its netty under software/amazon/awssdk/thirdparty,
+# so this is now a no-op safety net — keep it for older bundles.)
+RUN zip -q -d /opt/spark/jars/bundle-2.29.52.jar 'io/netty/*' 'META-INF/native/libnetty*' || true
 
 # NOTE: hive-exec-3.1.3 / hive-hcatalog-core-3.1.2 are deliberately NOT added.
 # They shadow Spark 4's commons-lang3-3.17 (NoSuchFieldError JAVA_21) and were
@@ -36,15 +38,15 @@ RUN zip -q -d /opt/spark/jars/bundle-2.24.6.jar 'io/netty/*' 'META-INF/native/li
 # supplying it per-job via --packages fails on local[*] because DeltaCatalog is
 # referenced during session init before the ivy jars join the driver classpath
 # (ClassNotFoundException: org.apache.spark.sql.delta.catalog.DeltaCatalog).
-# Delta MUST match Spark 4.0.0. Delta 4.0.0 is the release for Spark 4.0.0; 4.1.x/4.3.x
-# target Spark 4.1 and reference SupportsV1OverwriteWithSaveAsTable, a class missing from
-# Spark 4.0.0 -> NoClassDefFoundError as soon as Delta's data-source discovery runs (e.g. any
-# spark.read). Keep this in lockstep with the Spark version above.
-ARG DELTA_VER=4.0.0
+# Delta MUST be the build for this Spark line. Since 4.1 Delta publishes one artifact per
+# Spark minor (delta-spark_<spark>_2.13); delta-spark_4.1_2.13 is compiled against Spark
+# 4.1.0. A build for another Spark minor fails with NoClassDefFoundError as soon as Delta's
+# data-source discovery runs (e.g. any spark.read). Keep in lockstep with the FROM above.
+ARG DELTA_VER=4.4.0
+ARG DELTA_SPARK=4.1
 RUN cd /opt/spark/jars && \
     base=https://repo1.maven.org/maven2/io/delta && \
-    curl -fsSL -O $base/delta-spark_2.13/${DELTA_VER}/delta-spark_2.13-${DELTA_VER}.jar 2>/dev/null || \
-    curl -fsSL -O $base/delta-spark_4.0_2.13/${DELTA_VER}/delta-spark_4.0_2.13-${DELTA_VER}.jar && \
+    curl -fsSL -O $base/delta-spark_${DELTA_SPARK}_2.13/${DELTA_VER}/delta-spark_${DELTA_SPARK}_2.13-${DELTA_VER}.jar && \
     curl -fsSL -O $base/delta-storage/${DELTA_VER}/delta-storage-${DELTA_VER}.jar && \
     curl -fsSL -O $base/delta-kernel-api/${DELTA_VER}/delta-kernel-api-${DELTA_VER}.jar && \
     curl -fsSL -O $base/delta-kernel-defaults/${DELTA_VER}/delta-kernel-defaults-${DELTA_VER}.jar

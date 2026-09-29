@@ -1,7 +1,7 @@
 
 services:
   nginx:
-    image: nginx:latest
+    image: nginx:1.31.5
     container_name: home
     ports:
       - "8000:80"
