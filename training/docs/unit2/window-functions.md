@@ -101,7 +101,7 @@ FROM (
   SELECT category, product, revenue,
          RANK() OVER (PARTITION BY category ORDER BY revenue DESC) AS rnk
   FROM product_rev
-)
+) AS ranked
 WHERE rnk <= 3
 ORDER BY category, rnk;
 ```
@@ -119,7 +119,8 @@ ORDER BY category, rnk;
     lives *inside* the `OVER (…)` and only steers the ranking — it is **not** the query's final sort.
 - **The nested subquery** — you can't filter on a window result in the same `SELECT` that computes it
   (window functions are evaluated *after* `WHERE`). So we compute `rnk` in an inner query, then the
-  **outer `WHERE rnk <= 3`** keeps only each category's top three.
+  **outer `WHERE rnk <= 3`** keeps only each category's top three. The `AS ranked` alias names that
+  inner result — Trino doesn't require it, but Postgres does, so it keeps the query portable.
 - **`ORDER BY category, rnk`** — the *final* sort of the output: group the rows by category, and within
   each category show rank 1, then 2, then 3.
 
@@ -127,9 +128,9 @@ Conceptually the result is a tidy leaderboard — every category block looks lik
 
 | category | product | revenue | rnk |
 |---|---|---|---|
-| Books | Atlas of… | 9 120 | 1 |
-| Books | Field Guide… | 7 400 | 2 |
-| Books | Pocket Ref… | 6 010 | 3 |
+| Books | Product 137 | 9 120 | 1 |
+| Books | Product 42 | 7 400 | 2 |
+| Books | Product 88 | 6 010 | 3 |
 | Electronics | … | … | 1 |
 
 !!! note "Why `RANK()` here and not `ROW_NUMBER()`?"
