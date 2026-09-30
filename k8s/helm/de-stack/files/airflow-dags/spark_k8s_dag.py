@@ -13,7 +13,7 @@ now fixed in the spark image itself, so no runtime jar surgery is needed.)
 from datetime import datetime
 
 from airflow import DAG
-from airflow.operators.empty import EmptyOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
 
 SPARK_IMAGE = "ghcr.io/maarthala/de-stack/spark:latest"
@@ -22,6 +22,7 @@ SUBMIT = (
     "exec /opt/spark/bin/spark-submit --master spark://spark-master:7077 "
     "--conf spark.driver.host=$(hostname -i) "
     "--conf spark.driver.bindAddress=0.0.0.0 "
+    "--conf spark.cores.max=2 "                  # share the cluster with spark-connect
     "--class org.apache.spark.examples.SparkPi "
     "/opt/spark/examples/jars/spark-examples_*.jar 20"
 )
@@ -41,6 +42,9 @@ with DAG(
         name="airflow-spark-pi",
         namespace="de-stack",
         image=SPARK_IMAGE,
+        # The image is ctr-imported onto the node. Without this, k8s defaults `:latest` to
+        # Always and re-pulls ~3.7 GB from GHCR on every run (which may also be stale).
+        image_pull_policy="IfNotPresent",
         cmds=["/bin/bash", "-c"],
         arguments=[SUBMIT],
         get_logs=True,

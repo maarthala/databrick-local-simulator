@@ -45,19 +45,24 @@ postgres:
   # in-cluster. Empty string = run the in-cluster Deployment (default: self-contained).
   # Set to an IP (e.g. "192.168.1.3") to use an external Postgres instead.
   external: ""
-  image: postgres:15
+  # Postgres 18: a fresh PVC is required — PG can't open a data dir from an older
+  # major (15). PGDATA is set explicitly in the template, so the PG18 image's new
+  # default layout (/var/lib/postgresql/18/docker) doesn't apply.
+  image: postgres:18
   storage: 5Gi
   user: postgres
   password: postgres
 
 redis:
   enabled: true
-  image: redis:7
+  image: redis:8.10.1
 
 minio:
   enabled: true
-  image: minio/minio:latest
-  mcImage: minio/mc:latest
+  # MinIO deleted its images from Docker Hub (2026-09): unmodified public mirrors of
+  # the last releases (AGPL-3.0, source github.com/minio/minio) — frozen, no fixes.
+  image: ghcr.io/maarthala/de-stack/minio:RELEASE.2025-09-07T16-13-09Z
+  mcImage: ghcr.io/maarthala/de-stack/mc:RELEASE.2025-08-13T08-35-41Z
   storage: 10Gi
   rootUser: minioadmin
   rootPassword: minioadmin
@@ -70,13 +75,13 @@ minio:
 #   docker save apache/polaris:latest | ssh sysadmin@<node> microk8s images import /dev/stdin
 polaris:
   enabled: true
-  image: apache/polaris:latest
-  adminImage: apache/polaris-admin-tool:latest
+  image: apache/polaris:1.8.0
+  adminImage: apache/polaris-admin-tool:1.8.0
   consoleImage: apache/polaris-console:latest
 
 trino:
   enabled: true
-  image: trinodb/trino:473
+  image: trinodb/trino:483
 
 # AdventureWorks OLTP sample DB — loaded into the in-cluster Postgres by a one-shot
 # Job (downloads the MS CSVs + the community Postgres port, ruby-fixes, loads), and

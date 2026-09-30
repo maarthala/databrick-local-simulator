@@ -43,11 +43,13 @@ deploy_waves:
   - name: "commodity"
     templates: [postgres.yaml, redis.yaml, minio.yaml]
   - name: "catalog"
-    templates: [polaris.yaml]          # Polaris server + console + bootstrap Job (the governed catalog)
+    templates: [polaris.yaml, adventureworks.yaml]   # Polaris server + console + bootstrap Job; AdventureWorks one-shot loader Job (needs Postgres, idempotent)
   - name: "compute"
-    templates: [spark.yaml, spark-connect.yaml, trino.yaml]
+    # configmaps.yaml first: spark/spark-connect mount spark-config + hive-config from it
+    # (in the apps wave they sat in FailedMount until the wave's 240s wait timed out).
+    templates: [configmaps.yaml, spark.yaml, spark-connect.yaml, trino.yaml]
   - name: "apps"
-    templates: [airflow.yaml, jupyter.yaml, superset.yaml, home.yaml, sqlpad.yaml, configmaps.yaml]
+    templates: [airflow.yaml, jupyter.yaml, superset.yaml, home.yaml, sqlpad.yaml]
 # NOTE: only ENABLED templates belong here — `helm template -s <t>` on a disabled
 # service renders nothing and `kubectl apply` then errors on empty input.
 

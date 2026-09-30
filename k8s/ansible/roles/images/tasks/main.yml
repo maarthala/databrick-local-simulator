@@ -8,7 +8,7 @@
   ansible.builtin.command: bash init.sh
   args:
     chdir: "{{ repo_root }}/local"
-    creates: "{{ dockerfiles_dir }}/tmp/hadoop-aws-3.4.1.jar"
+    creates: "{{ dockerfiles_dir }}/tmp/iceberg-spark-runtime-4.1_2.13-1.11.0.jar"   # bump with init.sh
 
 - name: Build custom images from stack/dockerfiles (docker layer cache keeps this fast)
   ansible.builtin.command: >

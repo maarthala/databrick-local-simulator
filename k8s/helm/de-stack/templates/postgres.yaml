@@ -73,12 +73,14 @@ spec:
           volumeMounts:
             - { name: data, mountPath: /var/lib/postgresql/data }
             - { name: init, mountPath: /docker-entrypoint-initdb.d }
+          # -h 127.0.0.1 = TCP: over the Unix socket pg_isready says "ready" while the init
+          # scripts still run on a socket-only temp server, so Polaris/Airflow raced it.
           readinessProbe:
-            exec: { command: ["pg_isready", "-U", "{{ .Values.postgres.user }}"] }
+            exec: { command: ["pg_isready", "-h", "127.0.0.1", "-U", "{{ .Values.postgres.user }}"] }
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
-            exec: { command: ["pg_isready", "-U", "{{ .Values.postgres.user }}"] }
+            exec: { command: ["pg_isready", "-h", "127.0.0.1", "-U", "{{ .Values.postgres.user }}"] }
             initialDelaySeconds: 30
             periodSeconds: 20
       volumes:

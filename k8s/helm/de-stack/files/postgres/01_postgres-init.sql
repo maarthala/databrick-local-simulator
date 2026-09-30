@@ -23,6 +23,12 @@ CREATE DATABASE ucdb OWNER ucuser;
 -- Apache Polaris metastore (relational-jdbc persistence)
 CREATE USER polaris WITH PASSWORD 'polaris';
 CREATE DATABASE polarisdb OWNER polaris;
+-- Polaris 1.8+ no longer creates its schema: the admin tool/server select
+-- currentSchema=POLARIS_SCHEMA and expect it to exist ("no schema has been selected
+-- to create in" otherwise). Older Polaris created this same schema itself.
+\connect polarisdb
+CREATE SCHEMA IF NOT EXISTS polaris_schema AUTHORIZATION polaris;
+\connect postgres
 
 -- Optional: Connect to the new database and create schema
 -- \connect airflow
