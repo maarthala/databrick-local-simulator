@@ -84,3 +84,9 @@ html, body, .pf-v5-c-login{
 .pf-v5-c-login__main-header{border-top:0 !important}
 .pf-v5-c-login__main::before, .pf-v5-c-login__main::after{display:none !important}
 input[type="checkbox"]{accent-color:var(--accent)}
+/* Epireum logo above the brand header */
+#kc-header-wrapper::before{
+  content:""; display:block; width:96px; height:96px; margin:0 auto 14px;
+  background:url("../img/epireum-logo.png") center / contain no-repeat;
+  filter:drop-shadow(0 6px 18px rgba(0,0,0,.45));
+}
