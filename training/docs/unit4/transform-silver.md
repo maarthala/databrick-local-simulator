@@ -35,7 +35,7 @@ in four jobs, then writes the result as a governed Iceberg table.
 ### MERGE — updates and late-arriving data
 Real sources do more than append: **price changes** and **late-arriving orders** (a row for a
 past day shows up today). A plain overwrite loses history; a plain append creates duplicates.
-The lakehouse answer is **`MERGE`** (upsert) — the skill from [2.6](../unit2/merge.md), now
+The lakehouse answer is **`MERGE`** (upsert) — the skill from [2.8](../unit2/merge.md), now
 applied to build Silver.
 
 ```mermaid
@@ -254,7 +254,7 @@ WHEN NOT MATCHED THEN INSERT *
   temporary view so we can name it inside SQL. A temp view is a query-able alias that lives only in
   this Spark session; nothing is written to disk.
 - **`MERGE INTO iceberg.silver.orders AS t USING incoming_orders AS s`** — **`MERGE`** (the upsert
-  from [2.6](../unit2/merge.md)) compares a **target** table `t` against a **source** batch `s` and
+  from [2.8](../unit2/merge.md)) compares a **target** table `t` against a **source** batch `s` and
   applies inserts/updates in *one* transaction.
 - **`ON t.order_id = s.order_id AND t.product_id = s.product_id`** — match on the Silver **grain
   key** `(order_id, product_id)`. Matching on the exact grain is what guarantees one incoming line
@@ -331,7 +331,7 @@ country. Rebuild `silver.orders` with the new `is_suspect` column.
 | **`join` (inner / left)** | Match rows on a key; inner keeps matches only, left keeps all left rows |
 | **`select`** | Pick and order the exact output columns / final schema |
 | **`writeTo` … `createOrReplace`** | Persist a DataFrame as an Iceberg table, idempotently |
-| **`MERGE INTO`** | Upsert — update matches, insert new (from [2.6](../unit2/merge.md)) |
+| **`MERGE INTO`** | Upsert — update matches, insert new (from [2.8](../unit2/merge.md)) |
 | **`UPDATE SET *` / `INSERT *`** | Apply all columns from the incoming batch |
 | **Late-arriving data** | Records that show up out of order — MERGE handles them |
 

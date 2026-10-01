@@ -1,4 +1,4 @@
-# 2.8 Challenge: cohort report
+# 2.10 Challenge: cohort report
 
 ## Concept
 A **cohort analysis** groups customers by *when they first became active* — their

@@ -60,7 +60,7 @@ integration-level updates (like AdventureWorks or SQLPad) get an entry.
 | 2026-09-30 | **Materialized views in `%%sql`** | `CREATE / REFRESH / DROP / SHOW MATERIALIZED VIEW` in notebooks, via Spark 4.1 Declarative Pipelines; results governed in Polaris (lesson 4.5) | local · k8s |
 | 2026-09-29 | **Stack upgrade (Spark 4.1)** | Spark 4.1.3 + Iceberg 1.11 + Delta 4.4, Trino 483, Airflow 3.3.2, Superset 6.1, Polaris 1.8, Postgres 18; images pinned (only polaris-console on `:latest`); MinIO + mc mirrored to GHCR | local · k8s |
 | 2026-09-29 | **Google Analytics (course site)** | GA4 page-view + site-search tracking on the published course pages | course |
-| 2026-09-17 | **AdventureWorks SQL challenge** | Course unit 2.9 — 33 progressive SQL challenges (joins → CASE/COALESCE → windows → CTEs → subqueries/outer-joins → RFM capstone) with solutions | course |
+| 2026-09-17 | **AdventureWorks SQL challenge** | Course unit 2.11 — 33 progressive SQL challenges (joins → CASE/COALESCE → windows → CTEs → subqueries/outer-joins → RFM capstone) with solutions | course |
 | 2026-09-20 | **SQLPad (SQL workbench)** | Web SQL editor for read **+ write** (INSERT/UPDATE/DDL) on Postgres (OLTP) & Trino (OLAP); replaced Metabase | local · k8s |
 | 2026-09-17 | **AdventureWorks OLTP** | Full 68-table AdventureWorks sample DB in Postgres, queryable via Trino/SQLPad/Superset | local · k8s |
 | 2026-09-17 | **Spark internals lessons** | Course units 4.7 (architecture & query lifecycle) and 4.8 (data skew & salting) | course |

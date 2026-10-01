@@ -182,11 +182,11 @@ lakehouse — just change the three-part name:
 ```sql
 -- From Unit 4 onward — the governed lakehouse via the iceberg catalog
 SHOW SCHEMAS FROM iceberg;          -- expect: bronze, silver, gold
-SELECT * FROM iceberg.gold.daily_sales ORDER BY sales_date DESC LIMIT 14;
+SELECT * FROM iceberg.gold.daily_sales ORDER BY order_date DESC LIMIT 14;
 ```
 
 ### Make your own space in the lakehouse
-So far you've only **read** data. Before we start *writing* (from [2.6](merge.md) onward), carve out
+So far you've only **read** data. Before we start *writing* (from [2.5](views.md) onward), carve out
 your own area to experiment in. Remember from the info box above: you can't create a **catalog** in
 SQL (that's admin config), but you **can** create your own **schema** inside the existing `iceberg`
 catalog, and real tables inside *that* — your personal corner of the lakehouse.

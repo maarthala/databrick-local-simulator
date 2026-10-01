@@ -195,7 +195,7 @@ def to_float(x):
     try:
         return float(x)
     except (ValueError, TypeError):
-        return None          # a "TRY_CAST" in Python (like Unit 2.5)
+        return None          # a "TRY_CAST" in Python (like Unit 2.6)
 
 print(to_float("12.5"), to_float("oops"))       # 12.5 None
 ```
@@ -211,7 +211,7 @@ print(to_float("12.5"), to_float("oops"))       # 12.5 None
   raises a `ValueError`; passing something non-convertible (like `None`) raises a `TypeError`.
   Listing them in `( )` catches either one.
 - **`return None`** — when conversion fails, hand back **`None`** instead of blowing up. This is the
-  Python equivalent of SQL's `TRY_CAST` from Unit 2.5: bad values become "nothing" rather than
+  Python equivalent of SQL's `TRY_CAST` from Unit 2.6: bad values become "nothing" rather than
   errors.
 - **`print(to_float("12.5"), to_float("oops"))`** — the good input returns `12.5`; the bad input is
   caught and returns `None`.

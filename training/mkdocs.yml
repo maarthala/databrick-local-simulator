@@ -86,11 +86,13 @@ nav:
       - "2.2 Joins & aggregations": unit2/joins-aggregations.md
       - "2.3 Window functions": unit2/window-functions.md
       - "2.4 CTEs & complex analytics": unit2/ctes.md
-      - "2.5 Conditional logic, NULLs & filtering": unit2/conditional.md
-      - "2.6 MERGE & upserts": unit2/merge.md
-      - "2.7 Semi-structured data (JSON)": unit2/json.md
-      - "2.8 Challenge: cohort report": unit2/challenge.md
-      - "2.9 Challenge: AdventureWorks": unit2/adventureworks-challenge.md
+      - "2.5 Views": unit2/views.md
+      - "2.6 Conditional logic, NULLs & filtering": unit2/conditional.md
+      - "2.7 Functions (built-in, lambdas & your own)": unit2/functions.md
+      - "2.8 MERGE & upserts": unit2/merge.md
+      - "2.9 Semi-structured data (JSON)": unit2/json.md
+      - "2.10 Challenge: cohort report": unit2/challenge.md
+      - "2.11 Challenge: AdventureWorks": unit2/adventureworks-challenge.md
   - "3 · Python — Notebook":
       - "3.1 Python & notebooks for DE": unit3/python-essentials.md
       - "3.2 pandas": unit3/pandas.md

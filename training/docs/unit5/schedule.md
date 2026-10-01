@@ -23,7 +23,7 @@ them and make a scheduled pipeline trustworthy:
   means an operation lands in the same final state no matter how many times you apply it. The
   Bronze/Silver/Gold jobs here **rebuild from source** with `createOrReplace`, so a re-run simply
   replaces the tables — inherently safe. (In production you'd optimise to *incremental*:
-  partition-overwrite Bronze and `MERGE` Silver — the same `MERGE` from [2.6](../unit2/merge.md) /
+  partition-overwrite Bronze and `MERGE` Silver — the same `MERGE` from [2.8](../unit2/merge.md) /
   [4.3](../unit4/transform-silver.md). The orchestration is identical either way.)
 - **Retries** — transient failures (a Postgres hiccup) should self-heal before paging anyone.
   Airflow can re-run a failed task a few times, waiting between attempts, before it gives up.
