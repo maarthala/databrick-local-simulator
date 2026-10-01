@@ -11,11 +11,12 @@
       if (Date.now() - started > 15000) clearInterval(t);
       return;
     }
-    if (sessionStorage.getItem('lab_sso_tried')) { clearInterval(t); return; }  // one try per tab session
+    var tried = +sessionStorage.getItem('lab_sso_tried') || 0;          // one try per 30 s — no loop on error
+    if (Date.now() - tried < 30000) { clearInterval(t); return; }
     var b = Array.prototype.find.call(document.querySelectorAll('button'), function (x) {
       return /Sign in with Epireum lab account/.test(x.textContent);
     });
-    if (b) { sessionStorage.setItem('lab_sso_tried', '1'); clearInterval(t); b.click(); }
+    if (b) { sessionStorage.setItem('lab_sso_tried', String(Date.now())); clearInterval(t); b.click(); }
   }, 150);
   // a successful sign-in lands outside /login → allow auto sign-in again next time
   window.addEventListener('load', function () {
