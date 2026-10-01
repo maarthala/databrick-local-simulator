@@ -41,6 +41,9 @@ x-airflow-common:
     - ../common/dockerfiles/add/airflow_webserver_config.py:/opt/airflow/webserver_config.py:ro
     - ../common/dockerfiles/add/airflow_learner_dags.py:/opt/airflow/lab/learner_dags.py:ro
     - ../common/dockerfiles/add/airflow_local_settings.py:/opt/airflow/lab/airflow_local_settings.py:ro
+    # lab_spark(): a Spark session for a learner's DAG, signed in as that learner (+ its deps)
+    - ../common/dockerfiles/add/lab_spark.py:/opt/airflow/lab/lab_spark.py:ro
+    - ../common/dockerfiles/add/lakehouse.py:/opt/airflow/lab/lakehouse.py:ro
     - ./configs/airflow.cfg:/opt/airflow/config/airflow.cfg
     - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
     - ./init_scripts/airflow:/init_scripts
