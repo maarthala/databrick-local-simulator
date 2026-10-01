@@ -53,9 +53,20 @@
 // Open /login?local=1 to use the Client ID / Secret form instead (root, personas).
 (function () {
   if (/[?&]local=1\b/.test(location.search)) return;
+  // The console keeps its sign-in in memory only, so a deep link (e.g. /catalogs/<name> from
+  // the lab's "My catalogs" page) goes /login → sign-in → "/" and loses its target.
+  // Remember it, and go there once signed in (in-app navigation, keeps the sign-in).
+  var BACK = 'lab_sso_return', p0 = location.pathname;
+  if (p0 !== '/' && !/^\/(login|auth\/callback)\/?$/.test(p0)) sessionStorage.setItem(BACK, p0 + location.search);
   var started = Date.now();
   var t = setInterval(function () {
-    if (!/\/login\/?$/.test(location.pathname)) {              // signed in (or elsewhere)
+    var p = location.pathname;
+    if (!/\/login\/?$/.test(p)) {                                // signed in (or elsewhere)
+      var back = sessionStorage.getItem(BACK);
+      if (back && !/^\/auth\/callback/.test(p)) {
+        sessionStorage.removeItem(BACK);
+        if (p === '/') { history.pushState({}, '', back); window.dispatchEvent(new PopStateEvent('popstate')); }
+      }
       if (Date.now() - started > 15000) clearInterval(t);
       return;
     }

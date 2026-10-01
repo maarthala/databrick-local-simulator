@@ -58,7 +58,8 @@
     .toast.err{border-color:var(--danger); color:#ffb3b0}
     .placeholder{color:var(--muted); padding:40px; text-align:center}
     @media (max-width:760px){ .app{grid-template-columns:1fr} aside{max-height:35vh; border-right:0; border-bottom:1px solid var(--line)} }
-  </style>
+    .plink{display:inline-block;margin-top:8px;font-size:.88rem;color:var(--accent);font-weight:600}
+</style>
 </head>
 <body>
   <header>
@@ -83,6 +84,13 @@
     // enforces what each learner may read or write.
     var $ = function (id) { return document.getElementById(id); };
     var state = {data: null, sel: null, user: ''};
+    // The Polaris Console can't LIST catalogs for learners (only its admin role may), but it
+    // opens a catalog you own directly by name.
+    var POLARIS_UI = /(^|\.)de\.lan$/.test(location.hostname) ? 'http://polaris-console.' + location.hostname : 'http://localhost:8189';
+    function polarisLink(name) {
+      var a = el('a', 'plink', 'Open in Polaris Console ↗'); a.href = POLARIS_UI + '/catalogs/' + encodeURIComponent(name);
+      a.target = '_blank'; a.rel = 'noopener'; return a;
+    }
     function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
     function toast(m, err) { var t = $('toast'); t.textContent = m; t.className = 'toast' + (err ? ' err' : ''); t.style.display = 'block';
       clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, 3500); }
@@ -150,6 +158,7 @@
       var info = state.data.owned.filter(function (x) { return x.name === name; })[0];
       var head = el('div', 'card'); head.appendChild(el('h2', null, '🗂️ ' + name));
       head.appendChild(el('div', 'sub', (info.default ? 'Your main lakehouse (the `iceberg` catalog in your notebooks)' : 'Your catalog') + ' · stored in ' + info.location));
+      head.appendChild(polarisLink(name));
       m.appendChild(head);
       var tree = el('div', 'card'); tree.appendChild(el('h3', null, 'Namespaces & tables — share with another learner'));
       var tbody = el('table'); tree.appendChild(tbody); m.appendChild(tree);
