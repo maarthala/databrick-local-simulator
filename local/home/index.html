@@ -135,7 +135,7 @@
 
     <div class="section-title">Orchestrate</div>
     <div class="grid">
-      <a class="card" href="http://localhost:8001" target="_blank">
+      <a class="card" id="airflow-tile" href="http://localhost:8001" target="_blank">
         <div class="ico">🌬️</div>
         <div><h3>Orchestration</h3><p><b>Airflow</b> — Schedule the Bronze→Silver→Gold pipeline.</p><span class="cred sso">🔑 lab account</span></div>
       </a>
@@ -176,6 +176,10 @@
         .then(function (me) {
           if (!me) return;
           document.getElementById('me-name').textContent = me.user;
+          // Local: Airflow's host port is configurable (AIRFLOW_HOST_PORT in .env)
+          if (!k8s && me.airflow_port) {
+            document.getElementById('airflow-tile').href = 'http://localhost:' + me.airflow_port;
+          }
           var lake = document.getElementById('me-lake');
           if (me.status === 'ready') {
             lake.textContent = 'your lakehouse: ' + me.lakehouse + ' ✓ · bucket: ' + me.bucket;

@@ -50,6 +50,7 @@ services:
     environment:
       POLARIS_URL: http://polaris:8181
       LEARNER_QUOTA_MB: "20"      # each learner's bucket <user>-lake (hard limit)
+      AIRFLOW_HOST_PORT: ${AIRFLOW_HOST_PORT:-8001}   # so the home page's Airflow tile follows .env
     depends_on:
       - polaris
     restart: unless-stopped

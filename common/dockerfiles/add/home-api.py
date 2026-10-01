@@ -232,7 +232,8 @@ class Handler(BaseHTTPRequestHandler):
               # oauth2-proxy's keycloak provider adds roles as "role:…" — keep real groups only
               "groups": [g for g in (h.get("X-Forwarded-Groups") or "").split(",") if g and not g.startswith("role:")],
               "lakehouse": f"{name}_lake", "bucket": bucket_name(name), "principal": name,
-              "quota_mb": lh.QUOTA_MB}
+              "quota_mb": lh.QUOTA_MB,
+              "airflow_port": os.environ.get("AIRFLOW_HOST_PORT", "")}
         try:
             self._ensure(name)
             me["status"] = "ready"
