@@ -59,7 +59,7 @@ c.DockerSpawner.environment = {k: env[k] for k in PASS if env.get(k)}
 async def pre_spawn(spawner):
     """Learner's own lakehouse + a fresh Polaris secret, handed only to their server."""
     name = lake_name(spawner.user.name)
-    provision(name)
+    provision(name, instructor=any(g.name == "instructors" for g in spawner.user.groups))
     secret = reset_secret(name)
     spawner.environment.update({
         "LAKE_USER": name,

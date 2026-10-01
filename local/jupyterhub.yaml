@@ -18,6 +18,7 @@ services:
       KEYCLOAK_INTERNAL_URL: http://keycloak:8080
       OAUTH_CLIENT_SECRET: jupyterhub-secret
       POLARIS_URL: http://polaris:8181
+      LEARNER_QUOTA_MB: "20"      # each learner's bucket <user>-lake (hard limit)
       SINGLEUSER_IMAGE: local-jupyter:latest
       DOCKER_NETWORK: local_sparknet
       SPARK_REMOTE: sc://spark-connect:15002

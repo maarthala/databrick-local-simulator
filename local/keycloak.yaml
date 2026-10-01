@@ -49,6 +49,7 @@ services:
     container_name: home-api
     environment:
       POLARIS_URL: http://polaris:8181
+      LEARNER_QUOTA_MB: "20"      # each learner's bucket <user>-lake (hard limit)
     depends_on:
       - polaris
     restart: unless-stopped

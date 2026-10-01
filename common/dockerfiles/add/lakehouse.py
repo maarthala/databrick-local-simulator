@@ -1,8 +1,10 @@
 """lakehouse — one learner = one Polaris lakehouse. Shared by home-api (first login)
 and the JupyterHub spawn hook (every server start).
 
-provision(name)     the learner's own MinIO bucket <name>-lake, and catalog <name>_lake stored in
-                    it (bronze/silver/gold), principal <name>, principal-role <name> owning the
+provision(name)     the learner's own bucket <name>-lake on the object store (RustFS) with a
+                    hard quota and a storage policy named after them (their bucket only —
+                    instructors: everything), and catalog <name>_lake stored in it
+                    (bronze/silver/gold), principal <name>, principal-role <name> owning the
                     catalog, read-only on the shared lake. Idempotent (also moves an older
                     catalog's default location into the learner's bucket).
 reset_secret(name)  give principal <name> a fresh random client secret; returns it. The Hub
@@ -28,6 +30,7 @@ S3_ENDPOINT = os.environ.get("LAKE_S3_ENDPOINT", "http://minio:9000")
 S3_KEY = os.environ.get("AWS_ACCESS_KEY_ID", "minioadmin")
 S3_SECRET = os.environ.get("AWS_SECRET_ACCESS_KEY", "minioadmin")
 S3_REGION = os.environ.get("AWS_REGION", "us-east-1")
+QUOTA_MB = int(os.environ.get("LEARNER_QUOTA_MB", "20"))      # per-learner bucket, hard limit
 NAMESPACES = ("bronze", "silver", "gold")
 
 
@@ -43,13 +46,23 @@ def bucket_name(name):
 
 
 def _s3(method, bucket, key="", query=None, body=b"", headers=None, stream=None, length=None):
-    """One S3 call to MinIO (path-style), signed with AWS SigV4 — stdlib only.
-    `stream` + `length` send a file-like body unsigned (UNSIGNED-PAYLOAD) without
-    buffering it. Returns the open response (caller reads/closes)."""
+    """One S3 call to the object store (path-style)."""
+    path = "/" + bucket + ("/" + urllib.parse.quote(key, safe="/~") if key else "")
+    return _signed(method, path, query, body, headers, stream, length)
+
+
+def _admin(method, op, query=None, body=b""):
+    """Object-store admin API (RustFS speaks MinIO's /minio/admin/v3/…), same SigV4 signing."""
+    with _signed(method, f"/minio/admin/v3/{op}", query, body, {"content-type": "application/json"}) as r:
+        return r.status
+
+
+def _signed(method, path, query=None, body=b"", headers=None, stream=None, length=None):
+    """Sign with AWS SigV4 (stdlib only) and send. `stream` + `length` send a file-like
+    body unsigned (UNSIGNED-PAYLOAD) without buffering it. Returns the open response."""
     host = urllib.parse.urlparse(S3_ENDPOINT).netloc
     now = datetime.datetime.now(datetime.timezone.utc)
     amz_date, day = now.strftime("%Y%m%dT%H%M%SZ"), now.strftime("%Y%m%d")
-    path = "/" + bucket + ("/" + urllib.parse.quote(key, safe="/~") if key else "")
     qs = "&".join(f"{urllib.parse.quote(k, safe='-_.~')}={urllib.parse.quote(str(v), safe='-_.~')}"
                   for k, v in sorted((query or {}).items()))
     payload = "UNSIGNED-PAYLOAD" if stream is not None else hashlib.sha256(body).hexdigest()
@@ -83,6 +96,34 @@ def create_bucket(bucket):
         if e.code == 409:            # BucketAlreadyOwnedByYou
             return False
         raise RuntimeError(f"create bucket {bucket}: HTTP {e.code} {e.read()[:200]!r}")
+
+
+def storage_user(name):
+    """Keycloak username for a lake name (usernames are a-z0-9- only; lake names use _)."""
+    return name.replace("_", "-")
+
+
+def put_storage_policy(name, admin=False):
+    """Policy named after the learner (Keycloak sends the username as the `policy` claim on
+    the object-store console login): their own bucket only — or everything for instructors.
+    (RustFS doesn't expand ${jwt:…} in resource names, so it's one policy per learner.)"""
+    bucket = bucket_name(name)
+    doc = {"Version": "2012-10-17", "Statement": [
+        {"Effect": "Allow", "Action": ["admin:*"]},
+        {"Effect": "Allow", "Action": ["s3:*"], "Resource": ["arn:aws:s3:::*"]}]} if admin else {
+        "Version": "2012-10-17", "Statement": [
+            {"Effect": "Allow", "Action": ["s3:ListBucket", "s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
+             "Resource": [f"arn:aws:s3:::{bucket}"]},
+            {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject",
+                                           "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"],
+             "Resource": [f"arn:aws:s3:::{bucket}/*"]}]}
+    return _admin("PUT", "add-canned-policy", {"name": storage_user(name)}, json.dumps(doc).encode())
+
+
+def set_quota(bucket, mb=QUOTA_MB):
+    """Hard quota: uploads that would exceed it are rejected."""
+    return _admin("PUT", "set-bucket-quota", {"bucket": bucket},
+                  json.dumps({"quota": mb * 1024 * 1024, "quotatype": "hard"}).encode())
 
 
 # ---- "My files": the learner's own bucket only (callers pass bucket_name(user)) ----
@@ -179,10 +220,12 @@ def _admin_token():
     return tok["access_token"]
 
 
-def provision(name):
-    """Create (or confirm) the learner's lakehouse + identity in Polaris."""
+def provision(name, instructor=False):
+    """Create (or confirm) the learner's bucket, storage policy, lakehouse + Polaris identity."""
     bucket = bucket_name(name)
     create_bucket(bucket)
+    set_quota(bucket)
+    put_storage_policy(name, admin=instructor)
     t = _admin_token()
     m, cat = "/api/management/v1", f"{name}_lake"
     loc = f"s3://{bucket}"

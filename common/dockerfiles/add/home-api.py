@@ -67,10 +67,14 @@ class Handler(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         return u.path, {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
 
+    def _instructor(self):
+        groups = (self.headers.get("X-Forwarded-Groups") or "").split(",")
+        return "instructors" in groups
+
     def _ensure(self, name):
         with _lock:
             if name not in _ready:
-                provision(name)
+                provision(name, instructor=self._instructor())
                 _ready.add(name)
 
     @staticmethod
@@ -116,8 +120,18 @@ class Handler(BaseHTTPRequestHandler):
                 length = int(self.headers.get("Content-Length") or 0)
                 if length > MAX_UPLOAD:
                     return self._json(413, {"error": f"file larger than {MAX_UPLOAD >> 20} MB"})
-                lh.put_object(bucket, key, _Body(self.rfile, length), length,
-                              self.headers.get("Content-Type") or "application/octet-stream")
+                try:
+                    lh.put_object(bucket, key, _Body(self.rfile, length), length,
+                                  self.headers.get("Content-Type") or "application/octet-stream")
+                except urllib.error.HTTPError as e:
+                    msg = e.read().lower()
+                    if b"quota exceeded" in msg:
+                        return self._json(413, {"error": f"Your bucket is full — the limit is "
+                                                         f"{lh.QUOTA_MB} MB. Delete files you no longer need."})
+                    if b"quota check temporarily unavailable" in msg:   # brand-new bucket, not scanned yet
+                        return self._json(503, {"error": "Your storage is still being prepared — "
+                                                         "try the upload again in a few seconds."})
+                    raise
                 return self._json(200, {"uploaded": key, "path": f"s3a://{bucket}/{key}"})
             if method == "POST" and path == "/api/files/mkdir":
                 prefix = self._clean(q.get("prefix")).rstrip("/") + "/"
@@ -169,12 +183,10 @@ class Handler(BaseHTTPRequestHandler):
         me = {"user": user, "email": h.get("X-Forwarded-Email", ""),
               # oauth2-proxy's keycloak provider adds roles as "role:…" — keep real groups only
               "groups": [g for g in (h.get("X-Forwarded-Groups") or "").split(",") if g and not g.startswith("role:")],
-              "lakehouse": f"{name}_lake", "bucket": bucket_name(name), "principal": name}
+              "lakehouse": f"{name}_lake", "bucket": bucket_name(name), "principal": name,
+              "quota_mb": lh.QUOTA_MB}
         try:
-            with _lock:
-                if name not in _ready:
-                    provision(name)
-                    _ready.add(name)
+            self._ensure(name)
             me["status"] = "ready"
         except Exception as e:                       # show it on the page, don't crash
             me["status"], me["detail"] = "error", str(e)

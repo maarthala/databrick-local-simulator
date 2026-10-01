@@ -135,7 +135,7 @@
         </table>
         <div class="drop">Drop files to upload into this folder</div>
       </div>
-      <div class="hint">Only you can see this bucket. Use a file from Spark with its path — click ⧉ to copy it, e.g. <code id="example">s3a://…/uploads/orders.csv</code></div>
+      <div class="hint">Only you can see this bucket (limit <span id="quota">20</span> MB). Use a file from Spark with its path — click ⧉ to copy it, e.g. <code id="example">s3a://…/uploads/orders.csv</code></div>
     </main>
   </div>
 
@@ -372,7 +372,7 @@
     list.addEventListener('drop', function (e) { e.preventDefault(); list.classList.remove('dragging'); if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
 
     fetch('/api/me', {credentials: 'same-origin'}).then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (me) { if (me) $('who').textContent = 'Signed in as ' + me.user; });
+      .then(function (me) { if (me) { $('who').textContent = 'Signed in as ' + me.user; if (me.quota_mb) $('quota').textContent = me.quota_mb; } });
     load().then(refresh);
   </script>
 </body>

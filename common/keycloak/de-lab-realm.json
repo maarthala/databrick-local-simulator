@@ -95,15 +95,16 @@
       ]
     },
     {
-      "clientId": "minio",
-      "name": "MinIO console \u2014 SSO, own bucket only",
+      "clientId": "rustfs",
+      "name": "RustFS console \u2014 SSO, own bucket only",
       "publicClient": false,
-      "secret": "minio-secret",
+      "secret": "rustfs-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "redirectUris": [
-        "http://localhost:9001/oauth_callback",
-        "http://minio.de.lan/oauth_callback"
+        "http://localhost:9001/*",
+        "http://rustfs.de.lan/*",
+        "http://minio.de.lan/*"
       ],
       "webOrigins": [
         "+"
@@ -112,10 +113,11 @@
         {
           "name": "policy",
           "protocol": "openid-connect",
-          "protocolMapper": "oidc-group-membership-mapper",
+          "protocolMapper": "oidc-usermodel-property-mapper",
           "config": {
+            "user.attribute": "username",
             "claim.name": "policy",
-            "full.path": "false",
+            "jsonType.label": "String",
             "id.token.claim": "true",
             "access.token.claim": "true",
             "userinfo.token.claim": "true"
