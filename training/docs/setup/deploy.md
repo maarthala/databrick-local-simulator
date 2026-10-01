@@ -137,6 +137,10 @@ learning.
     login. All UIs live at `http(s)://<name>.de.lan` (jupyter, trino, superset, sqlpad, airflow,
     spark, minio — the RustFS console, polaris-console) — the landing page links them.
 
+    **Fill the shared lake once:** in Airflow (`http://airflow.de.lan`, as `instructor`) switch
+    **`shopflow_medallion`** on and trigger it — Bronze → Silver → Gold in under a minute. (Same
+    DAG as locally; on k8s it runs the jobs through Spark Connect.)
+
     ### Teardown
     ```bash
     helm template de-stack k8s/helm/de-stack | kubectl -n de-stack delete -f - || true

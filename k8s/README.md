@@ -94,6 +94,9 @@ All UIs are at `https?://<name>.de.lan`. Default credentials (change for anythin
    Console, or via the REST API (see `common/polaris/seed-polaris.sh` for the API calls).
 5. **Schedule / notebooks** — Airflow loads DAGs from the `de-lab` repo (git-sync) **and**
    from every learner's bucket `dags/` (see below).
+6. **Fill the shared lake once** — trigger the `shopflow_medallion` DAG (built-in; runs the
+   ShopFlow Bronze → Silver → Gold jobs over Spark Connect into `polaris_lake`). The lessons'
+   ready-made tables (`shared.gold.daily_sales` in notebooks) come from it.
 
 ### Learners' notebooks and DAGs (no git needed)
 Each learner's Jupyter keeps `notebooks/` and `dags/` mirrored to their own bucket

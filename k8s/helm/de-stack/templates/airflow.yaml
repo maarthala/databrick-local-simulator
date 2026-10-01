@@ -41,6 +41,19 @@ data:
 {{ $.Files.Get $path | indent 4 }}
 {{- end }}
 ---
+# The ShopFlow medallion job scripts (copies of local/code/shared/jobs) for the
+# shopflow_medallion DAG — mounted at /opt/airflow/jobs, run over Spark Connect.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: medallion-jobs
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+{{- range $path, $_ := .Files.Glob "files/medallion-jobs/*.py" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+---
 # Single-pod Airflow: api-server + scheduler + dag-processor + triggerer in one pod.
 # With Keycloak: started directly, FAB auth manager (lab-account login). Without:
 # `airflow standalone` (SimpleAuthManager, fixed admin airflow/airflow).
@@ -156,6 +169,12 @@ spec:
               readOnly: true
 {{- end }}
             - { name: logs, mountPath: /opt/airflow/logs }
+{{- range $path, $_ := .Files.Glob "files/medallion-jobs/*.py" }}
+            - name: medallion-jobs
+              mountPath: /opt/airflow/jobs/{{ base $path }}
+              subPath: {{ base $path }}
+              readOnly: true
+{{- end }}
 {{- if .Values.git.enabled }}
 {{ include "de-stack.gitsync.sidecar" . | indent 8 }}
 {{- end }}
@@ -165,6 +184,7 @@ spec:
 {{- end }}
         - { name: dags, configMap: { name: airflow-dags } }
         - { name: logs, emptyDir: {} }
+        - { name: medallion-jobs, configMap: { name: medallion-jobs } }
 ---
 apiVersion: v1
 kind: Service
