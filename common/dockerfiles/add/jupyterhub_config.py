@@ -124,5 +124,7 @@ c.JupyterHub.load_roles = [{
 }]
 c.JupyterHub.services = [{
     "name": "idle-culler",
-    "command": ["python3", "-m", "jupyterhub_idle_culler", "--timeout=3600"],
+    # localhost: on k8s the hub pod can't reach itself through its own Service address
+    "command": ["python3", "-m", "jupyterhub_idle_culler", "--timeout=3600",
+                "--url=http://localhost:8081/hub/api"],
 }]
