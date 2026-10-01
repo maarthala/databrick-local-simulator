@@ -74,13 +74,13 @@ ship it** — copy it into `local/code/airflow/dags/` (Compose bind-mounts that 
 the Git repo the remote Airflow git-syncs. This section sets up a Docker-free local Airflow so you
 never push a broken DAG. (You'll still use the running stack's **web UI** for the labs below.)
 
-!!! danger "Match the stack's version — Airflow **3.0.1**"
+!!! danger "Match the stack's version — Airflow **3.3.2**"
     This stack runs **Airflow 3**, whose DAGs import `from airflow.sdk import DAG`. That module does
     **not exist in Airflow 2**, so a 2.x local install (e.g. `2.10.5`) can't even parse these DAGs.
-    Always install the **same version as the deployment** — here, `3.0.1`.
+    Always install the **same version as the deployment** — here, `3.3.2`.
 
 === "macOS / Linux"
-    You just need **Python 3.11+** (`python3 --version`). Continue with the install below.
+    You just need **Python 3.10+** (`python3 --version`). Continue with the install below.
 
 === "Windows"
     Airflow is **not supported on native Windows** — run it inside **WSL 2** (Ubuntu). Open your WSL
@@ -93,12 +93,12 @@ compatible versions):
 ```bash
 python -m venv .airflow && source .airflow/bin/activate
 
-AIRFLOW_VERSION=3.0.1
+AIRFLOW_VERSION=3.3.2
 PY=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 pip install "apache-airflow==${AIRFLOW_VERSION}" apache-airflow-providers-standard \
   --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PY}.txt"
 
-airflow version                          # → 3.0.1
+airflow version                          # → 3.3.2
 python -c "import airflow.sdk; print('sdk OK')"
 ```
 
@@ -155,7 +155,7 @@ yet still reports the run "successful" (a common surprise — pick any date betw
 ??? bug "Common local-Airflow errors & fixes (the ones everyone hits)"
     | Symptom | Cause | Fix |
     |---|---|---|
-    | `ModuleNotFoundError: airflow.sdk` / DAG won't parse | local Airflow is **v2** | install `apache-airflow==3.0.1` |
+    | `ModuleNotFoundError: airflow.sdk` / DAG won't parse | local Airflow is **v2** | install `apache-airflow==3.3.2` |
     | `Dag '<id>' could not be found in DagBag read from database` | `dags test` reads the **DB**; DAG not serialized | run `airflow dags reserialize` first |
     | Import tracebacks under `example_dags/` (kubernetes / pandas / s3) | Airflow's **bundled examples** need extra deps | `export AIRFLOW__CORE__LOAD_EXAMPLES=False` |
     | `No data found` / `no such table` from `dags list` | new/empty or unmigrated DB — usually `AIRFLOW_HOME` changed between shells | set `AIRFLOW_HOME` consistently, then `airflow db migrate` |

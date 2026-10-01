@@ -82,7 +82,7 @@ python code/shared/jobs/build_gold.py   --catalog iceberg --mart all # → GOLD_
 Write the DAG (a `BashOperator` per job that `spark-submit`s it, wired `bronze >> silver >> gold` —
 see [5.2](medallion-dag.md)). Before shipping, **parse-check its structure** in your local Airflow
 (installed per [the setup section](basics.md#set-up-airflow-on-your-machine) — the same version,
-`3.0.1`):
+`3.3.2`):
 
 ```bash
 export AIRFLOW__CORE__LOAD_EXAMPLES=False
