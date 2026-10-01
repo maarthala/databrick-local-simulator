@@ -1,0 +1,89 @@
+# Front door: Keycloak (logins + self-registration) → oauth2-proxy (guards the landing
+# page) → home-api (who am I + provisions the learner's own lakehouse on first login).
+#
+# Hostnames: the browser reaches Keycloak at http://localhost:8180, containers at
+# http://keycloak:8080. Keycloak issues tokens for the PUBLIC address (KC_HOSTNAME) and
+# answers back-channel calls on the internal one (BACKCHANNEL_DYNAMIC); oauth2-proxy
+# skips discovery and is told both — so no hosts-file entries and no hostAlias tricks.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.0
+    container_name: keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HOSTNAME: http://localhost:8180
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8180:8080"
+    volumes:
+      # realm de-lab: registration on, groups learners (default) / instructors,
+      # client de-lab-home, user instructor/instructor. Imported only if absent.
+      - ../common/keycloak/de-lab-realm.json:/opt/keycloak/data/import/de-lab-realm.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # no curl in the image — ask the management port with bash's /dev/tcp
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+    networks:
+      - sparknet
+
+  home-api:
+    build:
+      context: ../common/dockerfiles
+      dockerfile: Dockerfile.home-api
+    container_name: home-api
+    environment:
+      POLARIS_URL: http://polaris:8181
+    depends_on:
+      - polaris
+    restart: unless-stopped
+    networks:
+      - sparknet
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.4
+    container_name: oauth2-proxy
+    ports:
+      - "8000:4180"          # the landing page — now behind a Keycloak login
+    environment:
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_PROVIDER: keycloak-oidc
+      OAUTH2_PROXY_CLIENT_ID: de-lab-home
+      OAUTH2_PROXY_CLIENT_SECRET: de-lab-home-secret
+      OAUTH2_PROXY_CODE_CHALLENGE_METHOD: S256
+      # browser-facing issuer/login; container-facing token + keys
+      OAUTH2_PROXY_OIDC_ISSUER_URL: http://localhost:8180/realms/de-lab
+      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
+      OAUTH2_PROXY_LOGIN_URL: http://localhost:8180/realms/de-lab/protocol/openid-connect/auth
+      OAUTH2_PROXY_REDEEM_URL: http://keycloak:8080/realms/de-lab/protocol/openid-connect/token
+      OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak:8080/realms/de-lab/protocol/openid-connect/certs
+      OAUTH2_PROXY_REDIRECT_URL: http://localhost:8000/oauth2/callback
+      OAUTH2_PROXY_UPSTREAMS: http://home:80/,http://home-api:8000/api/
+      OAUTH2_PROXY_PASS_USER_HEADERS: "true"
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "true"   # self-registered users
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"                   # straight to Keycloak's login/register page
+      OAUTH2_PROXY_COOKIE_SECRET: "de-lab-local-cookie-secret-32ch!"   # must be 16/24/32 bytes (lab only)
+      OAUTH2_PROXY_COOKIE_SECURE: "false"                         # plain http in the lab
+      OAUTH2_PROXY_COOKIE_NAME: _de_lab
+      # where "Log out" lands after oauth2-proxy clears its cookie (Keycloak ends the SSO session)
+      OAUTH2_PROXY_WHITELIST_DOMAINS: localhost:8180
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - sparknet

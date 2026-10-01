@@ -103,7 +103,7 @@ ingress host `http://<tool>.de.lan`. Same services, same logins.
 
 | Tool | Compose URL | k8s host | Login |
 |---|---|---|---|
-| Home portal | http://localhost:8000 | `home.de.lan` | — |
+| Home portal | http://localhost:8000 | `de.lan` | — |
 | Polaris Console | http://localhost:8189 | `polaris-console.de.lan` | `root` / `s3cr3t` (or a persona) |
 | Polaris API | http://localhost:8185 | `polaris.de.lan` | client id/secret |
 | Trino | http://localhost:8007/ui/ | `trino.de.lan` | any user, no password |

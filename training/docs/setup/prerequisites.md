@@ -41,7 +41,7 @@ Jupyter, the Polaris Console, MinIO, and this course site. Bookmark the landing 
 everything:
 
 - **Local (Docker):** [http://localhost:8000](http://localhost:8000)
-- **Kubernetes:** `http://home.de.lan`
+- **Kubernetes:** `http://de.lan`
 
 ---
 
@@ -190,8 +190,10 @@ commands (Docker Compose) or the Ansible steps (Kubernetes).
 
 Run through this checklist once — if all three pass, you're ready for Unit 1.
 
-1. **Landing page loads** — open [http://localhost:8000](http://localhost:8000). You should see the
-   ShopFlow tiles.
+1. **Sign in to the landing page** — open [http://localhost:8000](http://localhost:8000). You're sent
+   to the **DE Learning Lab** login page: click **Register** to create your own account (or sign in
+   as `instructor` / `instructor`). After signing in you see the ShopFlow tiles and, at the top,
+   **"your lakehouse: <name>_lake ✓"** — your own private lakehouse, created on first login.
 2. **Polaris Console login works** — open `http://localhost:8189`, sign in with Client ID/Secret
    `analyst` / `analyst`. You land in the catalog scoped to that persona.
 3. **SQL works** — either in the Trino CLI or Superset SQL Lab:
@@ -214,7 +216,8 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 
 | Service | Local URL | Login |
 |---|---|---|
-| Landing page | [http://localhost:8000](http://localhost:8000) | — |
+| Landing page | [http://localhost:8000](http://localhost:8000) | your own account (**Register** on the login page), or `instructor` / `instructor` |
+| Keycloak (logins) | http://localhost:8180/admin | admin console: `admin` / `admin` (realm **de-lab**) |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | Jupyter (notebooks) | http://localhost:8008 | token `123456` |
 | Spark master UI | http://localhost:8002 | — |

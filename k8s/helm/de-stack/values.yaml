@@ -140,6 +140,20 @@ hue:
   enabled: false             # dropped — Superset's SQL Lab covers ad-hoc SQL
   repo: hue
   tag: latest
+# ------------------------------------------------------------------ front door
+# Keycloak (logins + self-registration, realm de-lab) guards the landing page through
+# oauth2-proxy; home-api provisions each learner's own lakehouse on first login.
+# Postgres needs a `keycloak` database (01_postgres-init.sql creates it on a fresh PVC).
+keycloak:
+  enabled: true
+  image: quay.io/keycloak/keycloak:26.8.0
+  adminUser: admin            # Keycloak admin console: http://auth.<baseHost>/admin
+  adminPassword: admin
+oauth2Proxy:
+  image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.4
+  cookieSecret: "de-lab-k8s-cookie-secret-32chars"   # must be 16/24/32 bytes (lab only)
+homeApi:
+  image: ghcr.io/maarthala/de-stack/home-api:latest
 home:
   enabled: true
   # Plain nginx; the home-html ConfigMap supplies index.html (rewritten to the ingress

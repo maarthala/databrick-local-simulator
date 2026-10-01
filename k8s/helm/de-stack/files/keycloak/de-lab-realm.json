@@ -1,0 +1,52 @@
+{
+  "realm": "de-lab",
+  "displayName": "DE Learning Lab",
+  "enabled": true,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": false,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "ssoSessionIdleTimeout": 7200,
+  "ssoSessionMaxLifespan": 43200,
+  "groups": [
+    { "name": "learners" },
+    { "name": "instructors" }
+  ],
+  "defaultGroups": ["/learners"],
+  "clients": [
+    {
+      "clientId": "de-lab-home",
+      "name": "DE Learning Lab — home page",
+      "publicClient": false,
+      "secret": "de-lab-home-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:8000/oauth2/callback", "http://de.lan/oauth2/callback"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:8000/*##http://de.lan/*"
+      },
+      "protocolMappers": [
+        { "name": "groups", "protocol": "openid-connect", "protocolMapper": "oidc-group-membership-mapper",
+          "config": { "claim.name": "groups", "full.path": "false", "id.token.claim": "true", "access.token.claim": "true", "userinfo.token.claim": "true" } },
+        { "name": "audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
+          "config": { "included.client.audience": "de-lab-home", "id.token.claim": "false", "access.token.claim": "true" } }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "instructor",
+      "enabled": true,
+      "email": "instructor@de.lan",
+      "emailVerified": true,
+      "firstName": "Course",
+      "lastName": "Instructor",
+      "credentials": [{ "type": "password", "value": "instructor", "temporary": false }],
+      "groups": ["/instructors"]
+    }
+  ]
+}

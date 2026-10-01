@@ -3,8 +3,8 @@ services:
   nginx:
     image: nginx:1.31.5
     container_name: home
-    ports:
-      - "8000:80"
+    # No published port: the landing page is served through oauth2-proxy on :8000
+    # (keycloak.yaml), so it's only reachable after a Keycloak login.
     restart: always
     volumes:
       - ./home:/usr/share/nginx/html:ro
