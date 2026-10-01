@@ -18,11 +18,19 @@
 }
 html, body, .pf-v5-c-login{
   color:var(--ink);
+  /* DE illustration (pipeline · medallion · DAG · lake · Spark) under the landing-page glows */
   background:
     radial-gradient(1200px 600px at 80% -10%, rgba(109,139,255,.18), transparent 60%),
     radial-gradient(900px 500px at -10% 10%, rgba(57,208,196,.12), transparent 55%),
+    url("../img/de-bg.svg") center / cover no-repeat,
     var(--bg) !important;
   background-attachment:fixed !important;
+}
+/* soft halo so the card always reads cleanly over the illustration */
+.pf-v5-c-login__container{position:relative}
+.pf-v5-c-login__container::before{
+  content:""; position:absolute; inset:-60px -80px; z-index:-1; pointer-events:none;
+  background:radial-gradient(closest-side, rgba(11,16,32,.92), rgba(11,16,32,.6) 60%, transparent);
 }
 /* brand header: "ShopFlow · Learning Lab" */
 #kc-header-wrapper, .pf-v5-c-login__header .pf-v5-c-brand{

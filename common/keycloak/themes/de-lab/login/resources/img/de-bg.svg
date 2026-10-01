@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <!-- DE Learning Lab login background: sources → bronze/silver/gold → BI (top),
+       an orchestration DAG (bottom), a data lake (left) and a Spark cluster (right).
+       Kept faint; the centre stays clear for the sign-in card. -->
+  <defs>
+    <pattern id="dots" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#2a3550"/>
+    </pattern>
+    <linearGradient id="flow" x1="0" x2="1">
+      <stop offset="0" stop-color="#6d8bff"/><stop offset="1" stop-color="#39d0c4"/>
+    </linearGradient>
+    <style>
+      .ln{fill:none;stroke:url(#flow);stroke-width:2;opacity:.55;stroke-dasharray:6 10;animation:f 6s linear infinite}
+      .ln.s{animation-duration:9s}
+      .edge{fill:none;stroke:#3a4a70;stroke-width:1.6}
+      .box{fill:#141b2e;stroke:#2a3550;stroke-width:1.5}
+      .t{font:600 15px -apple-system,Segoe UI,Roboto,sans-serif;fill:#9aa8c7}
+      .m{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#55648a}
+      .acc{fill:#6d8bff}.acc2{fill:#39d0c4}
+      @keyframes f{to{stroke-dashoffset:-160}}
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="url(#dots)" opacity=".55"/>
+
+  <g opacity=".75">
+    <!-- ===== top band: sources → medallion → BI ===== -->
+    <g transform="translate(0,55)">
+    <!-- sources -->
+    <g transform="translate(70,70)">
+      <!-- database -->
+      <ellipse cx="30" cy="10" rx="30" ry="10" class="box"/>
+      <path d="M0 10v38c0 6 13 10 30 10s30-4 30-10V10" class="box"/>
+      <path d="M0 29c0 6 13 10 30 10s30-4 30-10" fill="none" stroke="#2a3550" stroke-width="1.5"/>
+      <text x="30" y="82" class="t" text-anchor="middle">postgres</text>
+    </g>
+    <g transform="translate(70,175)">
+      <!-- csv file -->
+      <path d="M10 0h30l14 14v46H10z" class="box"/><path d="M40 0v14h14" fill="none" stroke="#2a3550" stroke-width="1.5"/>
+      <text x="32" y="42" class="m" text-anchor="middle">csv</text>
+      <text x="32" y="82" class="t" text-anchor="middle">files</text>
+    </g>
+    <g transform="translate(160,120)">
+      <!-- api -->
+      <rect width="64" height="44" rx="10" class="box"/>
+      <text x="32" y="28" class="m" text-anchor="middle">{ }</text>
+      <text x="32" y="70" class="t" text-anchor="middle">api</text>
+    </g>
+    <!-- ingest flows -->
+    <path class="ln" d="M132 98 C220 98, 250 150, 330 150"/>
+    <path class="ln s" d="M126 210 C220 210, 250 160, 330 158"/>
+    <path class="ln" d="M226 142 L330 154"/>
+    <!-- medallion layers -->
+    <g transform="translate(330,118)">
+      <rect width="120" height="70" rx="12" class="box"/>
+      <circle cx="24" cy="35" r="11" fill="#b8733c"/>
+      <text x="44" y="40" class="t">Bronze</text>
+    </g>
+    <path class="ln" d="M450 153 L560 153"/>
+    <g transform="translate(560,118)">
+      <rect width="120" height="70" rx="12" class="box"/>
+      <circle cx="24" cy="35" r="11" fill="#aeb8c8"/>
+      <text x="44" y="40" class="t">Silver</text>
+    </g>
+    <path class="ln s" d="M680 153 L790 153"/>
+    <g transform="translate(790,118)">
+      <rect width="120" height="70" rx="12" class="box"/>
+      <circle cx="24" cy="35" r="11" fill="#e2b93b"/>
+      <text x="44" y="40" class="t">Gold</text>
+    </g>
+    <text x="620" y="98" class="m" text-anchor="middle">clean · conform · dedupe</text>
+    <path class="ln" d="M910 153 C1000 153, 1010 120, 1090 120"/>
+    <!-- BI dashboard -->
+    <g transform="translate(1090,70)">
+      <rect width="200" height="130" rx="12" class="box"/>
+      <rect x="22" y="78" width="18" height="34" rx="3" class="acc" opacity=".8"/>
+      <rect x="50" y="58" width="18" height="54" rx="3" class="acc2" opacity=".8"/>
+      <rect x="78" y="68" width="18" height="44" rx="3" class="acc" opacity=".8"/>
+      <rect x="106" y="40" width="18" height="72" rx="3" class="acc2" opacity=".8"/>
+      <polyline points="132,90 150,70 168,78 186,46" fill="none" stroke="#e2b93b" stroke-width="2.5"/>
+      <text x="22" y="28" class="t">revenue by day</text>
+    </g>
+    <g transform="translate(1340,90)">
+      <circle cx="40" cy="40" r="38" class="box"/>
+      <path d="M40 40 L40 2 A38 38 0 0 1 76 52 Z" class="acc2" opacity=".75"/>
+      <path d="M40 40 L76 52 A38 38 0 0 1 22 74 Z" class="acc" opacity=".75"/>
+      <text x="40" y="104" class="t" text-anchor="middle">BI</text>
+    </g>
+
+    </g>
+    <!-- ===== left: the lake (object storage + table format) ===== -->
+    <g transform="translate(70,380)">
+      <path d="M0 40 C40 10, 80 70, 120 40 S200 10, 240 40 V150 H0 Z" fill="#141b2e" stroke="#2a3550" stroke-width="1.5"/>
+      <path d="M0 70 C40 40, 80 100, 120 70 S200 40, 240 70" fill="none" stroke="#39d0c4" stroke-width="1.5" opacity=".5"/>
+      <g transform="translate(26,86)">
+        <rect width="44" height="50" rx="5" class="box"/><text x="22" y="30" class="m" text-anchor="middle">pq</text>
+      </g>
+      <g transform="translate(98,86)">
+        <rect width="44" height="50" rx="5" class="box"/><text x="22" y="30" class="m" text-anchor="middle">pq</text>
+      </g>
+      <g transform="translate(170,86)">
+        <rect width="44" height="50" rx="5" class="box"/><text x="22" y="30" class="m" text-anchor="middle">ice</text>
+      </g>
+      <text x="0" y="180" class="t">lakehouse · parquet + iceberg</text>
+    </g>
+
+    <!-- ===== right: Spark cluster ===== -->
+    <g transform="translate(1290,360)">
+      <rect width="120" height="54" rx="10" class="box"/>
+      <text x="60" y="33" class="t" text-anchor="middle">driver</text>
+      <path class="edge" d="M60 54 V80 M-10 80 H130 M-10 80 V100 M60 80 V100 M130 80 V100"/>
+      <g transform="translate(-40,100)">
+        <rect width="60" height="44" rx="8" class="box"/><rect x="10" y="12" width="40" height="6" rx="3" class="acc" opacity=".7"/><rect x="10" y="24" width="28" height="6" rx="3" class="acc2" opacity=".7"/>
+      </g>
+      <g transform="translate(30,100)">
+        <rect width="60" height="44" rx="8" class="box"/><rect x="10" y="12" width="34" height="6" rx="3" class="acc2" opacity=".7"/><rect x="10" y="24" width="40" height="6" rx="3" class="acc" opacity=".7"/>
+      </g>
+      <g transform="translate(100,100)">
+        <rect width="60" height="44" rx="8" class="box"/><rect x="10" y="12" width="40" height="6" rx="3" class="acc" opacity=".7"/><rect x="10" y="24" width="22" height="6" rx="3" class="acc2" opacity=".7"/>
+      </g>
+      <text x="60" y="172" class="t" text-anchor="middle">spark executors</text>
+    </g>
+    <g transform="translate(1250,600)" class="m">
+      <text>SELECT country,</text>
+      <text y="18">  SUM(revenue) AS rev</text>
+      <text y="36">FROM gold.daily_sales</text>
+      <text y="54">GROUP BY country;</text>
+    </g>
+
+    <!-- ===== bottom band: orchestration DAG ===== -->
+    <g transform="translate(-120,-50)">
+      <path class="edge" d="M300 760 H400 M470 760 C520 760, 520 715, 570 715 M470 760 C520 760, 520 805, 570 805 M640 715 C690 715, 690 760, 740 760 M640 805 C690 805, 690 760, 740 760 M810 760 H910 M980 760 H1080"/>
+      <path class="ln" d="M300 760 H400"/><path class="ln s" d="M810 760 H910"/>
+      <g transform="translate(230,735)"><rect width="70" height="50" rx="10" class="box"/><text x="35" y="31" class="m" text-anchor="middle">extract</text></g>
+      <g transform="translate(400,735)"><rect width="70" height="50" rx="10" class="box"/><text x="35" y="31" class="m" text-anchor="middle">bronze</text></g>
+      <g transform="translate(570,690)"><rect width="70" height="50" rx="10" class="box"/><text x="35" y="31" class="m" text-anchor="middle">clean</text></g>
+      <g transform="translate(570,780)"><rect width="70" height="50" rx="10" class="box"/><text x="35" y="31" class="m" text-anchor="middle">dq</text></g>
+      <g transform="translate(740,735)"><rect width="70" height="50" rx="10" class="box"/><text x="35" y="31" class="m" text-anchor="middle">silver</text></g>
+      <g transform="translate(910,735)"><rect width="70" height="50" rx="10" class="box"/><text x="35" y="31" class="m" text-anchor="middle">gold</text></g>
+      <g transform="translate(1080,735)"><rect width="70" height="50" rx="10" class="box"/><text x="35" y="31" class="m" text-anchor="middle">report</text></g>
+      <circle cx="265" cy="735" r="5" class="acc2"/><circle cx="435" cy="735" r="5" class="acc2"/><circle cx="605" cy="690" r="5" class="acc2"/>
+      <circle cx="605" cy="780" r="5" class="acc2"/><circle cx="775" cy="735" r="5" class="acc"/>
+      <text x="230" y="860" class="t">daily_pipeline · @daily · DAG</text>
+    </g>
+  </g>
+</svg>

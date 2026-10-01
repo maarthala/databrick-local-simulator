@@ -27,6 +27,8 @@ data:
 {{ .Files.Get "files/keycloak/theme/theme.properties" | indent 4 }}
   de-lab.css: |
 {{ .Files.Get "files/keycloak/theme/de-lab.css" | indent 4 }}
+  de-bg.svg: |
+{{ .Files.Get "files/keycloak/theme/de-bg.svg" | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -82,6 +84,7 @@ spec:
             items:
               - { key: theme.properties, path: theme.properties }
               - { key: de-lab.css, path: resources/css/de-lab.css }
+              - { key: de-bg.svg, path: resources/img/de-bg.svg }
 ---
 apiVersion: v1
 kind: Service
