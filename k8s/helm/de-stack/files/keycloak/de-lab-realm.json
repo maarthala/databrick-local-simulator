@@ -1,6 +1,6 @@
 {
   "realm": "de-lab",
-  "displayName": "DE Learning Lab",
+  "displayName": "Epireum's Data Engineering Lab",
   "enabled": true,
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
@@ -98,5 +98,5 @@
     ]
   },
   "loginTheme": "de-lab",
-  "displayNameHtml": "ShopFlow <span class=\"dot\">\u00b7</span> Learning Lab<span class=\"tag\">Sign in to your Data Engineering lab</span>"
+  "displayNameHtml": "Epireum&#39;s Data Engineering Lab<span class=\"tag\">Sign in to your Data Engineering lab</span>"
 }
