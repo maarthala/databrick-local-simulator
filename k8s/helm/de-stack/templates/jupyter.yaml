@@ -1,96 +1,124 @@
 {{- if .Values.jupyter.enabled }}
+# JupyterHub — every learner signs in with the lab account (Keycloak) and gets their OWN
+# Jupyter pod (KubeSpawner, pod jupyter-<user>, work volume claim-<user>) whose `iceberg`
+# catalog is their own Polaris lakehouse; notebooks/ and dags/ mirror to their bucket.
+# Same hub config as the local stack (jupyterhub_config.py, HUB_SPAWNER=kubernetes).
+# The proxy (configurable-http-proxy) runs inside the hub pod.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jupyterhub
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jupyterhub-spawner
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "persistentvolumeclaims", "services", "secrets"]
+    verbs: ["create", "get", "list", "watch", "delete", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jupyterhub-spawner
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: jupyterhub
+roleRef:
+  kind: Role
+  name: jupyterhub-spawner
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jupyterhub-data
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.global.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.jupyter.hubStorage }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: jupyter
+  name: jupyterhub
   labels: {{- include "de-stack.labels" . | nindent 4 }}
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
-    matchLabels: {{- include "de-stack.selector" (dict "app" "jupyter") | nindent 6 }}
+    matchLabels: {{- include "de-stack.selector" (dict "app" "jupyterhub") | nindent 6 }}
   template:
     metadata:
-      labels: {{- include "de-stack.selector" (dict "app" "jupyter") | nindent 8 }}
+      labels: {{- include "de-stack.selector" (dict "app" "jupyterhub") | nindent 8 }}
     spec:
-      # A Service named "jupyter" injects JUPYTER_PORT=tcp://... which jupyter_server
-      # parses as its port number and crashes. Disable service links.
+      serviceAccountName: jupyterhub
       enableServiceLinks: false
-{{- if and .Values.git.enabled .Values.git.autopush }}
-      # fsGroup 1000 (jovyan) makes the emptyDir clone target group-writable, so
-      # the notebook user can git clone/commit/push into it.
-      securityContext:
-        fsGroup: 1000
-{{- else if .Values.git.enabled }}
-      initContainers:
-{{ include "de-stack.gitsync.init" . | indent 8 }}
-{{- end }}
       containers:
-        - name: jupyter
-          image: {{ include "de-stack.image" (dict "root" $ "repo" .Values.jupyter.repo "tag" .Values.jupyter.tag) }}
+        - name: hub
+          image: {{ .Values.jupyter.hubImage }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           env:
-            - { name: JUPYTER_TOKEN, value: "{{ .Values.jupyter.token }}" }
-            # Thin Connect client: notebooks do SparkSession.builder.getOrCreate()
-            # and land on the spark-connect server (which holds the Iceberg/S3 config).
+            - { name: HUB_SPAWNER, value: kubernetes }
+            - name: POD_NAMESPACE
+              valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
+            - { name: HUB_CONNECT_IP, value: jupyterhub }
+            - { name: HUB_PUBLIC_URL, value: "http://jupyter.{{ .Values.ingress.baseHost }}" }
+            - { name: KEYCLOAK_PUBLIC_URL, value: "http://auth.{{ .Values.ingress.baseHost }}" }
+            - { name: KEYCLOAK_INTERNAL_URL, value: "http://keycloak:8080" }
+            - { name: OAUTH_CLIENT_SECRET, value: jupyterhub-secret }
+            # encrypts the stored Keycloak tokens (auth_state) — lets the Hub follow the login
+            - { name: JUPYTERHUB_CRYPT_KEY, value: {{ .Values.jupyter.cryptKey | quote }} }
+            - { name: POLARIS_URL, value: "http://polaris:8181" }
+            - { name: LEARNER_QUOTA_MB, value: {{ .Values.minio.learnerQuotaMB | quote }} }
+            - { name: SINGLEUSER_IMAGE, value: {{ include "de-stack.image" (dict "root" $ "repo" .Values.jupyter.repo "tag" .Values.jupyter.tag) | quote }} }
+            - { name: SINGLEUSER_PULL_POLICY, value: {{ .Values.global.imagePullPolicy }} }
+            - { name: SINGLEUSER_MEM, value: {{ .Values.jupyter.userMemory | quote }} }
+            - { name: SINGLEUSER_STORAGE, value: {{ .Values.jupyter.userStorage | quote }} }
+            - { name: SINGLEUSER_STORAGE_CLASS, value: {{ .Values.global.storageClass }} }
+            # passed on to every learner pod
             - { name: SPARK_REMOTE, value: "sc://spark-connect:15002" }
-            # AWS creds for direct object access from notebooks (e.g. boto3) if wanted.
             - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
             - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
             - { name: AWS_DEFAULT_REGION, value: "us-east-1" }
+            - { name: AWS_REGION, value: "us-east-1" }
             - { name: AWS_S3_ENDPOINT, value: "http://minio:9000" }
-{{- if .Values.git.enabled }}
-            # shared library code from the repo, importable in notebooks
-            - { name: PYTHONPATH, value: "/home/jovyan/work/repo/{{ .Values.git.srcPath }}" }
-{{- end }}
-{{- if and .Values.git.enabled .Values.git.autopush }}
-            # Auto-push on save: entrypoint clones the repo here, the post-save
-            # hook commits + pushes each save. Needs a WRITE-scoped PAT.
-            - { name: GIT_AUTOPUSH, value: "1" }
-            - { name: GIT_REPO_URL, value: "{{ .Values.git.repoUrl }}" }
-            - { name: GIT_BRANCH, value: "{{ .Values.git.branch }}" }
-            - { name: GIT_USERNAME, value: "{{ .Values.git.username }}" }
-            - { name: GIT_TOKEN_FILE, value: "/etc/git-secret/token" }
-            - { name: GIT_AUTHOR_NAME, value: "notebook" }
-            - { name: GIT_AUTHOR_EMAIL, value: "notebook@de.lan" }
-{{- end }}
           ports:
-            - { name: http, containerPort: 8888 }
+            - { name: proxy, containerPort: 8000 }
+            - { name: hub, containerPort: 8081 }
           readinessProbe:
-            httpGet: { path: /api, port: 8888 }
-            initialDelaySeconds: 15
-            periodSeconds: 15
-{{- if and .Values.git.enabled .Values.git.autopush }}
+            httpGet: { path: /hub/health, port: 8081 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { memory: 256Mi, cpu: 50m }
+            limits:   { memory: 1Gi }
           volumeMounts:
-            # writable clone target + the PAT (read by the entrypoint to build an
-            # authenticated remote, then discarded — only the .git/config in the
-            # pod-local emptyDir holds it).
-            - { name: git-repo, mountPath: /home/jovyan/work }
-            - { name: git-token, mountPath: /etc/git-secret, readOnly: true }
-{{- else if .Values.git.enabled }}
-          volumeMounts:
-            # the synced repo appears at /home/jovyan/work/repo (read-only; devs
-            # edit & push locally, the cluster only reads).
-            - { name: git-repo, mountPath: /home/jovyan/work, readOnly: true }
-{{- end }}
-{{- if and .Values.git.enabled (not .Values.git.autopush) }}
-{{ include "de-stack.gitsync.sidecar" . | indent 8 }}
-{{- end }}
+            - { name: data, mountPath: /srv/jupyterhub/data }
       volumes:
-{{- if .Values.git.enabled }}
-{{ include "de-stack.gitsync.volumes" . | indent 8 }}
-{{- else }}
-        []
-{{- end }}
+        - { name: data, persistentVolumeClaim: { claimName: jupyterhub-data } }
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: jupyter
+  name: jupyterhub
   labels: {{- include "de-stack.labels" . | nindent 4 }}
 spec:
-  selector: {{- include "de-stack.selector" (dict "app" "jupyter") | nindent 4 }}
+  selector: {{- include "de-stack.selector" (dict "app" "jupyterhub") | nindent 4 }}
   ports:
-    - { name: http, port: 8888, targetPort: 8888 }
+    - { name: proxy, port: 8000, targetPort: 8000 }
+    - { name: hub, port: 8081, targetPort: 8081 }
 {{- if .Values.ingress.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
@@ -98,6 +126,12 @@ kind: Ingress
 metadata:
   name: jupyter
   labels: {{- include "de-stack.labels" . | nindent 4 }}
+  annotations:
+    # notebooks/terminals use websockets; uploads can be large
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "512m"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
@@ -107,6 +141,6 @@ spec:
           - path: /
             pathType: Prefix
             backend:
-              service: { name: jupyter, port: { number: 8888 } }
+              service: { name: jupyterhub, port: { number: 8000 } }
 {{- end }}
 {{- end }}

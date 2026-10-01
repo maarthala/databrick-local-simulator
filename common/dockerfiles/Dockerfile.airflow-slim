@@ -6,8 +6,8 @@ FROM apache/airflow:3.3.2-python3.10
 # cncf.kubernetes = KubernetesPodOperator; papermill for the notebook DAG.
 # pyspark-client = thin Spark Connect client (no JVM), so an Airflow @task can
 # import shared src/mylib and drive sc://spark-connect:15002 in-process.
-# (Login uses SimpleAuthManager with a pinned airflow/airflow password, set in
-# the k8s Deployment startup — so the FAB provider isn't needed here.)
+# Login: the lab account (Keycloak) through the FAB auth manager — the base image already
+# ships the fab + amazon providers and authlib (webserver_config.py below).
 # Pin airflow + install against the release's constraints so pip can't swap the
 # core version or pull provider versions that weren't tested with it.
 # pyspark-client is pinned to the Spark server version (4.1.3), overriding constraints.
@@ -22,3 +22,9 @@ RUN curl -fsSL -o /tmp/constraints.txt \
       pyspark-client==4.1.3 \
       ipykernel \
  && python -m ipykernel install --user --name python3 --display-name "Python 3"
+
+# Lab-account login (FAB OAuth → Keycloak), the learners' DAG bundle (every <user>-lake/dags/)
+# and the dag-id prefix policy — same files the local stack mounts.
+COPY add/airflow_webserver_config.py /opt/airflow/webserver_config.py
+COPY add/airflow_learner_dags.py /opt/airflow/lab/learner_dags.py
+COPY add/airflow_local_settings.py /opt/airflow/lab/airflow_local_settings.py

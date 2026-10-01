@@ -1,10 +1,10 @@
-"""JupyterHub for the local stack: Keycloak login, one Jupyter container per learner,
+"""JupyterHub (local stack + k8s): Keycloak login, one Jupyter container/pod per learner,
 and every learner's `iceberg` catalog pointed at their OWN Polaris lakehouse.
 
 Spawn hook (every server start): make sure <name>_lake exists (lakehouse.provision),
 give principal <name> a fresh random client secret (lakehouse.reset_secret) and hand it
-ONLY to that learner's container as LAKE_* env; the IPython startup (00-spark.py)
-applies it to the Spark session. Same idea on k8s via the Zero-to-JupyterHub chart.
+ONLY to that learner's server as LAKE_* env; the IPython startup (00-spark.py)
+applies it to the Spark session. HUB_SPAWNER=docker (local) | kubernetes (k8s).
 
 Keycloak hostnames: the browser goes to the PUBLIC login URL, the Hub calls Keycloak's
 token/userinfo on the internal address (as oauth2-proxy does) — no hosts-file tricks.
@@ -42,24 +42,52 @@ c.GenericOAuthenticator.enable_auth_state = True
 c.Authenticator.auth_refresh_age = 60
 c.Authenticator.refresh_pre_spawn = True
 
-# ---- one container per learner ------------------------------------------------------
-c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
-c.DockerSpawner.image = env.get("SINGLEUSER_IMAGE", "local-jupyter:latest")
-c.DockerSpawner.network_name = env.get("DOCKER_NETWORK", "local_sparknet")
-c.DockerSpawner.use_internal_ip = True
-c.DockerSpawner.remove = True                                   # containers are disposable…
-c.DockerSpawner.volumes = {"jupyterhub-user-{username}": "/home/jovyan/work"}  # …work isn't
-c.DockerSpawner.notebook_dir = "/home/jovyan/work"
-c.DockerSpawner.name_template = "jupyter-{username}"
-c.DockerSpawner.mem_limit = env.get("SINGLEUSER_MEM", "1G")
+# ---- one container (local: Docker) / pod (k8s: KubeSpawner) per learner --------------
+# Both run the same single-user image; its entrypoint starts jupyterhub-singleuser with
+# root = /home/jovyan/work, the learner's persistent volume.
+SPAWNER = env.get("HUB_SPAWNER", "docker")
 c.JupyterHub.hub_ip = "0.0.0.0"
 c.JupyterHub.hub_connect_ip = env.get("HUB_CONNECT_IP", "jupyterhub")
+c.Spawner.mem_limit = env.get("SINGLEUSER_MEM", "1G")
+c.Spawner.cmd = ["bash", "/usr/local/bin/jupyter-entrypoint.sh"]
+c.Spawner.default_url = "/lab"
+if SPAWNER == "kubernetes":
+    c.JupyterHub.spawner_class = "kubespawner.KubeSpawner"
+    c.KubeSpawner.namespace = env.get("POD_NAMESPACE", "de-stack")
+    c.KubeSpawner.image = env.get("SINGLEUSER_IMAGE", "ghcr.io/maarthala/de-stack/jupyter:latest")
+    c.KubeSpawner.image_pull_policy = env.get("SINGLEUSER_PULL_POLICY", "IfNotPresent")
+    c.KubeSpawner.pod_name_template = "jupyter-{username}"
+    c.KubeSpawner.uid = 1000                                    # jovyan
+    c.KubeSpawner.fs_gid = 1000
+    c.KubeSpawner.mem_guarantee = "256M"
+    c.KubeSpawner.cpu_guarantee = 0.05
+    # the learner's work volume — kept when the pod stops
+    c.KubeSpawner.storage_pvc_ensure = True
+    c.KubeSpawner.pvc_name_template = "claim-{username}"
+    c.KubeSpawner.storage_capacity = env.get("SINGLEUSER_STORAGE", "1Gi")
+    c.KubeSpawner.storage_class = env.get("SINGLEUSER_STORAGE_CLASS", "microk8s-hostpath")
+    c.KubeSpawner.volumes = [{"name": "work", "persistentVolumeClaim": {"claimName": "claim-{username}"}}]
+    c.KubeSpawner.volume_mounts = [{"name": "work", "mountPath": "/home/jovyan/work"}]
+    # hostpath volumes come up root-owned — hand them to jovyan before Jupyter starts
+    c.KubeSpawner.init_containers = [{
+        "name": "work-perms", "image": c.KubeSpawner.image, "command": ["sh", "-c", "chown 1000:1000 /home/jovyan/work"],
+        "securityContext": {"runAsUser": 0}, "volumeMounts": [{"name": "work", "mountPath": "/home/jovyan/work"}]}]
+    c.KubeSpawner.extra_pod_config = {"enableServiceLinks": False}  # a "jupyter" Service would inject JUPYTER_PORT
+    c.KubeSpawner.start_timeout = 300                           # first pull/unpack on the node can be slow
+else:
+    c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
+    c.DockerSpawner.image = env.get("SINGLEUSER_IMAGE", "local-jupyter:latest")
+    c.DockerSpawner.network_name = env.get("DOCKER_NETWORK", "local_sparknet")
+    c.DockerSpawner.use_internal_ip = True
+    c.DockerSpawner.remove = True                               # containers are disposable…
+    c.DockerSpawner.volumes = {"jupyterhub-user-{username}": "/home/jovyan/work"}  # …work isn't
+    c.DockerSpawner.name_template = "jupyter-{username}"
 
-# env every learner container gets (Spark Connect, MinIO, notebook auto-push)
+# env every learner server gets (Spark Connect, object store, notebook auto-push)
 PASS = ["SPARK_REMOTE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION",
         "AWS_REGION", "AWS_S3_ENDPOINT", "GIT_AUTOPUSH", "GIT_REPO_URL", "GIT_BRANCH",
         "GIT_USERNAME", "GIT_TOKEN"]
-c.DockerSpawner.environment = {k: env[k] for k in PASS if env.get(k)}
+c.Spawner.environment = {k: env[k] for k in PASS if env.get(k)}
 
 
 async def pre_spawn(spawner):

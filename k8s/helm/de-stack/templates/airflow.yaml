@@ -79,10 +79,22 @@ spec:
               exec airflow standalone
           env:
             - { name: AIRFLOW__CORE__EXECUTOR, value: "LocalExecutor" }
-            # `airflow standalone` forces SimpleAuthManager (dev mode). Pin the
+{{- if .Values.keycloak.enabled }}
+            # UI login with the lab account (Keycloak client airflow) — FAB auth manager +
+            # webserver_config.py baked into the image (instructors → Admin, learners → User).
+            - { name: AIRFLOW__CORE__AUTH_MANAGER, value: "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager" }
+            - { name: KEYCLOAK_ENABLED, value: "1" }
+{{- else }}
+            # `airflow standalone` with SimpleAuthManager (dev mode). Pin the
             # admin username so login is a stable {{ .Values.airflow.adminUser }}/{{ .Values.airflow.adminPassword }}
             # (paired with the pre-written passwords file in args above).
             - { name: AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS, value: "{{ .Values.airflow.adminUser }}:admin" }
+{{- end }}
+            # Learners' DAGs: one bundle syncs every <user>-lake/dags/ (learner_dags.py); dag
+            # ids must start with <user>_ (airflow_local_settings.py). Both in /opt/airflow/lab.
+            - name: AIRFLOW_CONN_LEARNER_S3
+              value: '{"conn_type": "aws", "login": "{{ .Values.minio.rootUser }}", "password": "{{ .Values.minio.rootPassword }}", "extra": {"endpoint_url": "http://minio:9000", "region_name": "us-east-1", "config_kwargs": {"s3": {"addressing_style": "path"}}}}'
+
             - { name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN, value: "postgresql+psycopg2://airflow:airflow@postgres:5432/airflow" }
             - { name: AIRFLOW__CORE__FERNET_KEY, value: "{{ .Values.airflow.fernetKey }}" }
             - { name: AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION, value: "true" }
@@ -96,11 +108,14 @@ spec:
             # e.g. spark_k8s_dag). With only DAGS_FOLDER, the built-ins went stale and their
             # runs sat in "queued" forever once git was enabled.
             - name: AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST
-              value: '[{"name": "dags-folder", "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle", "kwargs": {"path": "/git/repo/{{ .Values.git.dagsPath }}"}}, {"name": "stack-dags", "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle", "kwargs": {"path": "/opt/airflow/dags"}}]'
-            # shared library code from the repo, importable by DAGs/tasks
-            - { name: PYTHONPATH, value: "/git/repo/{{ .Values.git.srcPath }}" }
+              value: '[{"name": "dags-folder", "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle", "kwargs": {"path": "/git/repo/{{ .Values.git.dagsPath }}"}}, {"name": "stack-dags", "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle", "kwargs": {"path": "/opt/airflow/dags"}}, {"name": "learners", "classpath": "learner_dags.LearnerDagsBundle", "kwargs": {"refresh_interval": 30}}]'
+            # shared library code from the repo, importable by DAGs/tasks (+ the lab modules)
+            - { name: PYTHONPATH, value: "/git/repo/{{ .Values.git.srcPath }}:/opt/airflow/lab" }
 {{- else }}
             - { name: AIRFLOW__CORE__DAGS_FOLDER, value: "/opt/airflow/dags" }
+            - name: AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST
+              value: '[{"name": "dags-folder", "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle", "kwargs": {}}, {"name": "learners", "classpath": "learner_dags.LearnerDagsBundle", "kwargs": {"refresh_interval": 30}}]'
+            - { name: PYTHONPATH, value: "/opt/airflow/lab" }
 {{- end }}
             - { name: AIRFLOW__API__SECRET_KEY, value: "{{ .Values.airflow.secretKey }}" }
             - { name: AIRFLOW__WEBSERVER__SECRET_KEY, value: "{{ .Values.airflow.secretKey }}" }

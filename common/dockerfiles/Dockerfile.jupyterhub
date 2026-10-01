@@ -1,11 +1,11 @@
-# JupyterHub (local stack): Keycloak login (oauthenticator), one Jupyter container per
-# learner (dockerspawner), idle culling, and the per-learner lakehouse spawn hook
+# JupyterHub (local stack + k8s): Keycloak login (oauthenticator), one Jupyter server per
+# learner (dockerspawner locally, kubespawner on k8s), idle culling, and the per-learner lakehouse spawn hook
 # (lakehouse.py, shared with home-api). Hub version = Zero-to-JupyterHub 4.4.2's (5.5.2),
 # so local matches the k8s chart.
 FROM quay.io/jupyterhub/jupyterhub:5.5.2
 RUN python3 -m pip install --no-cache-dir \
       "jupyterhub==5.5.2" "oauthenticator==17.4.0" "dockerspawner==14.0.0" \
-      "jupyterhub-idle-culler==2.0.0"
+      "jupyterhub-idle-culler==2.0.0" "jupyterhub-kubespawner==7.0.0"
 # mc: creates each learner's own object-store key (RustFS admin API needs mc's encryption)
 COPY --from=ghcr.io/maarthala/de-stack/mc:RELEASE.2025-08-13T08-35-41Z /usr/bin/mc /usr/local/bin/mc
 COPY add/lakehouse.py /srv/jupyterhub/lakehouse.py

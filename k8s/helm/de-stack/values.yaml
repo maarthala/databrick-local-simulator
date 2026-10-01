@@ -59,13 +59,15 @@ redis:
 
 minio:
   enabled: true
-  # MinIO deleted its images from Docker Hub (2026-09): unmodified public mirrors of
-  # the last releases (AGPL-3.0, source github.com/minio/minio) — frozen, no fixes.
-  image: ghcr.io/maarthala/de-stack/minio:RELEASE.2025-09-07T16-13-09Z
-  mcImage: ghcr.io/maarthala/de-stack/mc:RELEASE.2025-08-13T08-35-41Z
-  storage: 10Gi
+  # Object storage = RustFS (S3-compatible, Apache-2.0) — replaced the archived MinIO.
+  # Service name stays `minio` (and keys minioadmin) so every client is unchanged.
+  # Console (Keycloak SSO, each learner sees only their own bucket) at minio.<baseHost>.
+  image: rustfs/rustfs:1.0.0
+  mcImage: ghcr.io/maarthala/de-stack/mc:RELEASE.2025-08-13T08-35-41Z   # admin client (works with RustFS)
+  storage: 20Gi
   rootUser: minioadmin
   rootPassword: minioadmin
+  learnerQuotaMB: 100        # each learner's bucket <user>-lake (hard limit)
 
 # ------------------------------------------------------------------ lakehouse
 # Apache Polaris — Iceberg-native governed catalog (the live governance solution).
@@ -77,7 +79,7 @@ polaris:
   enabled: true
   image: apache/polaris:1.8.0
   adminImage: apache/polaris-admin-tool:1.8.0
-  consoleImage: apache/polaris-console:latest
+  consoleImage: ghcr.io/maarthala/de-stack/polaris-console:latest   # upstream + lab SSO (Dockerfile.polaris-console)
 
 trino:
   enabled: true
@@ -119,9 +121,15 @@ airflow:
   secretKey: "l7sViEv3ImrPg7KW5fwwvA=="
 jupyter:
   enabled: true
-  repo: jupyter
+  # JupyterHub: Keycloak login, one Jupyter pod per learner (KubeSpawner) with their own
+  # lakehouse + a work volume; notebooks/ and dags/ mirror to their bucket.
+  repo: jupyter              # the single-user image (one pod per learner)
   tag: latest
-  token: "123456"
+  hubImage: ghcr.io/maarthala/de-stack/jupyterhub:latest
+  userStorage: 1Gi           # per-learner work volume (PVC claim-<user>)
+  userMemory: 1G
+  hubStorage: 1Gi
+  cryptKey: "6f0629afdbf22af9fe90b7cf1dca8481cd80461546298146c8823bba1e226eee"   # encrypts stored Keycloak tokens (lab only)
 
 # ------------------------------------------------------------------ UIs
 superset:

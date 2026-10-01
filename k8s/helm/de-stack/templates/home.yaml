@@ -87,8 +87,9 @@ spec:
 {{- end }}
 {{- if .Values.keycloak.enabled }}
 ---
-# home-api — "who am I" for the landing page + creates the learner's own lakehouse
-# (Polaris catalog <name>_lake, principal, grants) on first login.
+# home-api — "who am I" for the landing page + creates the learner's own lakehouse on
+# first login (bucket <name>-lake with quota + storage policy, Polaris catalog, principal,
+# grants, SQLPad account); serves My files and My catalogs.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -108,6 +109,7 @@ spec:
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           env:
             - { name: POLARIS_URL, value: "http://polaris:8181" }
+            - { name: LEARNER_QUOTA_MB, value: {{ .Values.minio.learnerQuotaMB | quote }} }   # each learner's bucket <user>-lake
           ports:
             - { name: http, containerPort: 8000 }
           readinessProbe:

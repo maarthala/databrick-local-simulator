@@ -1,6 +1,7 @@
 {{- if .Values.polaris.enabled }}
 # Apache Polaris — Iceberg-native governed catalog (Trino + Spark), Postgres-backed.
-# Internal auth: principals log in with a client id/secret (no external IdP).
+# Mixed auth: Polaris client id/secret logins (root, pipelines, learner Spark sessions)
+# AND Keycloak tokens (the Console's "Sign in with Epireum lab account").
 # Replaces Unity Catalog as the live governance solution.
 apiVersion: v1
 kind: ConfigMap
@@ -24,9 +25,26 @@ data:
     polaris.features."ALLOW_INSECURE_STORAGE_TYPES"=true
     polaris.features."ALLOW_NAMESPACE_CUSTOM_LOCATION"=true
     polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"=["FILE","S3"]
-    # Auth: Polaris-internal only. Principals log in with a client id/secret —
-    # no external IdP (Keycloak dropped from the stack).
+    # A learner's extra catalogs (My catalogs) live inside their bucket, which their main
+    # lakehouse <user>_lake already covers — Polaris rejects that overlap unless allowed.
+    polaris.features."ALLOW_OVERLAPPING_CATALOG_URLS"=true
+{{- if .Values.keycloak.enabled }}
+    # Mixed auth: Polaris' own client-id/secret logins AND Keycloak tokens. The token's
+    # principal_name / principal_roles (= the username) select the learner's Polaris
+    # principal + principal-role created at provisioning → their own lakehouse.
+    polaris.authentication."POLARIS".type=mixed
+    quarkus.oidc.tenant-enabled=true
+    quarkus.oidc.auth-server-url=http://keycloak:8080/realms/de-lab
+    quarkus.oidc.client-id=polaris
+    quarkus.oidc.credentials.secret=polaris-secret
+    quarkus.oidc.roles.role-claim-path=principal_roles
+    polaris.oidc.principal-mapper.name-claim-path=principal_name
+    polaris.oidc.principal-roles-mapper.mappings[0].regex=(.+)
+    polaris.oidc.principal-roles-mapper.mappings[0].replacement=PRINCIPAL_ROLE:$1
+{{- else }}
     polaris.authentication.type=internal
+    quarkus.oidc.tenant-enabled=false
+{{- end }}
 ---
 # One-shot: bootstrap the schema + realm into Postgres. Delete before re-apply.
 apiVersion: batch/v1
@@ -125,7 +143,15 @@ spec:
             - { name: VITE_POLARIS_PRINCIPAL_SCOPE, value: "PRINCIPAL_ROLE:ALL" }
             - { name: VITE_OAUTH_TOKEN_URL, value: "http://polaris-console.{{ .Values.ingress.baseHost }}/api/catalog/v1/oauth/tokens" }
             - { name: VITE_POLARIS_REALM_HEADER_NAME, value: "Polaris-Realm" }
-            # No VITE_OIDC_* → Console shows the Client ID/Secret login (no IdP).
+            {{- if .Values.keycloak.enabled }}
+            # "Sign in with Epireum lab account" (Keycloak). The browser does the login + PKCE
+            # code exchange itself, so these are the PUBLIC URLs. /login?local=1 keeps the
+            # Client ID / Secret form for root.
+            - { name: VITE_OIDC_ISSUER_URL, value: "http://auth.{{ .Values.ingress.baseHost }}/realms/de-lab" }
+            - { name: VITE_OIDC_CLIENT_ID, value: polaris-ui }
+            - { name: VITE_OIDC_REDIRECT_URI, value: "http://polaris-console.{{ .Values.ingress.baseHost }}/auth/callback" }
+            - { name: VITE_OIDC_SCOPE, value: "openid profile" }
+            {{- end }}
 ---
 apiVersion: v1
 kind: Service
