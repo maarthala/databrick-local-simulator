@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My files — Epireum's Data Engineering Lab</title>
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#141b2e; --panel2:#1b2438; --line:#2a3550;
+      --ink:#e8edf7; --muted:#9aa8c7; --accent:#6d8bff; --accent2:#39d0c4; --danger:#ff6b6b;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(109,139,255,.18), transparent 60%),
+        radial-gradient(900px 500px at -10% 10%, rgba(57,208,196,.12), transparent 55%),
+        var(--bg);
+    }
+    a{color:inherit; text-decoration:none}
+    .wrap{max-width:1120px; margin:0 auto; padding:0 20px 64px}
+    .top{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:18px 0 4px; color:var(--muted); font-size:.92rem}
+    .top a:hover{color:var(--ink)}
+    h1{font-size:1.9rem; margin:18px 0 4px; font-weight:800}
+    h1 .dot{color:var(--accent)}
+    .sub{color:var(--muted); margin-bottom:18px}
+    .sub code{background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:1px 6px; color:var(--accent2)}
+    .bar{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+         background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; box-shadow:var(--shadow)}
+    .crumbs{display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:.95rem}
+    .crumbs a{color:var(--accent2)} .crumbs a:hover{text-decoration:underline}
+    .crumbs .sep{color:var(--muted)}
+    .btns{display:flex; gap:8px; flex-wrap:wrap}
+    button{font:inherit; cursor:pointer; border-radius:10px; padding:8px 14px; border:1px solid var(--line);
+           background:var(--panel2); color:var(--ink)}
+    button:hover{border-color:var(--accent)}
+    button.primary{border:0; font-weight:700; color:#0b1020; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+    button.icon{padding:4px 9px; font-size:.85rem; background:transparent}
+    button.icon.del:hover{border-color:var(--danger); color:var(--danger)}
+    .banner{margin-top:14px; padding:12px 14px; border-radius:12px; border:1px solid rgba(226,185,59,.5);
+            background:rgba(226,185,59,.08); color:#f3d98b; display:none}
+    .panel{margin-top:14px; background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; position:relative}
+    table{width:100%; border-collapse:collapse}
+    th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); font-size:.94rem}
+    th{color:var(--muted); font-weight:600; font-size:.82rem; text-transform:uppercase; letter-spacing:.04em; background:var(--panel2)}
+    tr:last-child td{border-bottom:0}
+    tbody tr:hover{background:rgba(109,139,255,.06)}
+    td.name a{color:var(--ink)} td.name a:hover{color:var(--accent2)}
+    td.num, th.num{text-align:right; white-space:nowrap; color:var(--muted)}
+    td.act{text-align:right; white-space:nowrap}
+    .tag{font-size:.72rem; margin-left:8px; padding:2px 7px; border-radius:999px; border:1px solid rgba(226,185,59,.5); color:#f3d98b}
+    .empty{padding:36px; text-align:center; color:var(--muted)}
+    .drop{position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:1.1rem; font-weight:700;
+          background:rgba(11,16,32,.85); border:2px dashed var(--accent2); border-radius:14px; color:var(--accent2)}
+    .panel.dragging .drop{display:flex}
+    .progress{margin-top:12px; display:flex; flex-direction:column; gap:6px}
+    .prow{font-size:.85rem; color:var(--muted)}
+    .prow .track{height:6px; background:var(--panel2); border-radius:6px; overflow:hidden; margin-top:4px}
+    .prow .fill{height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--accent2))}
+    .toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--panel2); border:1px solid var(--line);
+           padding:10px 16px; border-radius:10px; box-shadow:var(--shadow); display:none; max-width:90vw}
+    .toast.err{border-color:var(--danger); color:#ffb3b0}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <a href="/">← Lab home</a>
+      <span id="who"></span>
+    </div>
+    <h1>My files <span class="dot">·</span> <span id="bucket">…</span></h1>
+    <div class="sub">Your own storage bucket — only you can see it. Use a file from Spark with its path, e.g. <code id="example">s3a://…/uploads/orders.csv</code></div>
+
+    <div class="bar">
+      <div class="crumbs" id="crumbs"></div>
+      <div class="btns">
+        <button id="mkdir">＋ New folder</button>
+        <button id="refresh">↻ Refresh</button>
+        <button class="primary" id="upload">⬆ Upload files</button>
+        <input type="file" id="picker" multiple hidden>
+      </div>
+    </div>
+    <div class="banner" id="table-banner">⚠ This folder is an <b>Iceberg table</b>. Don't upload into or delete files here —
+      that breaks the table. Change it with SQL instead (e.g. <code>DROP TABLE … PURGE</code>).</div>
+    <div class="progress" id="progress"></div>
+
+    <div class="panel" id="panel">
+      <table>
+        <thead><tr><th>Name</th><th class="num">Size</th><th class="num">Modified</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+      </table>
+      <div class="drop">Drop files to upload into this folder</div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // "My files": everything goes through /api/files (home-api behind the Keycloak login);
+    // the server always uses YOUR bucket, so there is no bucket name to choose here.
+    var state = {prefix: decodeURIComponent(location.hash.slice(1) || ''), bucket: ''};
+    var $ = function (id) { return document.getElementById(id); };
+
+    function toast(msg, err) {
+      var t = $('toast'); t.textContent = msg; t.className = 'toast' + (err ? ' err' : '');
+      t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, 3500);
+    }
+    function size(n) {
+      if (n < 1024) return n + ' B';
+      var u = ['KB', 'MB', 'GB']; var i = -1;
+      do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
+      return n.toFixed(n < 10 ? 1 : 0) + ' ' + u[i];
+    }
+    function when(iso) { return iso ? new Date(iso).toLocaleString() : ''; }
+    function api(method, path, params) {
+      var q = new URLSearchParams(params || {}).toString();
+      return fetch('/api/files' + path + (q ? '?' + q : ''), {method: method, credentials: 'same-origin'})
+        .then(function (r) { return r.json().then(function (j) { return {ok: r.ok, status: r.status, body: j}; }); });
+    }
+    function go(prefix) { location.hash = encodeURIComponent(prefix); }
+    window.addEventListener('hashchange', function () {
+      state.prefix = decodeURIComponent(location.hash.slice(1) || ''); load();
+    });
+
+    function crumbs() {
+      var c = $('crumbs'); c.innerHTML = '';
+      var root = document.createElement('a'); root.href = '#'; root.textContent = '🪣 ' + (state.bucket || 'bucket');
+      c.appendChild(root);
+      var acc = '';
+      state.prefix.split('/').filter(Boolean).forEach(function (part) {
+        acc += part + '/';
+        var s = document.createElement('span'); s.className = 'sep'; s.textContent = '/'; c.appendChild(s);
+        var a = document.createElement('a'); a.href = '#' + encodeURIComponent(acc); a.textContent = part; c.appendChild(a);
+      });
+    }
+
+    function row(cells) {
+      var tr = document.createElement('tr');
+      cells.forEach(function (c) { var td = document.createElement('td'); if (c.cls) td.className = c.cls;
+        if (c.node) td.appendChild(c.node); else td.textContent = c.text || ''; tr.appendChild(td); });
+      return tr;
+    }
+    function btn(label, title, cls, fn) {
+      var b = document.createElement('button'); b.className = 'icon ' + (cls || ''); b.textContent = label; b.title = title;
+      b.onclick = fn; return b;
+    }
+    function actions(list) { var d = document.createElement('span'); list.forEach(function (b) { d.appendChild(b); d.appendChild(document.createTextNode(' ')); }); return d; }
+
+    function load() {
+      api('GET', '', {prefix: state.prefix}).then(function (r) {
+        if (!r.ok) { $('rows').innerHTML = ''; return toast(r.body.error || 'could not list files', true); }
+        var d = r.body; state.bucket = d.bucket;
+        $('bucket').textContent = d.bucket;
+        $('example').textContent = 's3a://' + d.bucket + '/uploads/orders.csv';
+        $('table-banner').style.display = d.is_table ? 'block' : 'none';
+        crumbs();
+        var rows = $('rows'); rows.innerHTML = '';
+        if (state.prefix) {
+          var up = document.createElement('a'); up.href = '#'; up.textContent = '⬑ ..';
+          var parent = state.prefix.split('/').filter(Boolean).slice(0, -1).join('/');
+          up.onclick = function (e) { e.preventDefault(); go(parent ? parent + '/' : ''); };
+          rows.appendChild(row([{node: up, cls: 'name'}, {}, {}, {}]));
+        }
+        d.folders.forEach(function (f) {
+          var a = document.createElement('a'); a.href = '#' + encodeURIComponent(f.prefix); a.textContent = '📁 ' + f.name;
+          rows.appendChild(row([{node: a, cls: 'name'}, {text: '—', cls: 'num'}, {cls: 'num'},
+            {cls: 'act', node: actions([btn('🗑', 'Delete folder', 'del', function () { delFolder(f); })])}]));
+        });
+        d.files.forEach(function (f) {
+          var a = document.createElement('a'); a.textContent = '📄 ' + f.name;
+          a.href = '/api/files/download?' + new URLSearchParams({key: f.key});
+          rows.appendChild(row([{node: a, cls: 'name'}, {text: size(f.size), cls: 'num'}, {text: when(f.modified), cls: 'num'},
+            {cls: 'act', node: actions([
+              btn('⧉', 'Copy Spark path', '', function () {
+                var p = 's3a://' + d.bucket + '/' + f.key;
+                (navigator.clipboard ? navigator.clipboard.writeText(p) : Promise.reject()).then(
+                  function () { toast('Copied ' + p); }, function () { window.prompt('Spark path:', p); });
+              }),
+              btn('⬇', 'Download', '', function () { location.href = a.href; }),
+              btn('🗑', 'Delete file', 'del', function () { delFile(f); })])}]));
+        });
+        if (!d.folders.length && !d.files.length) {
+          var tr = document.createElement('tr'); tr.innerHTML = '<td colspan="4" class="empty">This folder is empty — drop files here or click “Upload files”.</td>';
+          rows.appendChild(tr);
+        }
+      });
+    }
+
+    function delFile(f) {
+      if (!confirm('Delete ' + f.name + '?')) return;
+      api('DELETE', '', {key: f.key}).then(function (r) { r.ok ? (toast('Deleted ' + f.name), load()) : toast(r.body.error, true); });
+    }
+    function delFolder(f) {
+      var typed = prompt('Delete the folder "' + f.name + '" and EVERYTHING in it?\nType the folder name to confirm:');
+      if (typed !== f.name) { if (typed !== null) toast('Name did not match — nothing deleted', true); return; }
+      api('DELETE', '/folder', {prefix: f.prefix}).then(function (r) {
+        if (r.status === 409 && r.body.table) {
+          if (!confirm('⚠ "' + f.name + '" is an Iceberg TABLE.\n\nDeleting its files breaks the table — the proper way is SQL:\n  DROP TABLE … PURGE\n\nDelete the files anyway?')) return;
+          return api('DELETE', '/folder', {prefix: f.prefix, confirm_table: '1'}).then(done);
+        }
+        done(r);
+      });
+      function done(r) { r.ok ? (toast('Deleted ' + r.body.deleted + ' file(s)'), load()) : toast(r.body.error, true); }
+    }
+
+    function uploadFiles(files) {
+      Array.prototype.forEach.call(files, function (file) {
+        var key = state.prefix + file.name;
+        var p = document.createElement('div'); p.className = 'prow';
+        p.innerHTML = '<span></span><div class="track"><div class="fill"></div></div>';
+        p.firstChild.textContent = '⬆ ' + file.name; $('progress').appendChild(p);
+        var xhr = new XMLHttpRequest();
+        xhr.open('PUT', '/api/files/upload?' + new URLSearchParams({key: key}));
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+        xhr.upload.onprogress = function (e) { if (e.lengthComputable) p.querySelector('.fill').style.width = (100 * e.loaded / e.total) + '%'; };
+        xhr.onload = function () {
+          var ok = xhr.status === 200; var body = {};
+          try { body = JSON.parse(xhr.responseText); } catch (e) {}
+          toast(ok ? 'Uploaded ' + file.name : (body.error || 'Upload failed'), !ok);
+          setTimeout(function () { p.remove(); }, 800); load();
+        };
+        xhr.onerror = function () { toast('Upload failed: ' + file.name, true); p.remove(); };
+        xhr.send(file);
+      });
+    }
+
+    $('upload').onclick = function () { $('picker').click(); };
+    $('picker').onchange = function () { uploadFiles(this.files); this.value = ''; };
+    $('refresh').onclick = load;
+    $('mkdir').onclick = function () {
+      var n = prompt('New folder name:', 'uploads');
+      if (!n) return; n = n.replace(/^\/+|\/+$/g, '');
+      api('POST', '/mkdir', {prefix: state.prefix + n + '/'}).then(function (r) {
+        r.ok ? (toast('Created ' + n + '/'), go(state.prefix + n + '/')) : toast(r.body.error, true); });
+    };
+    var panel = $('panel');
+    ['dragenter', 'dragover'].forEach(function (ev) { panel.addEventListener(ev, function (e) { e.preventDefault(); panel.classList.add('dragging'); }); });
+    ['dragleave', 'drop'].forEach(function (ev) { panel.addEventListener(ev, function (e) { e.preventDefault(); if (ev === 'drop' || e.target === panel.querySelector('.drop')) panel.classList.remove('dragging'); }); });
+    panel.addEventListener('drop', function (e) { if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
+
+    fetch('/api/me', {credentials: 'same-origin'}).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (me) { if (me) $('who').textContent = 'Signed in as ' + me.user; });
+    load();
+  </script>
+</body>
+</html>

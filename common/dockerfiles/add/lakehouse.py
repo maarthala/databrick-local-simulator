@@ -42,32 +42,106 @@ def bucket_name(name):
     return name.replace("_", "-") + "-lake"
 
 
-def create_bucket(bucket):
-    """PUT /<bucket> on MinIO (S3 API, path-style), signed with AWS SigV4 — stdlib only.
-    True if created, False if it already exists (ours)."""
+def _s3(method, bucket, key="", query=None, body=b"", headers=None, stream=None, length=None):
+    """One S3 call to MinIO (path-style), signed with AWS SigV4 — stdlib only.
+    `stream` + `length` send a file-like body unsigned (UNSIGNED-PAYLOAD) without
+    buffering it. Returns the open response (caller reads/closes)."""
     host = urllib.parse.urlparse(S3_ENDPOINT).netloc
     now = datetime.datetime.now(datetime.timezone.utc)
     amz_date, day = now.strftime("%Y%m%dT%H%M%SZ"), now.strftime("%Y%m%d")
-    payload = hashlib.sha256(b"").hexdigest()
-    canonical = "\n".join(["PUT", f"/{bucket}", "", f"host:{host}", f"x-amz-content-sha256:{payload}",
-                           f"x-amz-date:{amz_date}", "", "host;x-amz-content-sha256;x-amz-date", payload])
+    path = "/" + bucket + ("/" + urllib.parse.quote(key, safe="/~") if key else "")
+    qs = "&".join(f"{urllib.parse.quote(k, safe='-_.~')}={urllib.parse.quote(str(v), safe='-_.~')}"
+                  for k, v in sorted((query or {}).items()))
+    payload = "UNSIGNED-PAYLOAD" if stream is not None else hashlib.sha256(body).hexdigest()
+    hdrs = {"host": host, "x-amz-content-sha256": payload, "x-amz-date": amz_date}
+    hdrs.update({k.lower(): v for k, v in (headers or {}).items()})
+    signed = ";".join(sorted(hdrs))
+    canonical = "\n".join([method, path, qs, *(f"{k}:{hdrs[k]}" for k in sorted(hdrs)), "", signed, payload])
     scope = f"{day}/{S3_REGION}/s3/aws4_request"
     to_sign = "\n".join(["AWS4-HMAC-SHA256", amz_date, scope, hashlib.sha256(canonical.encode()).hexdigest()])
     k = f"AWS4{S3_SECRET}".encode()
     for part in (day, S3_REGION, "s3", "aws4_request"):
         k = hmac.new(k, part.encode(), hashlib.sha256).digest()
     sig = hmac.new(k, to_sign.encode(), hashlib.sha256).hexdigest()
-    req = urllib.request.Request(f"{S3_ENDPOINT}/{bucket}", method="PUT", data=b"", headers={
-        "x-amz-date": amz_date, "x-amz-content-sha256": payload,
-        "Authorization": f"AWS4-HMAC-SHA256 Credential={S3_KEY}/{scope}, "
-                         f"SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature={sig}"})
+    out = {k: v for k, v in hdrs.items() if k != "host"}
+    out["Authorization"] = (f"AWS4-HMAC-SHA256 Credential={S3_KEY}/{scope}, "
+                            f"SignedHeaders={signed}, Signature={sig}")
+    data = stream if stream is not None else (body if method in ("PUT", "POST") else None)
+    if stream is not None:
+        out["Content-Length"] = str(length)
+    req = urllib.request.Request(f"{S3_ENDPOINT}{path}" + (f"?{qs}" if qs else ""),
+                                 data=data, method=method, headers=out)
+    return urllib.request.urlopen(req, timeout=60)
+
+
+def create_bucket(bucket):
+    """True if created, False if it already exists (ours)."""
     try:
-        with urllib.request.urlopen(req, timeout=10):
-            return True
+        _s3("PUT", bucket).close()
+        return True
     except urllib.error.HTTPError as e:
         if e.code == 409:            # BucketAlreadyOwnedByYou
             return False
         raise RuntimeError(f"create bucket {bucket}: HTTP {e.code} {e.read()[:200]!r}")
+
+
+# ---- "My files": the learner's own bucket only (callers pass bucket_name(user)) ----
+_NS = "{http://s3.amazonaws.com/doc/2006-03-01/}"
+
+
+def list_dir(bucket, prefix=""):
+    """One folder level: ({folders}, [{key,size,modified}]) under `prefix`."""
+    import xml.etree.ElementTree as ET
+    folders, files, token = [], [], None
+    while True:
+        q = {"list-type": "2", "delimiter": "/", "prefix": prefix}
+        if token:
+            q["continuation-token"] = token
+        with _s3("GET", bucket, query=q) as r:
+            root = ET.fromstring(r.read())
+        folders += [p.findtext(f"{_NS}Prefix") for p in root.findall(f"{_NS}CommonPrefixes")]
+        for c in root.findall(f"{_NS}Contents"):
+            key = c.findtext(f"{_NS}Key")
+            if key == prefix:                     # the folder marker itself
+                continue
+            files.append({"key": key, "size": int(c.findtext(f"{_NS}Size")),
+                          "modified": c.findtext(f"{_NS}LastModified")})
+        token = root.findtext(f"{_NS}NextContinuationToken")
+        if root.findtext(f"{_NS}IsTruncated") != "true":
+            return folders, files
+
+
+def list_all(bucket, prefix):
+    """Every key under `prefix` (recursive)."""
+    import xml.etree.ElementTree as ET
+    keys, token = [], None
+    while True:
+        q = {"list-type": "2", "prefix": prefix}
+        if token:
+            q["continuation-token"] = token
+        with _s3("GET", bucket, query=q) as r:
+            root = ET.fromstring(r.read())
+        keys += [c.findtext(f"{_NS}Key") for c in root.findall(f"{_NS}Contents")]
+        token = root.findtext(f"{_NS}NextContinuationToken")
+        if root.findtext(f"{_NS}IsTruncated") != "true":
+            return keys
+
+
+def is_table(keys):
+    """An Iceberg table folder holds metadata/*.metadata.json."""
+    return any("/metadata/" in k and k.endswith(".metadata.json") for k in keys)
+
+
+def put_object(bucket, key, stream, length, content_type="application/octet-stream"):
+    _s3("PUT", bucket, key, stream=stream, length=length, headers={"content-type": content_type}).close()
+
+
+def get_object(bucket, key):
+    return _s3("GET", bucket, key)
+
+
+def delete_object(bucket, key):
+    _s3("DELETE", bucket, key).close()
 
 
 def _call(method, path, body=None, token=None, form=None):

@@ -17,6 +17,8 @@ data:
    | replace "http://localhost:8189" (printf "http://polaris-console.%s" .Values.ingress.baseHost)
    | replace "http://localhost:9001" (printf "http://minio.%s" .Values.ingress.baseHost)
    | indent 4 }}
+  files.html: |
+{{ .Files.Get "files/home/files.html" | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -39,6 +41,7 @@ spec:
             - { name: http, containerPort: 80 }
           volumeMounts:
             - { name: html, mountPath: /usr/share/nginx/html/index.html, subPath: index.html }
+            - { name: html, mountPath: /usr/share/nginx/html/files.html, subPath: files.html }
       volumes:
         - { name: html, configMap: { name: home-html } }
 ---
