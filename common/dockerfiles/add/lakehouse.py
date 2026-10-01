@@ -120,6 +120,15 @@ def put_storage_policy(name, admin=False):
         "Version": "2012-10-17", "Statement": [
             {"Effect": "Allow", "Action": ["s3:ListBucket", "s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
              "Resource": [f"arn:aws:s3:::{bucket}"]},
+            # the console's bucket Settings page — read-only. (RustFS action names; its only quota
+            # permission is admin:SetBucketQuota, which would let learners raise their own limit —
+            # so the quota card stays hidden for learners.)
+            {"Effect": "Allow", "Action": [
+                "s3:GetBucketVersioning", "s3:GetBucketTagging", "s3:GetBucketLifecycle",
+                "s3:GetBucketEncryption", "s3:GetBucketPolicy", "s3:GetBucketPolicyStatus",
+                "s3:GetReplicationConfiguration", "s3:GetBucketNotification", "s3:GetBucketCors",
+                "s3:GetBucketObjectLockConfiguration"],
+             "Resource": [f"arn:aws:s3:::{bucket}"]},
             {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject",
                                            "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"],
              "Resource": [f"arn:aws:s3:::{bucket}/*"]}]}
