@@ -82,7 +82,10 @@ services:
   # image yet). The VITE_* API URL is baked at build time to the browser-reachable
   # Polaris port (localhost:8185). Browse at http://localhost:8188.
   polaris-console:
-    image: apache/polaris-console:latest
+    # upstream console + lab SSO tweaks (silent sign-in, auto-start, label) — see the Dockerfile
+    build:
+      context: ../common/dockerfiles
+      dockerfile: Dockerfile.polaris-console
     container_name: polaris-console
     expose:
       - "8080"
