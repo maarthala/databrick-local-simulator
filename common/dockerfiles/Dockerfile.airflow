@@ -37,6 +37,18 @@ COPY ./tmp/iceberg-aws-bundle-1.11.0.jar /opt/spark/jars/
 # (NoSuchFieldError JAVA_21); Spark 4 uses its bundled hive-2.3.10 client.
 RUN zip -q -d /opt/spark/jars/bundle-2.29.52.jar 'io/netty/*' 'META-INF/native/libnetty*' || true
 
+# Delta Lake — spark-defaults.conf (shared with the Spark cluster) registers Delta's
+# SQL extension + DeltaCatalog, so the driver here needs the same jars or every
+# spark-submit fails on "Cannot find catalog plugin class". Same versions as Dockerfile.spark.
+ARG DELTA_VER=4.4.0
+ARG DELTA_SPARK=4.1
+RUN cd /opt/spark/jars && \
+    base=https://repo1.maven.org/maven2/io/delta && \
+    curl -fsSL -O $base/delta-spark_${DELTA_SPARK}_2.13/${DELTA_VER}/delta-spark_${DELTA_SPARK}_2.13-${DELTA_VER}.jar && \
+    curl -fsSL -O $base/delta-storage/${DELTA_VER}/delta-storage-${DELTA_VER}.jar && \
+    curl -fsSL -O $base/delta-kernel-api/${DELTA_VER}/delta-kernel-api-${DELTA_VER}.jar && \
+    curl -fsSL -O $base/delta-kernel-defaults/${DELTA_VER}/delta-kernel-defaults-${DELTA_VER}.jar
+
 RUN chmod 777 /opt/spark/jars/*.jar
 
 # Set environment variables
