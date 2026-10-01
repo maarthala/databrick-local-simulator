@@ -170,6 +170,8 @@ Once the DAG passes locally, deploy it the same way the pros do:
   that folder and picks it up within a scan cycle (~30s).
 - **Remote/production:** **commit + push** to the Git repo the remote Airflow **git-syncs** (see the
   remote-development section) — never edit files on the server directly.
+- **Your own DAGs:** you can also save a DAG in Jupyter under **`dags/`** — it's synced to your
+  bucket and loaded by Airflow within ~30 s (the `dag_id` must start with `<username>_`).
 
 ## Lab
 
@@ -177,7 +179,7 @@ Once the DAG passes locally, deploy it the same way the pros do:
 ShopFlow's Airflow is already running on your stack (see the
 [architecture](../unit0/architecture.md)).
 
-- Local: <http://localhost:8001> (login `airflow` / `airflow`)
+- Local: <http://localhost:8001> (sign in with your lab account)
 - On k8s: <http://airflow.de.lan>
 
 Take the tour:

@@ -12,7 +12,7 @@ learn next. This page is your dictionary.
 ## Component map
 | This stack (OSS) | Databricks | Snowflake | Microsoft Fabric | Azure (native) |
 |---|---|---|---|---|
-| **MinIO** (S3 object storage) | cloud storage / catalog Volumes | Stages & external volumes | **OneLake** | ADLS Gen2 |
+| **RustFS** (S3-compatible object storage) | cloud storage / catalog Volumes | Stages & external volumes | **OneLake** | ADLS Gen2 |
 | **Iceberg** tables (via the `iceberg` REST catalog) | **Delta Lake** (native) | Iceberg & native tables | Delta on OneLake | Delta on ADLS |
 | **Apache Polaris** (Iceberg REST catalog, governance) | **the Databricks catalog** | **Snowflake Open Catalog** / Database→Schema + RBAC roles | Fabric catalog + Purview | Microsoft Purview |
 | **Medallion** Bronze/Silver/Gold | **Medallion** (Databricks' term) | raw/staging/marts (same idea) | Medallion on OneLake | same pattern |
@@ -37,7 +37,7 @@ learn next. This page is your dictionary.
 
 ## How the lakehouse is wired here (and what changes on the cloud)
 On this stack, **Spark builds** the medallion and **Trino/Superset read** it — both through one
-shared **`iceberg`** catalog backed by **Apache Polaris** (Iceberg REST + MinIO). Polaris is *also*
+shared **`iceberg`** catalog backed by **Apache Polaris** (Iceberg REST + RustFS). Polaris is *also*
 the governance layer that models catalogs, schemas, and grants.
 
 On **Databricks**, storage and governance are **one product**: the Databricks catalog both *stores* the tables (as Delta)

@@ -12,32 +12,33 @@ each tool the way you would in a real job: through its web UI or its client.
 
 ```mermaid
 flowchart LR
-  YOU["💻 Your machine<br/>browser · trino CLI"] -->|http / SQL| STACK["🐳 The stack<br/>Trino · Superset · Airflow<br/>Jupyter · Polaris · MinIO"]
+  YOU["💻 Your machine<br/>browser · trino CLI"] -->|http / SQL| STACK["🐳 The stack<br/>Trino · Superset · Airflow<br/>Jupyter · Polaris · RustFS"]
 ```
 
 ## What you need
 
 | # | Thing | Required? | Why |
 |---|---|---|---|
-| 1 | A modern **web browser** | ✅ Always | Every tool (Superset, Airflow, Jupyter, Polaris Console, MinIO) is a web UI |
+| 1 | A modern **web browser** | ✅ Always | Every tool (Superset, Airflow, Jupyter, Polaris Console, RustFS) is a web UI |
 | 2 | The **Trino CLI** | ⭐ Recommended | The fastest way to run the SQL in [Unit 2](../unit2/intro.md) (or use Superset SQL Lab instead) |
 | 3 | **Docker Desktop** + Git | ⚙️ Only if *you* run the stack | Needed to bring the platform up on your own laptop |
 
 Items 1–2 are all a learner needs when the stack is provided for you (a shared server, or an
 instructor's machine). Item 3 is only for running the whole thing yourself.
 
-!!! note "No hosts-file entry needed"
-    Earlier versions required a `keycloak` hosts entry for single sign-on. The stack now uses direct
-    Polaris logins (client id/secret), so there's **nothing to add to your hosts file** locally — just
-    open the URLs. (On Kubernetes the cluster admin still points the `*.de.lan` wildcard at the
-    ingress, as for every other service.)
+!!! note "One lab account for everything — and no hosts-file entry"
+    You **register once** on the landing page (just a username + password) and that **lab account**
+    signs you in to every tool — Jupyter, Airflow, Superset, SQLPad, the Polaris Console and the
+    RustFS console (single sign-on via Keycloak). There's **nothing to add to your hosts file**
+    locally — just open the URLs. (On Kubernetes the cluster admin points the `*.de.lan` wildcard at
+    the ingress, as for every other service.)
 
 ---
 
 ## 1. A web browser
 
 Any recent Chrome, Edge, Firefox, or Safari. That's the entire requirement for Superset, Airflow,
-Jupyter, the Polaris Console, MinIO, and this course site. Bookmark the landing page — it links to
+Jupyter, the Polaris Console, RustFS, and this course site. Bookmark the landing page — it links to
 everything:
 
 - **Local (Docker):** [http://localhost:8000](http://localhost:8000)
@@ -194,8 +195,8 @@ Run through this checklist once — if all three pass, you're ready for Unit 1.
    to the **DE Learning Lab** login page: click **Register** to create your own account (or sign in
    as `instructor` / `instructor`). After signing in you see the ShopFlow tiles and, at the top,
    **"your lakehouse: <name>_lake ✓"** — your own private lakehouse, created on first login.
-2. **Polaris Console login works** — open `http://localhost:8189`, sign in with Client ID/Secret
-   `analyst` / `analyst`. You land in the catalog scoped to that persona.
+2. **Single sign-on works** — open the **Governance** tile (Polaris Console). It signs you in with
+   your lab account without asking again; your own lakehouse `<name>_lake` is there.
 3. **SQL works** — either in the Trino CLI or Superset SQL Lab:
 
     ```sql
@@ -216,20 +217,21 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 
 | Service | Local URL | Login |
 |---|---|---|
-| Landing page | [http://localhost:8000](http://localhost:8000) | your own account (**Register** on the login page), or `instructor` / `instructor` |
+| Landing page | [http://localhost:8000](http://localhost:8000) | your **lab account** (**Register** on the login page), or `instructor` / `instructor` |
 | Keycloak (logins) | http://localhost:8180/admin | admin console: `admin` / `admin` (realm **de-lab**) |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | Jupyter (notebooks) | http://localhost:8008 | your lab account — your **own** Jupyter, and `iceberg` = your own lakehouse |
 | Spark master UI | http://localhost:8002 | — |
 | Trino | http://localhost:8007/ui/ (CLI: `:8007`) | any username, no password |
-| SQLPad (SQL workbench) | http://localhost:8003 | `admin@de.local` / `admin1234` |
-| Superset (BI) | http://localhost:8004 | `admin` / `admin` |
-| Airflow | http://localhost:8001 (or the `AIRFLOW_HOST_PORT` you set) | `airflow` / `airflow` |
-| Polaris Console (governance) | http://localhost:8189 | `analyst` / `analyst` (or `engineer` / `lead`; admin `root` / `s3cr3t`) |
-| MinIO console (S3) | http://localhost:9001 | `minioadmin` / `minioadmin` |
+| SQLPad (SQL workbench) | http://localhost:8003 | lab account (**Sign in with Epireum lab account**) |
+| Superset (BI) | http://localhost:8004 | lab account (instructors = Admin) |
+| Airflow | http://localhost:8001 (or the `AIRFLOW_HOST_PORT` you set) | lab account (instructors = Admin) |
+| Polaris Console (governance) | http://localhost:8189 | lab account · Client ID/Secret form at `/login?local=1` (admin `root` / `s3cr3t`, [personas](personas.md)) |
+| RustFS console (S3) | http://localhost:9001/rustfs/console/ | lab account — you see **your own bucket** `<name>-lake` · root `minioadmin` / `minioadmin` |
+| My files · My catalogs | links at the top of the landing page | your bucket's files; create catalogs & share them ([details](workspace.md)) |
 
 ## You can now…
 - Set up your machine to use the stack (browser, Trino CLI) on macOS, Windows, or Linux
-- Sign in to the Polaris Console as a persona with its client id/secret
+- Sign in once with your lab account and reach every tool
 - Run the whole platform yourself with Docker, if it isn't already provided
 - Prove your setup works with the three-step verification checklist

@@ -12,7 +12,7 @@ dependency-light way is a two-step hop:
 
 ```mermaid
 flowchart LR
-  X[(MinIO<br/>new_customers.xlsx)] -->|pandas + openpyxl| P[pandas DataFrame]
+  X[(RustFS<br/>new_customers.xlsx)] -->|pandas + openpyxl| P[pandas DataFrame]
   P -->|spark.createDataFrame| S[Spark DataFrame]
   S -->|writeTo iceberg| B["🥉 iceberg.bronze.customers_excel"]
 ```
@@ -30,8 +30,8 @@ through pandas on the driver is perfectly fine — you're not streaming a billio
     as a governed lakehouse table other engines can query.
 
 ### Reaching object storage from pandas
-Spark uses `s3a://…` to reach MinIO. pandas uses a different door: the **s3fs** library, which
-teaches pandas to open `s3://…` URLs. You pass it the MinIO credentials and endpoint through a
+Spark uses `s3a://…` to reach RustFS (the S3-compatible object store — inside the stack it's still reached at `http://minio:9000`). pandas uses a different door: the **s3fs** library, which
+teaches pandas to open `s3://…` URLs. You pass it the RustFS credentials and endpoint through a
 `storage_options` dict, and pandas hands that straight to s3fs. Same bucket, same object — just a
 different client on the driver side.
 
@@ -44,7 +44,7 @@ import pandas as pd
 from pyspark.sql import SparkSession
 spark = SparkSession.builder.getOrCreate()
 
-# MinIO S3 credentials for pandas (s3fs handles s3:// URLs). Inside the stack MinIO is http://minio:9000.
+# RustFS S3 credentials for pandas (s3fs handles s3:// URLs). Inside the stack RustFS is http://minio:9000.
 storage = {"key": "minioadmin", "secret": "minioadmin",
            "client_kwargs": {"endpoint_url": "http://minio:9000"}}
 xlsx = "s3://demo-bucket/uploads/new_customers.xlsx"
@@ -57,8 +57,8 @@ xlsx = "s3://demo-bucket/uploads/new_customers.xlsx"
 - **`SparkSession.builder.getOrCreate()`** — grab (or create) your handle to the Spark cluster.
   Over Spark Connect this attaches to the running cluster; the object named `spark` is how you talk
   to it, exactly as in [4.1](../unit4/fundamentals.md).
-- **`storage = {…}`** — the credentials + endpoint pandas needs to reach MinIO. **`key`** /
-  **`secret`** are the MinIO access keys; **`client_kwargs.endpoint_url`** points at MinIO's
+- **`storage = {…}`** — the credentials + endpoint pandas needs to reach RustFS. **`key`** /
+  **`secret`** are the RustFS access keys; **`client_kwargs.endpoint_url`** points at RustFS's
   in-stack address, `http://minio:9000` (not AWS's real S3). This dict is what makes `s3://…`
   URLs resolvable from the driver.
 - **`xlsx = "s3://…"`** — the object-storage path to the spreadsheet, as an `s3://` URL (the door
@@ -91,7 +91,7 @@ pd.DataFrame({"customer_id": [9001, 9002, 9003],
   storage** at the `s3://` path. pandas uses openpyxl to encode the workbook.
 - **`index=False`** — don't write pandas' auto row-index as an extra column; you only want your
   three real columns.
-- **`storage_options=storage`** — hand pandas the MinIO creds/endpoint so it can reach the bucket
+- **`storage_options=storage`** — hand pandas the RustFS creds/endpoint so it can reach the bucket
   (this is where s3fs kicks in).
 
 *Produces:* an Excel file `new_customers.xlsx` sitting in `demo-bucket/uploads/` — the source
@@ -184,7 +184,7 @@ care about the **`accounts`** sheet, and of its columns you only want **`account
     - **Microsoft Fabric** — **Dataflows Gen2** (Power Query reads `.xlsx` natively) or a
       **Lakehouse notebook**, landing into a Lakehouse table.
 
-    Only the object-store path changes (`abfss://` / `s3://` instead of MinIO); the "parse Excel
+    Only the object-store path changes (`abfss://` / `s3://` instead of RustFS); the "parse Excel
     with pandas, land as a table" shape is identical everywhere.
 
 ## Key terms, at a glance
@@ -193,7 +193,7 @@ care about the **`accounts`** sheet, and of its columns you only want **`account
 | **pandas DataFrame** | Single-machine, in-memory table — can parse Excel; lives on the driver |
 | **openpyxl** | The engine pandas uses to read/write `.xlsx` files |
 | **s3fs** | Library that lets pandas open `s3://…` object-storage URLs |
-| **`storage_options`** | Dict of MinIO creds + endpoint pandas passes to s3fs |
+| **`storage_options`** | Dict of RustFS creds + endpoint pandas passes to s3fs |
 | **`pd.read_excel`** | Read a spreadsheet into a pandas DataFrame |
 | **`sheet_name`** | Which tab(s) to read — a name, an index, or `None` for all sheets |
 | **`spark.createDataFrame(pdf)`** | Convert a pandas DataFrame into a Spark DataFrame |

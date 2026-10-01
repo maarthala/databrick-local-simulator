@@ -30,7 +30,7 @@ Redshift). You **design a schema first**, then load clean data into it.
 
 ## Data lake (the reaction)
 The big-data era's answer: dump *everything* cheaply into **object storage** (S3/ADLS/
-MinIO) as raw files, decide what it means later.
+RustFS) as raw files, decide what it means later.
 
 - **Strengths:**
     - **Dirt cheap and infinitely scalable** — object storage costs pennies per GB.
@@ -58,12 +58,12 @@ flowchart TB
 
   TBL["Open table format — the 'magic' layer<br/>Delta / Iceberg: ACID · schema · time-travel · MERGE"]
 
-  STORE[("Object storage — cheap & open<br/>MinIO / S3 / ADLS · Parquet files")]
+  STORE[("Object storage — cheap & open<br/>RustFS / S3 / ADLS · Parquet files")]
 
   ENG --> CAT --> TBL --> STORE
 ```
 
-1. **Object storage** — the same cheap, open files as a lake (Parquet on MinIO/S3).
+1. **Object storage** — the same cheap, open files as a lake (Parquet on RustFS/S3).
 2. **An open table format** (Delta or Iceberg) — a thin metadata layer *over* those files
    that turns "a folder of files" into a real **table** with database guarantees. This is
    the piece that makes a lakehouse possible (you go deep on it in [1.3](formats.md)).
@@ -108,7 +108,7 @@ ShopFlow's lakehouse maps one-to-one onto the three layers (you saw the tools in
 
 | Layer | ShopFlow uses |
 |---|---|
-| Object storage | **MinIO** (S3-compatible), holding Parquet files |
+| Object storage | **RustFS** (S3-compatible), holding Parquet files |
 | Open table format | **Iceberg** tables |
 | Catalog & governance | **Apache Polaris** (the `iceberg` catalog, RBAC) |
 
@@ -134,7 +134,7 @@ separate lake and warehouse, no copying data between them.
 ## Key terms, at a glance
 | Term | Plain meaning |
 |---|---|
-| **Object storage** | Cheap, scalable file storage (S3 / ADLS / MinIO) |
+| **Object storage** | Cheap, scalable file storage (S3 / ADLS / RustFS) |
 | **Schema-on-write** | Data must fit a fixed schema *before* loading (warehouse) |
 | **Schema-on-read** | Structure is applied only when you query (lake) |
 | **Table format** | Metadata layer (Delta/Iceberg) making files behave as a table |
@@ -151,4 +151,4 @@ separate lake and warehouse, no copying data between them.
 - Name the three lakehouse ingredients (object storage + table format + catalog)
 - Explain what an open **table format** adds to plain files (ACID, MERGE, time travel…)
 - Distinguish schema-on-write from schema-on-read, and coupled vs separated storage/compute
-- Map ShopFlow's MinIO + Iceberg + Apache Polaris onto that pattern
+- Map ShopFlow's RustFS + Iceberg + Apache Polaris onto that pattern

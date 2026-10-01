@@ -37,15 +37,16 @@ gate the Pages CI uses) before you push.
 ## Access
 | Service | URL | Login |
 |---|---|---|
-| Landing page | http://localhost:8000 | — |
+| Landing page | http://localhost:8000 | your **lab account** — Register, or `instructor` / `instructor`; one login for every tool below |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
-| MinIO console | http://localhost:9001 | minioadmin / minioadmin |
-| Polaris Console | http://localhost:8189 | analyst/engineer/lead (client id = secret = name); admin root/s3cr3t |
+| Keycloak (accounts) | http://localhost:8180/admin | admin / admin (realm `de-lab`) |
+| RustFS console (S3) | http://localhost:9001/rustfs/console/ | lab account (own bucket) · root minioadmin / minioadmin |
+| Polaris Console | http://localhost:8189 | lab account · `/login?local=1`: personas analyst/engineer/lead (id = secret = name), admin root/s3cr3t |
 | Polaris API | http://localhost:8185 | OAuth2 client credentials (realm `POLARIS`) |
 | Trino | http://localhost:8007/ui/ | any username, no password |
-| Superset | http://localhost:8004 | admin / admin |
-| SQLPad (SQL workbench) | http://localhost:8003 | admin@de.local / admin1234 |
-| Airflow | http://localhost:8001 | airflow / airflow |
+| Superset | http://localhost:8004 | lab account |
+| SQLPad (SQL workbench) | http://localhost:8003 | lab account (local admin admin@de.local / admin1234) |
+| Airflow | http://localhost:8001 (`AIRFLOW_HOST_PORT`) | lab account |
 | Jupyter (JupyterHub) | http://localhost:8008 | your lab account (Keycloak) — own Jupyter + own lakehouse |
 | Spark master UI | http://localhost:8002 | — |
 
@@ -55,11 +56,13 @@ Seed the governed catalog (catalog, bronze/silver/gold namespaces, personas + RB
 make polaris-seed      # runs ../common/polaris/seed-polaris.sh against localhost:8185
 ```
 Then:
-- **Log in** to the Polaris Console at http://localhost:8189 as a persona
+- **Register your lab account** at http://localhost:8000 — it signs you in to every tool and
+  creates your own lakehouse, bucket and Jupyter (course page 0.3).
+- **Personas** (governance lessons): Polaris Console http://localhost:8189/login?local=1
   (`analyst`/`analyst`, `engineer`/`engineer`, `lead`/`lead`; admin `root`/`s3cr3t`).
 - **Query the lake** with Trino (`iceberg` catalog) or Superset SQL Lab.
-- **Governed Spark** — from Jupyter, `spark.sql("SHOW NAMESPACES IN iceberg")` lists
-  `bronze`/`silver`/`gold`; Spark Connect reads/writes the Polaris-governed catalog.
+- **Governed Spark** — in Jupyter, `iceberg` is your own lakehouse and `shared` the course lake
+  (`spark.sql("SELECT * FROM shared.gold.daily_sales")`); Spark Connect reads/writes through Polaris.
 
 ## Notebook auto-push (git commit + push on save)
 Jupyter clones a repo into `/home/jovyan/work/repo` and, on every save, commits + pushes

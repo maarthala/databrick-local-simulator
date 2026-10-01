@@ -17,20 +17,21 @@ Two words carry this whole recipe:
 - **Sensor** — a task whose job is to *wait*. It succeeds the moment its condition is true, which
   releases everything downstream. Think of it as a gate that only opens once the file is really there.
 - **Poke** — a single *check* of that condition. A sensor "pokes" over and over on an interval until
-  the answer is yes (or it gives up). Here the check is a Python function that asks MinIO
+  the answer is yes (or it gives up). Here the check is a Python function that asks RustFS
   "does this object exist yet?"
 
 ```mermaid
 flowchart LR
-  S[wait_for_file<br/>sensor · pokes MinIO every 30s] -->|file present| L[load_to_bronze<br/>run the ingest job]
+  S[wait_for_file<br/>sensor · pokes RustFS every 30s] -->|file present| L[load_to_bronze<br/>run the ingest job]
   S -.still waiting.-> S
 ```
 
-Our stack has no cloud storage, but it *does* have **MinIO** — an S3-compatible object store (see
+Our stack has no cloud storage, but it *does* have **RustFS** — an S3-compatible object store (see
 the [architecture](../unit0/architecture.md)). A file "arriving" means an object appearing under a
 bucket + key, e.g. `demo-bucket/uploads/new_customers.xlsx`. So our sensor's condition is simply:
-*does that object exist in MinIO yet?* We answer it with **boto3**, the AWS SDK for Python, pointed
-at MinIO instead of AWS.
+*does that object exist in RustFS yet?* We answer it with **boto3**, the AWS SDK for Python, pointed
+at RustFS instead of AWS. (Inside the stack RustFS is still reached at `http://minio:9000` — hence the
+`minio` names in the code.)
 
 ## Lab
 
@@ -73,16 +74,16 @@ with DAG(dag_id="ingest_on_file_arrival",
 - **`from airflow.sensors.python import PythonSensor`** — imports the sensor we'll use. A
   `PythonSensor` runs a Python function on each poke and treats its return value as the condition:
   **`True` = condition met (stop waiting)**, `False` = not yet, poke again later.
-- **`import boto3`** — the AWS SDK for Python. It speaks the S3 API, and MinIO *is* S3-compatible, so
-  the same client that talks to AWS talks to our local MinIO.
+- **`import boto3`** — the AWS SDK for Python. It speaks the S3 API, and RustFS *is* S3-compatible, so
+  the same client that talks to AWS talks to our local RustFS.
 - **`def _minio(): return boto3.client("s3", endpoint_url="http://minio:9000", …)`** — builds an S3
-  client, but pointed at MinIO. Three things make it MinIO instead of AWS:
+  client, but pointed at RustFS. Three things make it RustFS instead of AWS:
     - **`endpoint_url="http://minio:9000"`** — talk to the `minio` service on the stack's network
-      (port 9000 is MinIO's S3 API), not to `s3.amazonaws.com`.
-    - **`aws_access_key_id` / `aws_secret_access_key`** — MinIO's dev credentials (`minioadmin` /
-      `minioadmin`). Real AWS would use IAM keys; MinIO ships with these for local use.
+      (port 9000 is RustFS's S3 API), not to `s3.amazonaws.com`.
+    - **`aws_access_key_id` / `aws_secret_access_key`** — RustFS's dev credentials (`minioadmin` /
+      `minioadmin`). Real AWS would use IAM keys; the lab stack uses these for local use.
 - **`def file_has_landed(bucket, key): …`** — **this is the poke function** — the condition the
-  sensor checks each time. `list_objects_v2(Bucket=…, Prefix=key)` asks MinIO to list objects whose
+  sensor checks each time. `list_objects_v2(Bucket=…, Prefix=key)` asks RustFS to list objects whose
   name starts with `key`. The response's **`KeyCount`** is how many matched. **`> 0` means the file
   is there** → return `True` and the sensor is satisfied; `0` means "not yet" → return `False` and it
   pokes again.
@@ -120,23 +121,30 @@ with DAG(dag_id="ingest_on_file_arrival",
     Airflow ships a purpose-built sensor for exactly this: **`S3KeySensor`** (from
     `airflow.providers.amazon.aws.sensors.s3`). It does the same "wait for an object" job with less
     code — but it needs an **AWS/S3 connection** configured (an Airflow *Connection* pointing at
-    MinIO's endpoint and credentials) before it'll run. We use a `PythonSensor` + **boto3** here so
+    RustFS's endpoint and credentials) before it'll run. We use a `PythonSensor` + **boto3** here so
     the recipe is **self-contained** — no connection setup, the endpoint and keys are right in the
     code. In a real deployment you'd usually configure the connection once and use `S3KeySensor`.
 
 ### 2 · Watch it wait, then make the file arrive
 DAGs are rescanned every ~30 s, so give `ingest_on_file_arrival` a moment to appear in the DAGs list,
-then toggle it **on**. In the Airflow UI (<http://localhost:8001>, `airflow`/`airflow`):
+then toggle it **on**. In the Airflow UI (<http://localhost:8001>, sign in with your lab account):
 
 1. Open **Grid** for `ingest_on_file_arrival`. The **wait_for_file** square goes **yellow** — it's
    running (in `reschedule` mode it'll flip between running and "up for reschedule" between pokes).
-2. In the **MinIO console** (<http://localhost:9001>, `minioadmin`/`minioadmin`), open (or create)
-   the **`demo-bucket`** bucket and **upload any file named `new_customers.xlsx` under an
-   `uploads/` prefix**. That's the "file arriving".
+2. Make the file arrive: in a JupyterLab cell, **upload any small file as
+   `uploads/new_customers.xlsx` in `demo-bucket`** with the same `_minio()` client (learners don't
+   see `demo-bucket` in the RustFS console — instructors can also just drop the file there).
+   That's the "file arriving":
+   ```python
+   import boto3
+   s3 = boto3.client("s3", endpoint_url="http://minio:9000",
+                     aws_access_key_id="minioadmin", aws_secret_access_key="minioadmin")
+   s3.put_object(Bucket="demo-bucket", Key="uploads/new_customers.xlsx", Body=b"test")
+   ```
 3. On the sensor's **next poke** (within 30 s), `file_has_landed` returns `True`, **wait_for_file**
    turns **green**, and **load_to_bronze** fires — you'll see its echo in the **Logs**.
 
-Everything happens in the **browser**: author in JupyterLab, drop the file in the MinIO console,
+Everything happens in the **browser**: author in JupyterLab, drop the file from a notebook cell,
 watch it flip green in the Airflow UI. No container shell needed.
 
 !!! tip "Test the poke function directly"
@@ -215,8 +223,8 @@ any match under the prefix.
 | **`poke_interval`** | How often to check (seconds between pokes) |
 | **`timeout`** | Give up (fail the sensor) after this many seconds of waiting |
 | **`mode="reschedule"`** | Release the worker slot between pokes (vs `poke` = hold it) — scales |
-| **boto3** | AWS SDK for Python; talks S3, so it talks to S3-compatible **MinIO** |
-| **`endpoint_url`** | Point the S3 client at MinIO (`http://minio:9000`) instead of AWS |
+| **boto3** | AWS SDK for Python; talks S3, so it talks to S3-compatible **RustFS** |
+| **`endpoint_url`** | Point the S3 client at RustFS (`http://minio:9000`) instead of AWS |
 | **`list_objects_v2` / `KeyCount`** | List objects by prefix / how many matched (`>0` = present) |
 | **`S3KeySensor`** | Provider-native "wait for an object" sensor; needs an AWS/S3 connection |
 | **XCom** | How tasks pass small values between each other (e.g. the detected key) |
@@ -224,7 +232,7 @@ any match under the prefix.
 
 ## You can now…
 - Explain what a **sensor** is and how a **poke** function turns "did the file arrive?" into a task
-- Build a self-contained file-arrival trigger with `PythonSensor` + **boto3** against MinIO
+- Build a self-contained file-arrival trigger with `PythonSensor` + **boto3** against RustFS
 - Tune `poke_interval` and `timeout`, and know why **`mode="reschedule"`** matters at scale
 - Wire `wait >> load` so the ingest job runs **exactly when the file lands**
 - Recognize this as ADF storage-event triggers / Databricks Auto Loader / Fabric pipeline triggers,

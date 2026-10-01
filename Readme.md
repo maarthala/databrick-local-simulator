@@ -56,6 +56,10 @@ integration-level updates (like AdventureWorks or SQLPad) get an entry.
 
 | Date | Release / integration | What it adds | Scope |
 |---|---|---|---|
+| 2026-10-01 | **Single sign-on for every tool** | One lab account (Keycloak) for Jupyter, Airflow, Superset, SQLPad, Polaris Console and the RustFS console; instructors are admins everywhere | local · k8s |
+| 2026-10-01 | **JupyterHub — one Jupyter per learner** | Per-learner Jupyter (DockerSpawner locally, KubeSpawner on k8s) with `iceberg` = own lakehouse and `shared` = the course lake; `notebooks/` + `dags/` mirrored to the learner's bucket | local · k8s |
+| 2026-10-01 | **RustFS object store (replaces MinIO)** | S3-compatible, Apache-2.0; per-learner bucket `<user>-lake` (100 MB quota, own-bucket policy); **My files** page | local · k8s |
+| 2026-10-01 | **My catalogs + learner DAGs** | Learners create catalogs and share namespaces/tables (read/write, revoke); Airflow loads every learner's `dags/` (dag_id prefix `<user>_`) | local · k8s |
 | 2026-10-01 | **Learner front door (Keycloak)** | Landing page behind a Keycloak login / self-registration (oauth2-proxy); each learner gets their own Polaris lakehouse (`<name>_lake`, owner) + read-only shared lake on first login (home-api) | local · k8s |
 | 2026-10-01 | **Delta SQL + table maintenance** | Delta SQL extension + DeltaCatalog enabled (`VACUUM`, `OPTIMIZE … ZORDER BY`, `DESCRIBE HISTORY`); Iceberg compaction / z-order / snapshot expiry / orphan cleanup verified from Spark + Trino; default Spark catalog now in-memory (no Hive Metastore) | local · k8s |
 | 2026-09-30 | **Materialized views in `%%sql`** | `CREATE / REFRESH / DROP / SHOW MATERIALIZED VIEW` in notebooks, via Spark 4.1 Declarative Pipelines; results governed in Polaris (lesson 4.5) | local · k8s |

@@ -1,12 +1,12 @@
 # 3.9 Upload a file & register it as a table
 
 ## Concept
-A very common real task: someone hands you a file, you drop it in the **data lake** (MinIO), then
+A very common real task: someone hands you a file, you drop it in the **data lake** (RustFS), then
 make it a **catalog table** so everyone can query it in SQL and Spark — governed, shared, and
 addressable as `iceberg.<namespace>.<table>`.
 
-Three moves: **upload → read → register**. Then it's a first-class table in the `iceberg` catalog,
-visible to notebooks, Trino, Superset, and the Polaris Console.
+Three moves: **upload → read → register**. Then it's a first-class table in the `iceberg` catalog —
+your own lakehouse — visible to your notebooks (SQL and Spark) and the Polaris Console.
 
 > This is the ad-hoc *"someone handed me a file"* version. Ingesting ShopFlow's own sources
 > (Postgres + Parquet) into Bronze systematically — the pipeline version — is
@@ -14,30 +14,39 @@ visible to notebooks, Trino, Superset, and the Polaris Console.
 
 ## Lab
 
-### 1 · Upload the file to the lake (MinIO)
-Open the **MinIO console** at <http://localhost:9001> (login `minioadmin` / `minioadmin`):
+### 1 · Upload the file to the lake (RustFS)
+Open the **RustFS console** at <http://localhost:9001/rustfs/console/> (sign in with your lab account):
 
-1. Go to bucket **`demo-bucket`**.
+1. Go to your own bucket, **`<username>-lake`** — the only one learners see in the console
+   (instructors also see the shared **`demo-bucket`**).
 2. Create/enter a folder, e.g. **`uploads/`**.
 3. **Upload** your file — say `customers.csv`.
 
-The object is now at **`s3a://demo-bucket/uploads/customers.csv`**. (Any client works too — MinIO is
-S3-compatible — but the console needs no tooling.)
+The object is now at **`s3a://<username>-lake/uploads/customers.csv`**. (**📁 My files** on the
+landing page uploads to the same place. Any S3 client works too — RustFS is S3-compatible, reached
+inside the stack at `http://minio:9000` — but the console needs no tooling.)
+
+In the notebook your bucket's name is in the `LAKE_BUCKET` environment variable, so the Python below
+builds the path for you. In the **SQL** cells, replace `YOUR-BUCKET` with your bucket name (shown at
+the top of the landing page, e.g. `ravi-lake`).
 
 ### 2 · Read it in the notebook
 `spark` is already there ([3.7](spark.md)). Point it at the path:
 
 ```python
+import os
+path = f"s3a://{os.environ['LAKE_BUCKET']}/uploads/customers.csv"   # your own bucket
+
 df = (spark.read
         .option("header", True)        # first row is column names
         .option("inferSchema", True)   # detect types (int/double/…)
-        .csv("s3a://demo-bucket/uploads/customers.csv"))
+        .csv(path))
 
 df.printSchema()
 df.show(5)
 ```
 
-For Parquet it's just `spark.read.parquet("s3a://demo-bucket/uploads/…")` (schema is built in — no
+For Parquet it's just `spark.read.parquet(f"s3a://{os.environ['LAKE_BUCKET']}/uploads/…")` (schema is built in — no
 options needed).
 
 ### 3 · Register it as a catalog table
@@ -52,7 +61,7 @@ df.writeTo("iceberg.bronze.customers_upload").createOrReplace()
 
 - **`writeTo("iceberg.bronze.customers_upload")`** — target table in `iceberg` → namespace `bronze`.
 - **`.createOrReplace()`** — create it (or replace if re-running). The data is written as Iceberg
-  files in MinIO and the table is registered in Polaris.
+  files in RustFS and the table is registered in Polaris.
 
 #### SQL-only alternative — and getting the **column names** right
 You can register the file without the DataFrame step, but there's a trap. The obvious one-liner
@@ -62,7 +71,7 @@ You can register the file without the DataFrame step, but there's a trap. The ob
 %%sql
 -- DON'T: the csv.`path` shorthand accepts NO options, so it can't set header=true
 CREATE TABLE iceberg.bronze.customers_upload USING iceberg AS
-SELECT * FROM csv.`s3a://demo-bucket/uploads/customers.csv`
+SELECT * FROM csv.`s3a://YOUR-BUCKET/uploads/customers.csv`
 ```
 Because that shorthand can't be told that row 1 is a header, you get generic columns
 **`_c0, _c1, _c2`** *and* the header line (`id,name,country`) lands as a **data row**:
@@ -79,7 +88,7 @@ cells):
 ```sql
 %%sql
 CREATE TEMPORARY VIEW customers_raw USING csv
-OPTIONS (path 's3a://demo-bucket/uploads/customers.csv', header 'true', inferSchema 'true')
+OPTIONS (path 's3a://YOUR-BUCKET/uploads/customers.csv', header 'true', inferSchema 'true')
 ```
 ```sql
 %%sql
@@ -100,7 +109,7 @@ no stray header row.
     ```sql
     %%sql
     CREATE TEMPORARY VIEW customers_raw (id INT, name STRING, country STRING) USING csv
-    OPTIONS (path 's3a://demo-bucket/uploads/customers.csv', header 'true')
+    OPTIONS (path 's3a://YOUR-BUCKET/uploads/customers.csv', header 'true')
     ```
     This is the SQL twin of the DataFrame reader's `.option("header", True)` / `.schema(...)` — the
     header/options `spark.read` sets in Python become the `OPTIONS (...)` clause in SQL.
@@ -118,15 +127,16 @@ df = spark.table("iceberg.bronze.customers_upload")   # or spark.sql("SELECT ...
 df.count()
 ```
 
-The same table is now visible in **Trino**, **Superset**, and the **Polaris Console** — one governed
-copy, every engine.
+The same table is now visible in the **Polaris Console** (your lakehouse `<username>_lake`) and to
+every Spark session that signs in as you — one governed copy. (Trino and Superset read the course's
+*shared* lake, not your own — see [0.3](../setup/workspace.md).)
 
 ### Just exploring? Use a temp view instead
 If you only need to poke at a file for this session (no permanent table), skip the catalog and
 register a **temp view** — no write, no namespace:
 
 ```python
-spark.read.option("header", True).csv("s3a://demo-bucket/uploads/customers.csv") \
+spark.read.option("header", True).csv(path) \
      .createOrReplaceTempView("customers_tmp")
 ```
 ```sql
@@ -141,8 +151,8 @@ Upload to **ADLS / S3**, then `CREATE TABLE … AS SELECT` or `writeTo(...).crea
 pattern; only the storage URL and catalog name change.
 
 ## You can now…
-- Upload a file to the data lake via the MinIO console
+- Upload a file to the data lake via the RustFS console
 - Read a CSV/Parquet from `s3a://…` in a notebook
 - **Register** it as a governed `iceberg` catalog table (`writeTo().createOrReplace()` or `CREATE TABLE AS`)
 - In SQL-only mode, get **column names right** with `CREATE TEMPORARY VIEW … USING csv OPTIONS (header 'true', …)` — or declare an explicit schema — instead of the header-losing `csv.<path>` shorthand
-- Query it from SQL, Spark, Trino, and Superset — and know when a **temp view** is enough instead
+- Query it from SQL and Spark — and know when a **temp view** is enough instead

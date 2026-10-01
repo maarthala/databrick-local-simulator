@@ -54,7 +54,9 @@ print(spark.version)   # `spark` already exists — quick "am I connected?" chec
 The **`spark`** object (a **`SparkSession`**) is your handle to the cluster — every DataFrame, every
 `spark.sql(...)`, every read and write goes through it. It's a **Spark Connect** client: a thin
 local object that ships your code to the remote cluster's Connect server (pre-wired to
-`sc://spark-connect:15002`), and the cluster already has the **`iceberg`** lakehouse catalog configured.
+`sc://spark-connect:15002`), and two lakehouse catalogs are ready: **`iceberg`** — *your own*
+lakehouse (`<you>_lake`, empty until you build it in Unit 4) — and **`shared`** — the course's
+shared lake with the ready-made ShopFlow tables (read-only; see [0.3](../setup/workspace.md)).
 
 !!! info "How `spark` gets there"
     The notebook image runs a small startup script that does
@@ -67,7 +69,7 @@ local object that ships your code to the remote cluster's Connect server (pre-wi
     against any catalog table:
     ```sql
     %%sql
-    SELECT * FROM iceberg.gold.daily_sales LIMIT 10
+    SELECT * FROM shared.gold.daily_sales LIMIT 10
     ```
     Results render as a table. See **[3.8](sql-magic.md)** for more.
 
@@ -115,18 +117,19 @@ the shape: you chained three **lazy** transformations and **nothing ran** until 
 [4.1](../unit4/fundamentals.md)).
 
 ### Read the lakehouse & run SQL
-Because the notebook is wired to the `iceberg` catalog, you can query the Gold tables directly —
-the *same* tables Trino and Superset read:
+The ready-made Gold tables live in the **shared** lake — the *same* tables Trino and Superset read
+(there they're called `iceberg.gold.…`). In your notebook that catalog is `shared`:
 
 ```python
-spark.sql("SELECT * FROM iceberg.gold.daily_sales ORDER BY order_date DESC LIMIT 7").show()
+spark.sql("SELECT * FROM shared.gold.daily_sales ORDER BY order_date DESC LIMIT 7").show()
 ```
 
 **Read it step by step:**
 
-- **`spark.sql("SELECT …")`** — hand Spark a plain SQL string and get back a DataFrame. Because the
-  session is wired to the `iceberg` catalog, `iceberg.gold.daily_sales` resolves to the real Gold
-  table — the *same* one Trino and Superset read. Note `spark.sql(...)` on its own is still **lazy**:
+- **`spark.sql("SELECT …")`** — hand Spark a plain SQL string and get back a DataFrame.
+  `shared.gold.daily_sales` resolves to the real Gold table in the shared lake — the *same* one
+  Trino and Superset read. (Your own `iceberg.gold` has no tables yet — you'll build them in
+  [Unit 4](../unit4/fundamentals.md).) Note `spark.sql(...)` on its own is still **lazy**:
   it returns a DataFrame plan, it doesn't run the query.
 - **`.show()`** — the **action** that runs the SQL and prints the 7 rows.
 
@@ -141,7 +144,7 @@ Move between the two: prototype small in pandas, scale out in Spark, or pull a s
 back to pandas for plotting:
 
 ```python
-pdf = spark.sql("SELECT * FROM iceberg.gold.daily_sales").toPandas()   # Spark → pandas
+pdf = spark.sql("SELECT * FROM shared.gold.daily_sales").toPandas()    # Spark → pandas
 type(pdf)                                                              # pandas.DataFrame
 
 sdf = spark.createDataFrame(pdf)                                       # pandas → Spark

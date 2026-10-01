@@ -77,7 +77,8 @@ learning.
     | `make clean` | remove the images built for this stack |
 
     !!! warning "`make down` deletes the volumes"
-        It runs `docker compose down -v`, so MinIO data, Postgres, and the catalog are wiped. Use it
+        It runs `docker compose down -v`, so the object store (RustFS), Postgres, the catalog and the
+        lab accounts are wiped. Use it
         for a clean reset; use `docker compose stop` if you only want to pause and keep your data.
 
 === "Kubernetes"
@@ -116,8 +117,9 @@ learning.
     kubectl -n de-stack get pods         # wait for everything to be Running/Ready
     ```
     Open the landing page at **`http://de.lan`**. Learners **register / sign in** there (Keycloak at
-    `http://auth.de.lan`, realm `de-lab`); each gets their own lakehouse on first login. All UIs live at `http(s)://<name>.de.lan`
-    (jupyter, trino, superset, airflow, spark, minio, polaris-console) — the landing page links them.
+    `http://auth.de.lan`, realm `de-lab`); each gets their own lakehouse, bucket and Jupyter on first
+    login. All UIs live at `http(s)://<name>.de.lan` (jupyter, trino, superset, sqlpad, airflow,
+    spark, minio — the RustFS console, polaris-console) — the landing page links them.
 
     ### Teardown
     ```bash
@@ -126,8 +128,10 @@ learning.
     ```
 
 ## After it's up
-- Sign in as one of the [personas](personas.md) (`analyst` / `engineer` / `lead`) to see governance
-  in action.
+- **Register your lab account** on the landing page — see
+  [0.3 Your lab account & workspace](workspace.md) for what you get and where things are.
+- For the governance lessons, sign in to the Polaris Console as one of the
+  [personas](personas.md) (`analyst` / `engineer` / `lead`).
 - The training course is published on **GitHub Pages**
   (<https://maarthala.github.io/databrick-local-simulator/>), auto-deployed on every push to
   `main` — and the stack's landing page links straight to it, so it's always the current version.

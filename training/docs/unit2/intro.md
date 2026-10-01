@@ -14,7 +14,7 @@ its own schemas and tables. `SHOW CATALOGS` lists them. On our stack:
 | Catalog | Connects to… | Where the bytes physically live | What's inside | You use it |
 |---|---|---|---|---|
 | **`shopflow`** | the live ShopFlow app database (Postgres) | the Postgres server | the **raw source** tables — `customers`, `products`, `orders`, `order_items` | **now, Unit 2** |
-| **`iceberg`** | the lakehouse (via the **Apache Polaris** Iceberg REST catalog) | Parquet files on **MinIO** object storage | the **Bronze / Silver / Gold** tables *you'll build* | from Unit 4 |
+| **`iceberg`** | the lakehouse (via the **Apache Polaris** Iceberg REST catalog) | Parquet files on **RustFS** object storage | the **Bronze / Silver / Gold** tables *you'll build* | from Unit 4 |
 | **`system`** | Trino itself | in memory | engine info (nodes, running queries) | rarely |
 
 !!! question "Why is the lakehouse catalog called `iceberg` and not `shopflow`?"
@@ -26,7 +26,7 @@ its own schemas and tables. `SHOW CATALOGS` lists them. On our stack:
 
     So your ShopFlow data lives in **two homes at different stages of its life**: raw in the
     `shopflow` catalog (Postgres, right now), and — after you build the pipeline in Unit 4 —
-    refined in the `iceberg` catalog (the lakehouse on MinIO). Same business, two places.
+    refined in the `iceberg` catalog (the lakehouse on RustFS). Same business, two places.
 
 !!! info "Do I ever *create* a catalog?"
     Not in SQL. A Trino catalog is a **connection**, set up once by the platform admin (a small
@@ -48,7 +48,7 @@ inside any catalog, use `SHOW SCHEMAS FROM <catalog>` and `SHOW TABLES FROM <cat
 flowchart TB
   U[You: one SQL query] --> T[Trino coordinator]
   T --> PG[(shopflow catalog<br/>live Postgres — Unit 2)]
-  T --> LK[(iceberg catalog<br/>lakehouse on MinIO — Unit 4+)]
+  T --> LK[(iceberg catalog<br/>lakehouse on RustFS — Unit 4+)]
 ```
 
 !!! note "Same SQL, two homes"
@@ -77,14 +77,14 @@ See [Prerequisites → the Trino CLI](../setup/prerequisites.md#2-the-trino-cli-
 one-line install on macOS, Windows, or Linux.)
 
 **B. Superset SQL Lab** — nothing to install, just a browser. Open Superset at
-`http://localhost:8004` (local) or `superset.de.lan` (k8s), sign in (`admin` / `admin`), go to
+`http://localhost:8004` (local) or `superset.de.lan` (k8s), sign in with your lab account, go to
 **SQL → SQL Lab**, and pick the **shopflow** database with the **public** schema. Then paste the
 queries below (skip the `USE` line — in SQL Lab you choose the schema from the dropdown instead).
 
 **C. SQLPad — a SQL workbench that can also *write*.** Superset SQL Lab is **read-only** (it only
 runs `SELECT`); when a lesson creates or changes data (`CREATE`/`INSERT`/`UPDATE`/`MERGE`/DDL),
 use **SQLPad** (or the Trino CLI). Open it at `http://localhost:8003` (local) / `sqlpad.de.lan`
-(k8s), sign in (`admin@de.local` / `admin1234`), and pick a connection: **ShopFlow — OLTP**,
+(k8s), sign in with your lab account, and pick a connection: **ShopFlow — OLTP**,
 **AdventureWorks — OLTP**, or **Lakehouse — OLAP (Trino/Iceberg)**.
 
 !!! note "SQLPad hides *empty* schemas"
@@ -214,7 +214,7 @@ SELECT * FROM iceberg.my_lab.first_table ORDER BY id;
 - **`CREATE SCHEMA … iceberg.my_lab`** — makes a new schema (a named folder for tables) *inside* the
   `iceberg` lakehouse. `IF NOT EXISTS` means "skip if it's already there" — safe to re-run.
 - **`CREATE TABLE iceberg.my_lab.first_table (…)`** — defines a real **Iceberg table**: this writes
-  table metadata to the catalog, and future rows land as **Parquet files on MinIO** (the object
+  table metadata to the catalog, and future rows land as **Parquet files on RustFS** (the object
   storage from [Unit 1.2](../unit1/lakehouse.md)).
 - **`INSERT INTO … VALUES …`** — your first **write** to the lakehouse. Each write appends a new
   Parquet file and a new table **snapshot** (the ACID table-format magic from [1.3](../unit1/formats.md)).

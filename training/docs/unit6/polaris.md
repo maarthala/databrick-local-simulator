@@ -7,8 +7,8 @@ governed REST catalog. It gives you, on one shared lakehouse:
 
 - **Both engines governed** — Trino *and* Spark, through the standard **Iceberg REST** protocol
 - **Per-user reads *and* writes** — enforced on the identity making the request
-- **Built-in logins** — principals sign in with a client id/secret (API *and* Console); no separate identity server
-- **Credential vending** — Polaris hands each engine short-lived, scoped MinIO credentials after checking grants
+- **Two kinds of login** — people sign in to the Console with their **lab account** (Keycloak SSO); principals such as the personas and pipelines use a client id/secret (API *and* Console)
+- **Credential vending** — Polaris hands each engine short-lived, scoped RustFS credentials after checking grants
 - **A web Console** to manage catalogs, namespaces, roles, and grants
 
 The model is the universal one — **catalog → namespace → table**, with **principals,
@@ -22,13 +22,15 @@ persona = a Polaris principal (analyst / engineer / lead)
    ▼
  Trino  &  Spark  ──(Iceberg REST)──►  Apache Polaris
    │                                      │  identifies the principal + its roles,
-   │                                      │  checks grants, vends MinIO credentials
+   │                                      │  checks grants, vends RustFS credentials
    ▼                                      ▼
- governed reads/writes  ◄───────────  MinIO (Iceberg tables under demo-bucket/warehouse/)
+ governed reads/writes  ◄───────────  RustFS (Iceberg tables under demo-bucket/warehouse/)
 ```
-- **Catalog** `polaris_lake` on MinIO · namespaces `bronze` / `silver` / `gold`
+- **Catalog** `polaris_lake` on RustFS · namespaces `bronze` / `silver` / `gold`
 - **Console UI**: <http://localhost:8189> (local) or `http://polaris-console.de.lan` (k8s)
-- **No separate identity server** — principals authenticate to Polaris directly.
+- **Signing in** — the Console's **Sign in with Epireum lab account** button uses your lab account
+  (you land in your own lakehouse); `/login?local=1` shows the **Client ID / Secret** form for
+  principals such as the personas or `root`.
 
 !!! info "This governs the *real* tables you already built"
     `polaris_lake` is the very same catalog your engines call **`iceberg`** — the one
@@ -76,7 +78,7 @@ and [6.4](grant-and-query.md).)
     - **Trino *and* Spark** both governed via the standard **Iceberg REST** protocol
     - **Per-user reads and writes** (engineer writes `silver` as themselves)
     - **Built-in logins** — principals sign in with a client id/secret (API *and* Console)
-    - MinIO works with **static credentials** (no STS needed)
+    - RustFS works with **static credentials** (no STS needed)
 
 !!! note "Runs durably on both stacks (operator note)"
     This is a real, persistent deployment, not a throwaway demo:
@@ -90,20 +92,20 @@ and [6.4](grant-and-query.md).)
     Same on **Docker Compose** and **Kubernetes** (`de-stack` Helm chart); on k8s the
     Console is at `polaris-console.de.lan` and the API at `polaris.de.lan`.
 
-!!! tip "Where an IdP (SSO) would fit"
-    Here, people log in with a principal's client id/secret — simplest for training.
-    In production you'd front *human* logins with an identity provider (Keycloak,
-    Okta, Entra): Polaris trusts the IdP's token and maps a claim → principal-role,
-    so users get password/SSO + MFA while services keep using client secrets. The
-    governance model is identical either way.
+!!! tip "Where the IdP (SSO) fits — this lab does it"
+    Your lab account *is* the production pattern: human logins go through an identity
+    provider (here Keycloak; in companies Okta / Entra), Polaris trusts the IdP's token and
+    maps a claim → principal + principal-role (your username → your own principal), so people
+    get password/SSO (+ MFA) while services and the demo personas keep using client secrets.
+    The governance model is identical either way.
 
 ## Key terms, at a glance
 | Term | Plain meaning |
 |---|---|
 | **Iceberg REST catalog** | the open protocol Trino & Spark both speak → one governed catalog, every engine |
 | **principal / principal-role / catalog-role** | *who* / *what roles they hold* / *the grants bundle* |
-| **credential vending** | Polaris hands the engine short-lived, scoped MinIO creds after checking grants |
-| **client id / secret** | how a principal (user or app) logs in — no external identity server needed |
+| **credential vending** | Polaris hands the engine short-lived, scoped RustFS creds after checking grants |
+| **client id / secret** | how a principal (app, pipeline or demo persona) logs in directly — people use their lab account (SSO) |
 
 ## You can now…
 - Explain how **Polaris governs both engines** (Trino + Spark) over one Iceberg lakehouse

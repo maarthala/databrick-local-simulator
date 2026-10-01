@@ -1,0 +1,114 @@
+# 0.3 Your lab account & workspace
+
+You sign in **once** — with your **lab account** — and every tool knows who you are. On your first
+sign-in the lab also builds you a private **workspace**: your own lakehouse, your own storage
+bucket and your own Jupyter. This page shows what you get and where to find it.
+
+## Your lab account
+
+Open the landing page — [http://localhost:8000](http://localhost:8000) locally, `http://de.lan` on
+Kubernetes. You land on the **Epireum's Data Engineering Lab** sign-in page:
+
+- **New here?** Click **Register** and choose a **username** (3–30 lower-case letters/digits) and a
+  password. That's all — no email needed.
+- **Instructor?** Sign in as `instructor` (instructors are admins in every tool).
+
+That one account signs you in to **every** tool — Jupyter, Airflow, Superset, SQLPad, the Polaris
+Console and the RustFS console. When a tool shows a **"Sign in with Epireum lab account"** button,
+click it; you won't be asked for your password again while you're signed in. **Log out** on the
+landing page ends your lab-account session (Jupyter follows within a minute); a tool you still have
+open — Superset, Airflow, SQLPad — keeps its own session until you log out there or it expires.
+
+## What you get on first sign-in
+
+| Yours | Name | What it is |
+|---|---|---|
+| 🏠 Lakehouse | `<you>_lake` | your own Polaris catalog with `bronze` / `silver` / `gold` — where *your* Spark tables go |
+| 🪣 Bucket | `<you>-lake` | your own object storage (RustFS, **100 MB** limit) — your files, notebooks and DAGs |
+| 📓 Jupyter | your own server | your notebooks, with `spark` ready and `iceberg` = your lakehouse |
+| 🧰 SQLPad user | `<you>` | your saved queries |
+
+The bar at the top of the landing page shows it: **"your lakehouse: `<you>_lake` ✓ · bucket:
+`<you>-lake`"**, plus links to **📁 My files** and **🗂️ My catalogs**.
+
+## Which lake am I querying?
+
+There are two kinds of lake — **yours** and the course's **shared** one (read-only for learners,
+with the ready-made ShopFlow tables such as `gold.daily_sales`):
+
+| Where you run it | `iceberg.…` means | The shared lake is |
+|---|---|---|
+| **Jupyter / Spark** (`spark.sql`, `%%sql`) | **your** lakehouse `<you>_lake` | `shared.…` — e.g. `shared.gold.daily_sales` |
+| **Trino, SQLPad, Superset** | the **shared** lake | `iceberg.…` |
+
+```sql
+%%sql
+SELECT * FROM shared.gold.daily_sales LIMIT 10   -- the course's ready-made Gold table
+```
+
+So in Jupyter, the Unit 4 lessons build `iceberg.bronze/silver/gold` **in your own lakehouse** —
+nobody else's tables get in your way, and you can't break theirs.
+
+!!! tip "Another catalog in Spark"
+    `use_catalog("<catalog>")` makes any other catalog you may use available in Spark — one you
+    created on **My catalogs**, or one another learner shared with you:
+    `use_catalog("kiran_sales")` → `SELECT * FROM kiran_sales.sales.orders`.
+
+## Your files — notebooks, DAGs, data
+
+In Jupyter's **file browser** you start with two folders. They are **mirrored to your bucket**:
+every save, rename and delete in them is copied to `<you>-lake` straight away.
+
+| Folder | For | Also visible in |
+|---|---|---|
+| `notebooks/` | your notebooks (`.ipynb`) | My files · RustFS console |
+| `dags/` | your Airflow DAGs (`.py`) — **Airflow picks them up in ~30 s** | My files · RustFS console · Airflow |
+
+Files you upload elsewhere (My files, the RustFS console) appear in Jupyter the next time your
+server starts (**File → Hub Control Panel → Stop My Server → Start**). Anything outside these two
+folders stays in your Jupyter workspace only.
+
+**📁 My files** (landing page) is a file manager for your bucket — browse, upload, download, new
+folder, delete. The **RustFS console** (Storage tile) shows the same bucket.
+
+!!! warning "100 MB per learner"
+    Your bucket holds at most **100 MB** — plenty for code and lesson data. If it's full, saving
+    shows an error ("saved in Jupyter, but NOT in your bucket"); delete files you no longer need.
+
+## Your own Airflow DAGs
+
+Save a `.py` file in `dags/` — Airflow (one Airflow shared by the whole class) loads it within
+about 30 seconds. One rule: the **`dag_id` must start with your username and `_`**, so names never
+clash:
+
+```python
+from datetime import datetime
+from airflow.sdk import dag, task
+
+@dag(dag_id="ravi_hello", start_date=datetime(2026, 1, 1), schedule=None)   # ravi = your username
+def hello():
+    @task
+    def hi():
+        print("hello from my bucket")
+    hi()
+
+hello()
+```
+
+A DAG that breaks the rule (or has an error) shows up under Airflow's **import errors** with the
+reason — e.g. *"DAG id 'hello' must start with 'ravi_'"*. Everyone can *see* all DAGs; the prefix
+tells you whose is whose.
+
+## My catalogs — create and share
+
+**🗂️ My catalogs** (landing page) lists the catalogs you own and the ones shared with you:
+
+- **＋ New** creates a catalog `<you>_<name>`, stored in your bucket.
+- **Share** a namespace or a single table with another learner — **read** or **write** — and
+  **revoke** it again. Polaris enforces it: they see exactly what you shared.
+
+## You can now…
+- Register, sign in once and reach every tool with your lab account
+- Tell your own lakehouse (`iceberg` in Jupyter) from the shared lake (`shared` in Jupyter, `iceberg` in Trino)
+- Keep notebooks and DAGs in `notebooks/` and `dags/`, and name DAGs `<you>_…`
+- Create a catalog and share a namespace or table with another learner

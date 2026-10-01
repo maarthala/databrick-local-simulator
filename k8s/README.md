@@ -16,15 +16,16 @@ Namespace `de-stack` on the cluster:
 
 | Layer | Services |
 |---|---|
-| Storage | **MinIO** (S3) |
+| Storage | **RustFS** (S3; service name `minio`) — shared `demo-bucket` + one bucket per learner |
 | Catalog / governance | **Apache Polaris** (governed Iceberg REST catalog + per-persona RBAC) + web **Console** |
 | Compute | **Spark** (master + worker), **Spark Connect**, **Trino** |
-| Orchestration / apps | **Airflow**, **Jupyter**, **Superset**, **SQLPad** |
+| Orchestration / apps | **Airflow**, **JupyterHub** (one Jupyter pod per learner), **Superset**, **SQLPad** |
+| Accounts | **Keycloak** (lab accounts, SSO for every tool), **oauth2-proxy** + **home-api** (landing page, My files, My catalogs) |
 | Commodity | **Postgres**, **Redis**, an **nginx** landing page |
 
-(Unity Catalog, Keycloak, ClickHouse, Kafka, Hive Metastore, Iceberg-REST, and Hue were
-removed — Polaris replaced UC/Keycloak and the rest were unused. See git history to
-restore any of them.)
+(Unity Catalog, ClickHouse, Kafka, Hive Metastore, Iceberg-REST, and Hue were removed —
+Polaris replaced UC and the rest were unused; see git history to restore any of them.
+Keycloak is back as the lab-account / single-sign-on service.)
 
 ## 2. Prerequisites
 - A **MicroK8s node** with addons `ingress`, `hostpath-storage`, `metrics-server`,
@@ -66,62 +67,58 @@ All UIs are at `https?://<name>.de.lan`. Default credentials (change for anythin
 
 | Service | URL | Login |
 |---|---|---|
-| Landing page | `http://de.lan` | — |
+| Landing page | `http://de.lan` | **lab account** (Register, or `instructor`/`instructor`) — one login for every tool |
+| Keycloak (accounts) | `http://auth.de.lan/admin` | `admin` / `admin` (realm `de-lab`) |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
-| MinIO console | `http://minio.de.lan` | `minioadmin` / `minioadmin` |
-| Polaris Console | `http://polaris-console.de.lan` | `analyst`/`engineer`/`lead` (client id = secret = name); admin `root`/`s3cr3t` |
+| RustFS console | `http://minio.de.lan/rustfs/console/` | lab account (own bucket) · root `minioadmin` / `minioadmin` |
+| Polaris Console | `http://polaris-console.de.lan` | lab account · `/login?local=1`: personas `analyst`/`engineer`/`lead` (id = secret = name), admin `root`/`s3cr3t` |
 | Polaris API | `http://polaris.de.lan` | OAuth2 client credentials (realm `POLARIS`) |
 | Trino (monitor UI) | `http://trino.de.lan/ui/` | any username, no password |
-| Superset | `http://superset.de.lan` | `admin` / `admin` |
-| SQLPad (SQL workbench) | `http://sqlpad.de.lan` | `admin@de.local` / `admin1234` |
-| Airflow | `http://airflow.de.lan` | `airflow` / `airflow` |
-| Jupyter | `http://jupyter.de.lan` | token `123456` |
+| Superset | `http://superset.de.lan` | lab account |
+| SQLPad (SQL workbench) | `http://sqlpad.de.lan` | lab account |
+| Airflow | `http://airflow.de.lan` | lab account |
+| Jupyter (JupyterHub) | `http://jupyter.de.lan` | lab account — own Jupyter pod + own lakehouse |
 | Spark master UI | `http://spark.de.lan` | — |
 
 ## 5. First steps (what to actually do)
-1. **Log in as a persona** — open the Polaris Console `http://polaris-console.de.lan` and
-   sign in with a client id/secret (`analyst`/`analyst`, `engineer`/`engineer`,
-   `lead`/`lead`; admin `root`/`s3cr3t`). You browse the catalog *as that persona* — Polaris
-   applies its grants (RBAC in action).
-2. **Governed tables via Spark** — from Jupyter, `spark.sql("SHOW NAMESPACES IN iceberg")`
-   shows `bronze`/`silver`/`gold` (the seeded medallion). Spark Connect reads/writes the
-   Polaris-governed `iceberg` catalog; per-persona access is enforced by Polaris.
+1. **Register a lab account** at `http://de.lan` — first sign-in creates your lakehouse
+   `<user>_lake`, bucket `<user>-lake` (100 MB) and SQLPad user; Jupyter starts your own pod.
+2. **Governed tables via Spark** — in Jupyter, `iceberg` = your own lakehouse
+   (`bronze`/`silver`/`gold`), `shared` = the course lake. Spark Connect reads/writes through
+   Polaris, which enforces each learner's access.
+   **Personas** (governance lessons): `http://polaris-console.de.lan/login?local=1` with
+   `analyst`/`analyst`, `engineer`/`engineer`, `lead`/`lead` (admin `root`/`s3cr3t`).
 3. **Query the lake with SQL** — Trino (`iceberg` catalog) via the CLI, or Superset's SQL
    Lab (Trino → Iceberg connection is pre-configured).
 4. **Manage access** — create catalogs/namespaces/principals and grant/revoke in the Polaris
    Console, or via the REST API (see `common/polaris/seed-polaris.sh` for the API calls).
-5. **Schedule / notebooks** — Airflow DAGs are git-synced (read-only) from the `de-lab`
-   repo; Jupyter clones the same repo and **auto-pushes every notebook save** (see below).
+5. **Schedule / notebooks** — Airflow loads DAGs from the `de-lab` repo (git-sync) **and**
+   from every learner's bucket `dags/` (see below).
 
-### Notebook auto-push (git commit + push on save)
-Jupyter clones `git.repoUrl` into a writable dir and, on every save, commits + pushes the
-file. Save notebooks under the repo's `notebooks/` folder. Enabled by `git.autopush: true`.
+### Learners' notebooks and DAGs (no git needed)
+Each learner's Jupyter keeps `notebooks/` and `dags/` mirrored to their own bucket
+`<user>-lake`; Airflow's `learners` DAG bundle loads every bucket's `dags/` (dag_id must start
+with `<user>_`). The per-learner pods don't clone the shared repo.
 
-**Requirements:** the `de-stack-git-token` PAT must have **Contents: Read and write** on the
-repo, and its **account must have write access** to the repo (a fine-grained PAT can't exceed
-the account's repo role).
-
-**Point it at a different account / repo:**
+### Airflow git-sync
+Airflow git-syncs DAGs + `src/` (read-only) from `git.repoUrl` using the `de-stack-git-token`
+secret. To point it at a different repo: edit `git.repoUrl` / `git.branch` in
+`k8s/helm/de-stack/values.yaml`, swap the token, then re-apply `templates/airflow.yaml`:
 ```bash
-# 1. edit k8s/helm/de-stack/values.yaml → git.repoUrl / git.branch
-#    (commit author name/email are in templates/jupyter.yaml env)
-
-# 2. swap the token (the token = the pushing account)
 kubectl -n de-stack create secret generic de-stack-git-token \
   --from-literal=token='<NEW_PAT>' --dry-run=client -o yaml | kubectl -n de-stack apply -f -
-
-# 3. apply + restart (pod re-clones on start)
-helm template de-stack k8s/helm/de-stack -s templates/jupyter.yaml | kubectl -n de-stack apply -f -
-kubectl -n de-stack rollout restart deploy jupyter
+helm template de-stack k8s/helm/de-stack -s templates/airflow.yaml | kubectl -n de-stack apply -f -
+kubectl -n de-stack rollout restart deploy airflow
 ```
-Note: `git.repoUrl` + this secret are **shared with Airflow's DAG git-sync**, so changing
-them repoints both Jupyter and Airflow.
 
 ## 6. How the custom pieces are built
 Most images are stock (incl. **Apache Polaris** — `apache/polaris:latest`, no patch). The
 custom ones are built from `common/dockerfiles` by the Ansible `images` role:
 - **Spark** — bakes the Iceberg runtime + AWS bundle jars (`Dockerfile.spark`).
-- **Jupyter** — thin Spark Connect client + notebook auto-push (`Dockerfile.jupyter`).
+- **Jupyter** — the per-learner image: thin Spark Connect client + bucket sync (`Dockerfile.jupyter`).
+- **JupyterHub** — hub + KubeSpawner + the spawn hook (`Dockerfile.jupyterhub`).
+- **home-api** — landing-page backend, provisioning, My files / My catalogs (`Dockerfile.home-api`).
+- **polaris-console** — upstream console + lab SSO (`Dockerfile.polaris-console`).
 - **Superset**, **airflow-slim**, **home** (nginx + baked training site).
 
 Unity Catalog + Keycloak have been removed (Polaris is the governance). To bring them

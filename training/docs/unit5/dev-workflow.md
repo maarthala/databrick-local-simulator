@@ -104,9 +104,11 @@ Never edit in the portal — deploy the *file*:
   ```
 - **Remote / production:** **`git push`** to the repo the remote Airflow **git-syncs** (see
   [5.1's remote note](basics.md)); git-sync pulls it in. Git is the single source of truth.
+- **Your own DAGs (lab):** you can also save the file in Jupyter under **`dags/`** — it's synced to
+  your bucket and loaded by Airflow within ~30 s (the `dag_id` must start with `<username>_`).
 
 ### 5 · Run it in Airflow
-Open the UI at [http://localhost:8001](http://localhost:8001) (`airflow` / `airflow`):
+Open the UI at [http://localhost:8001](http://localhost:8001) (sign in with your lab account):
 
 1. Find **`shopflow_medallion`** → toggle it **on** (unpause).
 2. Click **▶ Trigger**.

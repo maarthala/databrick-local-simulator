@@ -3,8 +3,9 @@
 ## Concept
 Notebooks on this stack ship a **`%%sql` cell magic** — put it on the first line of a cell and write
 plain SQL, exactly like Databricks. It runs through the pre-created **`spark`** session
-([3.7](spark.md)), so it queries the **same governed `iceberg` catalog** that Trino, Superset, and
-the Spark jobs use. Results render as a table.
+([3.7](spark.md)), so it queries the same governed catalogs: **`iceberg`** = *your own* lakehouse,
+**`shared`** = the course's shared lake (what Trino and Superset call `iceberg` — see
+[0.3](../setup/workspace.md)). Results render as a table.
 
 No setup, no connection — `spark` and `%%sql` are already there when the notebook opens.
 
@@ -37,7 +38,8 @@ SHOW SCHEMAS IN iceberg
     reads the sources and writes these tables). Following the course in order, they exist as
     namespaces but hold **no tables yet** — so `SELECT * FROM iceberg.gold.…` would say *table not
     found*. No problem: below you'll **create your own schema and data** to practise on, then meet
-    the pipeline's tables in Unit 4.
+    the pipeline's tables in Unit 4. (Want real data right now? The ready-made tables are in the
+    shared lake: `SELECT * FROM shared.gold.daily_sales LIMIT 10`.)
 
 ### 2 · Create your own schema, table & data
 `%%sql` isn't read-only — you can **create** objects. Make a scratch **namespace**, add a table,

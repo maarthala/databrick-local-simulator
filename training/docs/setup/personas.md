@@ -1,10 +1,11 @@
-# 0.3 Personas & roles
+# 0.3.1 Personas & roles (governance demos)
 
-You **don't create users** to get started — you *act as* one of three fixed **personas** that already
-exist in the stack. Each persona is a real **Polaris principal** (a login with a client ID + secret)
-mapped to a real set of **grants** — so when you sign in as one, you see exactly what that role is
-allowed to see. That's the whole point: you *experience* governance from inside a role, the way a
-real teammate would. (Creating your *own* users is Unit 6.2.)
+Day to day you work as **yourself** — your [lab account](workspace.md), with your own lakehouse.
+For the governance lessons the stack also has three fixed **personas**. Each persona is a real
+**Polaris principal** (a login with a client ID + secret) mapped to a real set of **grants** on the
+course's **shared lake** — so when you sign in as one, you see exactly what that role is allowed to
+see. That's the point: you *experience* governance from inside a role, the way a real teammate
+would. (Creating your *own* users is Unit 6.2.)
 
 !!! tip "Username = role, on purpose"
     In a real company people have names and get permissions through their *role*. Here we make the
@@ -49,27 +50,28 @@ sees everything. You'll see and build these exact grants in
 
 Sign in with the persona's **Client ID + Secret** wherever the stack asks *who you are*:
 
-- **Polaris Console** — open <http://localhost:8189> (k8s: `http://polaris-console.de.lan`), enter the
-  **Client ID** and **Client Secret** (e.g. `analyst` / `analyst`), and sign in. The catalog tree you
-  see is scoped to that persona's grants.
+- **Polaris Console** — open <http://localhost:8189/login?local=1> (k8s:
+  `http://polaris-console.de.lan/login?local=1` — the `?local=1` shows the Client ID / Secret form
+  instead of signing you in with your lab account), enter the **Client ID** and **Client Secret**
+  (e.g. `analyst` / `analyst`), and sign in. The catalog tree you see is scoped to that persona's
+  grants.
 - **An engine (Trino / Spark)** — point it at the governed catalog with the same client ID/secret;
   it reads/writes only what that persona is allowed.
 
-No identity server, no browser redirect, no hosts entry — the principal authenticates to Polaris
-directly.
+No identity server involved — the principal authenticates to Polaris directly (your lab account
+goes through Keycloak instead).
 
 ## These are *not* personas — they're platform/ops accounts
 
-The other logins around the stack are **service accounts** for running the platform, not learner
-roles. Don't confuse them with the personas above:
+The other logins around the stack are your **lab account** (every tool) and a few **service
+accounts** for running the platform. Don't confuse them with the personas above:
 
 | Account | Where | What it is |
 |---|---|---|
 | `root` / `s3cr3t` | Polaris (Console or API) | Catalog **admin** — creates catalogs, users, roles & grants |
-| `admin` / `admin` | Superset | BI tool admin (Superset has its own users) |
-| `airflow` / `airflow` | Airflow | Orchestrator admin |
-| your lab account | Jupyter (JupyterHub) | your own notebooks; `iceberg` = your own lakehouse |
-| `minioadmin` / `minioadmin` | MinIO | Object-store root |
+| your lab account | every tool (single sign-on) | you — your own Jupyter, lakehouse and bucket; instructors are admins |
+| `admin` / `admin` | Keycloak admin console | manages lab accounts (realm `de-lab`) |
+| `minioadmin` / `minioadmin` | RustFS (object store) | Object-store root — used by the platform's own jobs |
 
 The personas (`analyst`/`engineer`/`lead`) are the ones that carry a **data-access role**; the table
 above is just how you open each tool.
@@ -83,9 +85,10 @@ grants. Change the personas or their access there — it's idempotent and safe t
 
 !!! note "On the cloud, this is users + groups + an IdP"
     On Databricks/Snowflake you'd create *people*, attach them to **groups** (`analysts`,
-    `engineers`) that hold the grants, and log in via an identity provider (SSO/MFA). Here we skip the
-    IdP and give each role a direct principal login — simpler for training, and the mental model
-    (identity → role → grants → least privilege) is identical.
+    `engineers`) that hold the grants, and log in via an identity provider (SSO/MFA). The lab does
+    that for *you* (Keycloak → your lab account); the personas skip the IdP and give each role a
+    direct principal login — simpler for demos, and the mental model (identity → role → grants →
+    least privilege) is identical.
 
 ## You can now…
 - Name the three personas, their logins, and what each is allowed to read/write

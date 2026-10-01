@@ -13,7 +13,7 @@ This recipe publishes one small Gold-style report to two sinks:
 ```mermaid
 flowchart LR
   G["🥇 iceberg.gold.*<br/>country_report"] --> RE[Spark write]
-  RE -->|CSV| S3[(MinIO<br/>exports/country_report/)]
+  RE -->|CSV| S3[(RustFS<br/>exports/country_report/)]
   RE -->|JDBC| PG[(Postgres<br/>public.country_report)]
   S3 --> BU[📥 Business users<br/>download the CSV]
   PG --> APP[🖥️ Operational app<br/>reads the table]
@@ -58,7 +58,7 @@ report = spark.createDataFrame(
 *Produces:* `report`, a 3-row DataFrame. Grain (what one row means): one country and its revenue.
 
 ### Cell B — publish as a downloadable CSV in object storage
-The first sink is a **file drop**: write the report as a **CSV** into MinIO, where a business user
+The first sink is a **file drop**: write the report as a **CSV** into RustFS, where a business user
 can grab it from the bucket (or a link) and open it in Excel — no lakehouse access required.
 
 ```python
@@ -79,7 +79,7 @@ can grab it from the bucket (or a link) and open it in Excel — no lakehouse ac
 - **`.option("header", True)`** — write the column names (`country,revenue`) as the first line, so
   the CSV is self-describing when someone opens it.
 - **`.csv("s3a://demo-bucket/exports/country_report/")`** — the *action*: write **CSV** files to
-  that path. `s3a://` is Spark's connector for S3-compatible object storage (here, MinIO). Note the
+  that path. `s3a://` is Spark's connector for S3-compatible object storage (here, RustFS — inside the stack it's still reached at `http://minio:9000`). Note the
   path is a **folder** — Spark writes the single part-file *inside* it.
 
 *Produces:* one CSV file under `s3a://demo-bucket/exports/country_report/`, with a header row and
@@ -147,7 +147,7 @@ If three rows come back, the round-trip works: Gold → Postgres → read-back.
     ```
 
     **`report.toPandas()`** collects the small result into a pandas DataFrame; **`.to_excel(...)`**
-    writes a formatted `.xlsx`; **`storage_options={...}`** hands pandas the MinIO credentials and
+    writes a formatted `.xlsx`; **`storage_options={...}`** hands pandas the RustFS credentials and
     endpoint so it can write straight to object storage. `index=False` drops pandas' row numbers.
 
 ## Challenge

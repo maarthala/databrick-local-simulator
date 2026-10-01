@@ -17,12 +17,12 @@ flowchart TB
   subgraph SRC["① Sources — where data is born"]
     direction LR
     PG[(Postgres<br/>live app DB)]
-    HIST[MinIO / S3<br/>history as Parquet]
+    HIST[RustFS / S3<br/>history as Parquet]
   end
 
   ING[Spark<br/>ingest & transform]
 
-  subgraph LAKE["② Lakehouse — MinIO object storage"]
+  subgraph LAKE["② Lakehouse — RustFS object storage"]
     direction LR
     BR[bronze<br/>raw copy] --> SI[silver<br/>clean & joined] --> GO[gold<br/>business marts]
   end
@@ -59,12 +59,12 @@ running the pipeline on a schedule so it stays current.
 
 1. **Sources (①).** Two kinds of raw data feed the platform: the **live Postgres
    database** (today's orders, customers, products) and **years of history** sitting
-   in **MinIO** object storage as Parquet files.
+   in **RustFS** object storage as Parquet files.
 2. **Ingest & transform with Spark.** **Spark** reads both sources and writes them
    into the lakehouse, refining the data in three passes (the Medallion pattern):
    **Bronze** (a raw copy), **Silver** (cleaned, typed, deduplicated, joined), and
    **Gold** (the aggregated business marts that answer ShopFlow's questions).
-3. **Store in the lakehouse (②).** All three layers live as tables in **MinIO** — one
+3. **Store in the lakehouse (②).** All three layers live as tables in **RustFS** — one
    cheap object store holding raw files *and* analytics-ready tables. That's the whole
    idea of a lakehouse.
 4. **Govern everything (③).** **Apache Polaris** is the single Iceberg catalog of every
@@ -82,13 +82,13 @@ running the pipeline on a schedule so it stays current.
 | # | Tool | Its job in the flow | Local URL | Login |
 |---|---|---|---|---|
 | ① | **Postgres** | The live application database — a data *source* | (internal) | — |
-| ① / ② | **MinIO** | S3-compatible object storage: raw history *and* the lakehouse tables | http://localhost:9001 | minioadmin / minioadmin |
+| ① / ② | **RustFS** | S3-compatible object storage: raw history *and* the lakehouse tables (in-stack endpoint `http://minio:9000`) | http://localhost:9001/rustfs/console/ | your lab account (you see your own `<username>-lake` bucket) |
 | ② | **Spark** | Ingests sources and builds Bronze→Silver→Gold | http://localhost:8002 | — |
 | ②/③ | **Apache Polaris** | Iceberg REST catalog `iceberg` (warehouse `polaris_lake`) + per-user access (RBAC) | http://localhost:8189 | root / s3cr3t |
 | ④ | **Trino** | Distributed SQL engine over the lakehouse | http://localhost:8007/ui/ | any user, no password |
-| ④ | **Superset** | BI dashboards on the Gold layer | http://localhost:8004 | admin / admin |
+| ④ | **Superset** | BI dashboards on the Gold layer | http://localhost:8004 | your lab account |
 | ④ | **Jupyter** | Notebooks (Spark) for exploration & labs | http://localhost:8008 | your lab account |
-| — | **Airflow** | Orchestrates the whole pipeline on a schedule | http://localhost:8001 | airflow / airflow |
+| — | **Airflow** | Orchestrates the whole pipeline on a schedule | http://localhost:8001 | your lab account |
 
 *(On Kubernetes the URLs are `http://<tool>.de.lan` instead of `localhost` — the roles
 are identical.)*

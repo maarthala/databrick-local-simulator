@@ -242,8 +242,8 @@ without opening any data files.)
 spark.sql("DROP TABLE iceberg.sandbox.orders_maint PURGE")
 spark.conf.set("spark.databricks.delta.retentionDurationCheck.enabled", "true")
 ```
-(The Delta files stay in `demo-bucket/delta/orders_maint`. Delete the folder in the MinIO console
-if you like.)
+(The Delta files stay in `demo-bucket/delta/orders_maint`. Delete the folder in the RustFS console
+if you like — instructors only; learners see just their own bucket there.)
 
 ## How often?
 | Task | Typical schedule |

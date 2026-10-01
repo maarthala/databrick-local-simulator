@@ -92,7 +92,7 @@ Landing data somewhere **durable and cheap** before (and after) you shape it. Ke
 
 - **Landing / raw / staging zone** — the first stop: an exact, untouched copy of what
   arrived. Keeping it lets you reprocess without re-fetching and gives you an audit trail.
-- **Data lake** — cheap object storage (like S3/MinIO) holding files of *any* shape. Very
+- **Data lake** — cheap object storage (like S3/RustFS) holding files of *any* shape. Very
   cheap, but on its own has no tables, types, or transactions.
 - **Data warehouse** — structured, typed, query-optimised storage for analytics. Fast and
   reliable, but historically pricier and less flexible.

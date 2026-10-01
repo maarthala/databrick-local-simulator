@@ -14,7 +14,7 @@ ShopFlow has two kinds of source, and Spark reads both:
 ```mermaid
 flowchart LR
   PG[(Postgres<br/>customers·products·orders·order_items)] --> B
-  S3[(MinIO<br/>Parquet history)] --> B
+  S3[(RustFS<br/>Parquet history)] --> B
   B["🥉 iceberg.bronze.*<br/>raw Iceberg tables"]
 ```
 
@@ -150,7 +150,7 @@ print("history rows:", hist.count())
 - **`.write.mode("overwrite").partitionBy("dt").parquet(...)`** — write the DataFrame out as
   **Parquet** files, `overwrite` any prior export, and **`partitionBy("dt")`** split them into one
   folder *per date* (`dt=2023-11-30/…`). The path uses `s3a://` — Spark's connector for
-  S3-compatible object storage (here, MinIO).
+  S3-compatible object storage (here, RustFS — inside the stack it's still reached at `http://minio:9000`).
 
 **Read it step by step — the read-back:**
 

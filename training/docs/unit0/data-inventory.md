@@ -6,7 +6,7 @@ three places, each with a different job:
 ```mermaid
 flowchart LR
   PG[(Postgres<br/>OLTP source)] -->|ingest| LAKE
-  subgraph LAKE["MinIO — the data lake (demo-bucket)"]
+  subgraph LAKE["RustFS — the data lake (demo-bucket)"]
     RAW[raw history<br/>Parquet files]
     ICE[warehouse/<br/>catalog table files]
   end
@@ -39,10 +39,10 @@ JDBC. Example: `SELECT count(*) FROM shopflow.public.orders` → 40000.
     Postgres also hosts `airflow`, `superset`, `metastore`, `polarisdb`, `ucdb`, `hue` — these are
     **metastores for the tools**, not learner data. Only `shopflow` is your source data.
 
-## 2. MinIO — the data lake (object storage)
+## 2. RustFS — the data lake (object storage)
 
-S3-compatible storage. Browse it at the **MinIO console** (<http://localhost:9001>,
-`minioadmin`/`minioadmin`). One bucket holds the lake:
+S3-compatible storage (RustFS — inside the stack it's still reached at `http://minio:9000`). One
+bucket holds the shared course lake:
 
 - **`demo-bucket`** — the lake. Key paths:
   - **`shopflow/history/orders/`** — **raw historical orders** as Parquet, partitioned by `dt=`
@@ -53,12 +53,14 @@ S3-compatible storage. Browse it at the **MinIO console** (<http://localhost:900
     these *through the catalog*, not by path.
 
 **Reach it:** `spark.read.parquet("s3a://demo-bucket/…")` in a notebook ([3.9](../unit3/upload-register.md)),
-or the MinIO console to browse/upload.
+or the **RustFS console** (<http://localhost:9001/rustfs/console/>, sign in with your lab account)
+to browse/upload. In the console you see only **your own bucket, `<username>-lake`** (100 MB, with
+`notebooks/` and `dags/` folders) — `demo-bucket` is visible to instructors only; reach it from code.
 
 ## 3. The `iceberg` catalog — governed lakehouse tables
 
 The **medallion tables** your pipeline builds, registered in the **Apache Polaris** catalog and
-addressed as **`iceberg.<namespace>.<table>`**. The files sit in MinIO (`demo-bucket/warehouse/…`);
+addressed as **`iceberg.<namespace>.<table>`**. The files sit in RustFS (`demo-bucket/warehouse/…`);
 the catalog makes them governed, shared tables.
 
 | Namespace | Holds | Example tables |
@@ -86,15 +88,15 @@ dashboards, and the Polaris Console — one governed copy, every engine.
 | Where | What | How you read it |
 |---|---|---|
 | **Postgres** (`shopflow`) | live OLTP source — 12 tables | Trino `shopflow.*`, JDBC |
-| **MinIO** `demo-bucket/shopflow/history` | raw history (Parquet) | `s3a://…` in Spark |
-| **MinIO** `demo-bucket/warehouse` | catalog table files | via the catalog (not by path) |
+| **RustFS** `demo-bucket/shopflow/history` | raw history (Parquet) | `s3a://…` in Spark |
+| **RustFS** `demo-bucket/warehouse` | catalog table files | via the catalog (not by path) |
 | **`iceberg` catalog** (Polaris) | Bronze/Silver/Gold tables | `%%sql`, Spark, Trino, Superset |
 
-**The flow:** raw data starts in **Postgres** (live) and **MinIO history** (Parquet) → the pipeline
+**The flow:** raw data starts in **Postgres** (live) and **RustFS history** (Parquet) → the pipeline
 ingests and refines it into **Bronze → Silver → Gold** tables in the **`iceberg` catalog** → engines
 read the Gold tables for analytics.
 
 ## You can now…
-- Name the **three** places data lives (Postgres, MinIO lake, iceberg catalog) and what each holds
+- Name the **three** places data lives (Postgres, RustFS lake, iceberg catalog) and what each holds
 - Tell **source** data (Postgres, raw history) from **refined** data (Bronze/Silver/Gold tables)
 - Pick the right access path for each — Trino `shopflow.*`, `s3a://…`, or `iceberg.<ns>.<table>`

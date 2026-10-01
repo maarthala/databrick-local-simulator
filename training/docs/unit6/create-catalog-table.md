@@ -10,12 +10,12 @@ catalog  →  namespace (schema)  →  table
 
 Key idea to hold onto:
 
-| Level | Where it lives | Hits MinIO? |
+| Level | Where it lives | Hits RustFS? |
 |---|---|---|
 | **Catalog** | Polaris (metadata) | ❌ no |
 | **Namespace** | Polaris (metadata) | ❌ no |
-| **Table (created)** | Polaris + a `metadata.json` in MinIO | ✅ first object |
-| **Rows (inserted)** | Parquet data + manifests in MinIO | ✅ data files |
+| **Table (created)** | Polaris + a `metadata.json` in RustFS | ✅ first object |
+| **Rows (inserted)** | Parquet data + manifests in RustFS | ✅ data files |
 
 So a catalog/namespace is just *registration*; the **table** is the first thing that
 writes to object storage.
@@ -28,14 +28,14 @@ sign in as `root` / `s3cr3t`, then **Catalogs → Create catalog**:
 - **Name:** `learn`
 - **Storage type:** `S3`
 - **Default base location:** `s3://demo-bucket/learn`
-- **Endpoint:** `http://minio:9000`
+- **Endpoint:** `http://minio:9000` (RustFS — S3-compatible; inside the stack it's still reached at `minio`)
 - **Region:** `us-east-1`
-- **Path-style access:** **ON** ← required for MinIO
+- **Path-style access:** **ON** ← required for RustFS
 - **Create**
 
-!!! warning "Path-style access is mandatory for MinIO"
-    MinIO addresses buckets as `minio:9000/bucket` (path-style). The default S3 style is
-    `bucket.minio:9000` (virtual-host), which doesn't resolve on MinIO — table I/O then
+!!! warning "Path-style access is mandatory for RustFS"
+    RustFS is addressed as `minio:9000/bucket` (path-style). The default S3 style is
+    `bucket.minio:9000` (virtual-host), which doesn't resolve in this stack — table I/O then
     fails with an `UnknownHost` error. So **turn Path-style access ON**. (On real AWS S3
     you'd leave it off.)
 
@@ -56,10 +56,10 @@ A **namespace** (schema) is a folder for tables. A **table** has a schema and ho
 In a notebook (`spark` is already there):
 
 ```python
-# namespace (schema) — metadata only, nothing in MinIO yet
+# namespace (schema) — metadata only, nothing in RustFS yet
 spark.sql("CREATE NAMESPACE IF NOT EXISTS iceberg.demo")
 
-# table — writes the first metadata.json to MinIO
+# table — writes the first metadata.json to RustFS
 spark.sql("""
 CREATE TABLE IF NOT EXISTS iceberg.demo.sales (
     id int, product string, amount double, sold_on date
@@ -79,7 +79,7 @@ You can also create the namespace/table visually in the **Console** (Catalog →
 **Create namespace** / **Create Iceberg Table**); the notebook is just quicker for a
 table with data.
 
-**Watch it land in MinIO** (console <http://localhost:9001>, or the CLI): after
+**Watch it land in RustFS** (RustFS console <http://localhost:9001/rustfs/console/> — instructors see `demo-bucket` there — or the CLI): after
 `CREATE TABLE` you'll see `warehouse/demo/sales/metadata/00000-….metadata.json`; after
 `INSERT`, a `data/*.parquet` plus manifest/snapshot files appear.
 
@@ -109,7 +109,7 @@ the same in **the Databricks catalog** and **Snowflake** (Snowflake calls it
 database → schema → table). Only the catalog name and storage URL change.
 
 ## You can now…
-- Create a **catalog** in the Console (and set **path-style** for MinIO)
+- Create a **catalog** in the Console (and set **path-style** for RustFS)
 - Create a **namespace** and a **table**, and say when each first touches object storage
 - Query the table from the notebook (DataFrame, `spark.sql`, `%%sql`) — and from Trino/Superset
 - Explain why a *new* catalog needs a Spark config before the notebook can see it

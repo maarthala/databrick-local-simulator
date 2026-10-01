@@ -31,12 +31,12 @@ flowchart TB
 
   subgraph ORCH["Orchestration & work"]
     AF[Airflow<br/>apiserver · scheduler · dag-processor]
-    JUP[Jupyter<br/>notebooks]
+    JUP[JupyterHub<br/>one Jupyter per learner]
     SUP[Superset<br/>dashboards]
   end
 
   subgraph DATA["State — storage"]
-    MIN[(MinIO<br/>lakehouse + raw files)]
+    MIN[(RustFS<br/>lakehouse + raw files)]
     PGS[(Postgres<br/>source DB + metastores)]
     RDS[(Redis<br/>Superset cache)]
   end
@@ -60,7 +60,7 @@ flowchart TB
   SUP --> PGS & RDS
 ```
 
-Everything points at **two stores** (MinIO for tables, Postgres for the source + metadata),
+Everything points at **two stores** (RustFS for tables, Postgres for the source + metadata),
 with **Polaris** as the single catalog that every engine consults before touching a table.
 
 ## Components
@@ -68,17 +68,25 @@ with **Polaris** as the single catalog that every engine consults before touchin
 ### Storage — where state lives
 | Service | What it is | Holds |
 |---|---|---|
-| **MinIO** | S3-compatible object store — the lakehouse | Iceberg tables (`demo-bucket/…`) **and** raw history as Parquet |
-| **Postgres** | One relational DB serving several roles | the **`shopflow`** source OLTP data; **metastores** for Polaris (`polarisdb`), Airflow, Superset |
+| **RustFS** | S3-compatible object store — the lakehouse (in-stack name still `minio:9000`) | shared Iceberg tables + raw history (`demo-bucket/…`), and each learner's bucket `<user>-lake` (their lakehouse, notebooks, DAGs; 100 MB) |
+| **Postgres** | One relational DB serving several roles | the **`shopflow`** source OLTP data; **metastores** for Polaris (`polarisdb`), Keycloak, Airflow, Superset |
 | **Redis** | In-memory store | **Superset's** cache & async query results (Airflow uses LocalExecutor — no broker needed) |
 
 ### Governance — one catalog for all engines
 | Service | What it is |
 |---|---|
-| **Apache Polaris** | The Iceberg **REST catalog** + **RBAC**. Engines ask it "does this principal may read/write this table?", and it **vends short-lived MinIO credentials** for the ones allowed. Metadata persists to Postgres (`polarisdb`). |
+| **Apache Polaris** | The Iceberg **REST catalog** + **RBAC**. Engines ask it "does this principal may read/write this table?", and it **vends short-lived storage credentials** for the ones allowed. Accepts Polaris client id/secret logins *and* lab-account (Keycloak) tokens. Metadata persists to Postgres (`polarisdb`). |
 | **polaris-console** | The catalog's **web UI** (a single-page app) — browse catalogs/namespaces/tables, manage principals, roles, and grants. |
 | **polaris-proxy** | A tiny nginx front that serves the Console at `/` and proxies the API at `/api` on **one origin** (`:8189`), so the browser makes no cross-origin calls. *(On k8s the ingress does this same-origin routing instead.)* |
 | **polaris-bootstrap** | A **one-shot** job that creates Polaris's schema + realm in Postgres on first start. Runs once, then exits. |
+
+### Accounts & your workspace
+| Service | What it is |
+|---|---|
+| **Keycloak** | The **lab accounts** (realm `de-lab`): registration, sign-in and single sign-on for every tool. Groups `learners` / `instructors` decide the role inside each tool. |
+| **oauth2-proxy** | Puts the home portal behind the lab-account login. |
+| **home-api** | The home portal's backend: on your first sign-in it creates **your** lakehouse, bucket and SQLPad user; serves **My files** and **My catalogs**. |
+| **JupyterHub** | Starts **one Jupyter per learner** (its own container / pod and work volume) with `iceberg` = that learner's lakehouse; mirrors `notebooks/` and `dags/` to their bucket. |
 
 ### Engines — SQL and Spark
 | Service | What it is |
@@ -99,18 +107,21 @@ with **Polaris** as the single catalog that every engine consults before touchin
 ## Access & ports
 
 On **Compose** each tool publishes a `localhost` port; on **Kubernetes** each is an
-ingress host `http://<tool>.de.lan`. Same services, same logins.
+ingress host `http://<tool>.de.lan`. Same services, same logins — one **lab account** (Keycloak
+single sign-on, register on the home portal) for every tool; see [0.3](../setup/workspace.md).
 
 | Tool | Compose URL | k8s host | Login |
 |---|---|---|---|
-| Home portal | http://localhost:8000 | `de.lan` | — |
-| Polaris Console | http://localhost:8189 | `polaris-console.de.lan` | `root` / `s3cr3t` (or a persona) |
+| Home portal | http://localhost:8000 | `de.lan` | lab account (Register / sign in) · My files · My catalogs |
+| Keycloak (accounts) | http://localhost:8180 | `auth.de.lan` | admin console `admin` / `admin` |
+| Polaris Console | http://localhost:8189 | `polaris-console.de.lan` | lab account · `/login?local=1`: `root` / `s3cr3t` or a persona |
 | Polaris API | http://localhost:8185 | `polaris.de.lan` | client id/secret |
 | Trino | http://localhost:8007/ui/ | `trino.de.lan` | any user, no password |
-| Superset | http://localhost:8004 | `superset.de.lan` | `admin` / `admin` |
+| Superset | http://localhost:8004 | `superset.de.lan` | lab account |
+| SQLPad | http://localhost:8003 | `sqlpad.de.lan` | lab account |
 | Jupyter (JupyterHub) | http://localhost:8008 | `jupyter.de.lan` | your lab account (own Jupyter + own lakehouse) |
-| Airflow | http://localhost:8001 | `airflow.de.lan` | `airflow` / `airflow` |
-| MinIO console | http://localhost:9001 | `minio.de.lan` | `minioadmin` / `minioadmin` |
+| Airflow | http://localhost:8001 | `airflow.de.lan` | lab account (DAGs also from your bucket's `dags/`) |
+| RustFS console (object store) | http://localhost:9001/rustfs/console/ | `minio.de.lan/rustfs/console/` | lab account (your own bucket) · root `minioadmin` / `minioadmin` |
 | Spark master UI | http://localhost:8002 | `spark.de.lan` | — |
 
 Internal wiring uses service names on a shared network: `polaris:8181`, `minio:9000`,
@@ -120,10 +131,11 @@ Internal wiring uses service names on a shared network: `polaris:8181`, `minio:9
 
 State survives restarts; only a deliberate teardown wipes it.
 
-- **MinIO volume** — all lakehouse tables + raw files.
+- **RustFS volume** — all lakehouse tables + raw files + every learner's bucket.
 - **Postgres volume** — source data + every metastore (incl. Polaris' `polarisdb`, so the
   catalog, principals, and grants persist).
-- **Spark / Jupyter** working dirs and Superset's home.
+- **Each learner's Jupyter work volume** (and the Hub's own small database), Spark working dirs,
+  and Superset's home.
 
 On Compose these are named Docker volumes; on k8s they're PersistentVolumeClaims
 (`microk8s-hostpath`). `make down` (Compose) removes volumes — use `stop` to keep data.
@@ -154,6 +166,6 @@ but disabled by default (re-enable if a lesson needs them):
 
 ## You can now…
 - Name **every service** in the stack and what it's responsible for
-- Explain how engines reach data: **catalog via Polaris**, **bytes via MinIO**, gated by **grants**
-- Say **where state lives** (MinIO + Postgres) and what survives a restart
+- Explain how engines reach data: **catalog via Polaris**, **bytes via RustFS**, gated by **grants**
+- Say **where state lives** (RustFS + Postgres) and what survives a restart
 - Describe how the **same stack** maps from Docker Compose to Kubernetes

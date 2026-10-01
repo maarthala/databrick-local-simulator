@@ -69,7 +69,8 @@ nav:
   - "0 · Getting started":
       - "0.1 Prerequisites & setup": setup/prerequisites.md
       - "0.2 Bring up the stack": setup/deploy.md
-      - "0.3 Personas & roles": setup/personas.md
+      - "0.3 Your lab account & workspace": setup/workspace.md
+      - "0.3.1 Personas & roles (governance demos)": setup/personas.md
       - "0.4 The ShopFlow scenario": scenario.md
       - "0.5 Technical architecture": unit0/architecture.md
       - "0.6 Database schema": unit0/schema.md

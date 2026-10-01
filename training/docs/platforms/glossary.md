@@ -9,7 +9,7 @@ they're already familiar when you get there.
 | **OLTP** | Online Transaction Processing — the live app database (ShopFlow's Postgres). |
 | **OLAP** | Online Analytical Processing — analytics over large datasets (the lakehouse). |
 | **ETL / ELT** | Transform-then-load vs. load-raw-then-transform (this course, and the lakehouse, are ELT). |
-| **Object storage** | Cheap, scalable file storage addressed by keys (S3 / MinIO / ADLS / OneLake). |
+| **Object storage** | Cheap, scalable file storage addressed by keys (S3 / RustFS / ADLS / OneLake). |
 | **Data lake** | Raw files in object storage — flexible but ungoverned. |
 | **Data warehouse** | A managed analytical database with strong SQL + governance. |
 | **Lakehouse** | Lake storage + warehouse table semantics (ACID, schema) + a catalog. |
@@ -23,7 +23,7 @@ they're already familiar when you get there.
 | **Parquet** | Columnar, compressed, typed file format — the analytics workhorse. |
 | **Row vs columnar** | Store a whole record together vs. store a whole column together. |
 | **Table format** | Metadata/log turning files into ACID tables — **Iceberg**, **Delta**. |
-| **Iceberg** | The open table format this course's lakehouse uses (Iceberg REST catalog on MinIO). |
+| **Iceberg** | The open table format this course's lakehouse uses (Iceberg REST catalog on RustFS). |
 | **Delta Lake** | Table format native to Databricks/Fabric — the managed equivalent of the Iceberg tables you build here. |
 | **ACID** | All-or-nothing, consistent, isolated, durable writes. |
 | **Time travel** | Querying a previous version/snapshot of a table. |
@@ -45,7 +45,7 @@ they're already familiar when you get there.
 | **RBAC** | Role/rule-based access control — grants on securables. |
 | **Securable / principal / privilege** | Object protected / identity granted / action allowed. |
 | **Grant chain** | You need permission at *every* level above a table to read it. |
-| **SSO / OIDC** | Single sign-on via an identity provider — used on the cloud platforms (Entra/Okta), *not* in this local stack (personas log in with a Polaris client id/secret). |
+| **SSO / OIDC** | Single sign-on via an identity provider — used on the cloud platforms (Entra/Okta), and in this lab too: one **lab account** (Keycloak, OIDC) signs you in to every tool. |
 | **Credential vending** | The catalog issuing short-lived storage credentials to engines. |
 
 ## Compute, SQL & Python
