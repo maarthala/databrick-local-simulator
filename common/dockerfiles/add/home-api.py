@@ -245,7 +245,19 @@ class Handler(BaseHTTPRequestHandler):
         print(f"[home-api] {self.address_string()} {fmt % args}", flush=True)
 
 
+def _trino_sync_loop():
+    """Learner catalogs live in Trino's memory — re-add them every minute (Trino restarts)."""
+    import time
+    while True:
+        try:
+            lh.sync_trino()
+        except Exception as e:
+            print(f"[home-api] trino sync: {e}", flush=True)
+        time.sleep(60)
+
+
 if __name__ == "__main__":
+    threading.Thread(target=_trino_sync_loop, daemon=True).start()
     port = int(os.environ.get("PORT", "8000"))
     print(f"[home-api] listening on :{port}, Polaris {POLARIS}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()

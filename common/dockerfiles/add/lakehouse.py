@@ -37,6 +37,8 @@ QUOTA_MB = int(os.environ.get("LEARNER_QUOTA_MB", "100"))      # per-learner buc
 SQLPAD = os.environ.get("SQLPAD_URL", "http://sqlpad:3000")
 SQLPAD_ADMIN = os.environ.get("SQLPAD_ADMIN", "admin@de.local:admin1234")
 NAMESPACES = ("bronze", "silver", "gold")
+TRINO = os.environ.get("TRINO_URL", "http://trino:8080")
+TRINO_LOGIN = os.environ.get("TRINO_POLARIS_LOGIN", "trino_lab:trino-lab-secret")   # Trino → learner catalogs
 FOLDERS = ("notebooks/", "dags/")      # learner code lives in their bucket (dags/ → Airflow)
 
 
@@ -337,6 +339,7 @@ def provision(name, instructor=False):
                           {"grant": {"type": "namespace", "namespace": [ns], "privilege": priv}}, t)[0], "reader grant")
         _ok(_call("PUT", f"{m}/principal-roles/{name}/catalog-roles/{SHARED}",
                   {"catalogRole": {"name": "learner_reader"}}, t)[0], "attach reader")
+    trino_catalog(cat, t)
 
 
 def _move_into_bucket(cat, loc, t):
@@ -424,6 +427,7 @@ def create_catalog(name, short):
               {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}}, t)[0], "owner grant")
     _ok(_call("PUT", f"{_M}/principal-roles/{name}/catalog-roles/{cat}", {"catalogRole": {"name": "owner"}}, t)[0],
         "attach owner")
+    trino_catalog(cat, t)
     return {"name": cat, "location": loc}
 
 
@@ -505,3 +509,88 @@ def revoke(name, cat, role):
     for p in _get(f"{_M}/catalogs/{cat}/catalog-roles/{role}/principal-roles", t).get("roles", []):
         _ok(_call("DELETE", f"{_M}/principal-roles/{p['name']}/catalog-roles/{cat}/{role}", token=t)[0], "unassign")
     _ok(_call("DELETE", f"{_M}/catalogs/{cat}/catalog-roles/{role}", token=t)[0], "delete share")
+
+
+# ---- Trino (→ SQLPad, Superset): one Trino catalog per learner catalog --------------------
+# Trino's own `iceberg` catalog is the shared lake (as root, who has no rights INSIDE learner
+# catalogs). Each learner catalog gets a Trino catalog of the same name (kiran_lake,
+# kiran_sales …), signed in as the principal trino_lab, which every learner catalog grants
+# CATALOG_MANAGE_CONTENT — light isolation: through Trino, learners can reach each other's
+# lakes. Trino keeps dynamic catalogs in memory, so home-api re-adds them (sync_trino) after
+# a Trino restart.
+_trino_ready = set()
+
+
+def _trino(sql):
+    """Run one statement on Trino (REST protocol, stdlib); returns the rows."""
+    req = urllib.request.Request(f"{TRINO}/v1/statement", data=sql.encode(), method="POST",
+                                 headers={"X-Trino-User": "lab", "Content-Type": "text/plain"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        res = json.loads(r.read())
+    rows = []
+    while True:
+        if res.get("error"):
+            raise RuntimeError(f"trino: {res['error'].get('message', res['error'])[:200]}")
+        rows += res.get("data") or []
+        nxt = res.get("nextUri")
+        if not nxt:
+            return rows
+        with urllib.request.urlopen(nxt, timeout=30) as r:
+            res = json.loads(r.read())
+
+
+def _trino_principal(t):
+    """trino_lab principal + principal-role, pinned secret (idempotent)."""
+    if "principal" in _trino_ready:
+        return
+    m, (cid, secret) = "/api/management/v1", TRINO_LOGIN.split(":", 1)
+    _ok(_call("POST", f"{m}/principals", {"principal": {"name": cid}}, t)[0], "trino principal")
+    _ok(_call("POST", f"{m}/principal-roles", {"principalRole": {"name": cid}}, t)[0], "trino role")
+    _ok(_call("PUT", f"{m}/principals/{cid}/principal-roles", {"principalRole": {"name": cid}}, t)[0], "trino assign")
+    _ok(_call("POST", f"{m}/principals/{cid}/reset", {"clientId": cid, "clientSecret": secret}, t)[0], "trino secret")
+    _trino_ready.add("principal")
+
+
+def trino_catalog(cat, t=None):
+    """Make Polaris catalog `cat` queryable in Trino as `cat` (grant + CREATE CATALOG)."""
+    if not re.fullmatch(r"[a-z0-9_]+", cat) or cat == SHARED:
+        return
+    t = t or _admin_token()
+    m, cid = "/api/management/v1", TRINO_LOGIN.split(":", 1)[0]
+    try:
+        _trino_principal(t)
+        _ok(_call("POST", f"{m}/catalogs/{cat}/catalog-roles", {"catalogRole": {"name": cid}}, t)[0], "trino c-role")
+        _ok(_call("PUT", f"{m}/catalogs/{cat}/catalog-roles/{cid}/grants",
+                  {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}}, t)[0], "trino grant")
+        _ok(_call("PUT", f"{m}/principal-roles/{cid}/catalog-roles/{cat}", {"catalogRole": {"name": cid}}, t)[0],
+            "trino attach")
+        if [cat] in _trino("SHOW CATALOGS"):
+            return
+        u = urllib.parse.urlparse(S3_ENDPOINT)
+        props = {
+            "iceberg.catalog.type": "rest",
+            "iceberg.rest-catalog.uri": f"{POLARIS}/api/catalog",
+            "iceberg.rest-catalog.warehouse": cat,
+            "iceberg.rest-catalog.security": "OAUTH2",
+            "iceberg.rest-catalog.oauth2.credential": TRINO_LOGIN,
+            "iceberg.rest-catalog.oauth2.scope": "PRINCIPAL_ROLE:ALL",
+            "fs.native-s3.enabled": "true",
+            "s3.endpoint": f"{u.scheme}://{u.netloc}",
+            "s3.path-style-access": "true",
+            "s3.region": S3_REGION,
+            "s3.aws-access-key": S3_KEY,
+            "s3.aws-secret-key": S3_SECRET,
+        }
+        _trino(f"CREATE CATALOG {cat} USING iceberg WITH (" +
+               ", ".join(f'"{k}" = \'{v}\'' for k, v in props.items()) + ")")
+    except Exception as e:                      # Trino down / not dynamic: tables still work in Spark
+        if "already exists" not in str(e):       # (two syncs racing — harmless)
+            print(f"[lakehouse] trino catalog {cat}: {e}", flush=True)
+
+
+def sync_trino():
+    """Re-add every learner catalog to Trino (after a Trino restart they're gone)."""
+    t = _admin_token()
+    for c in _get(f"/api/management/v1/catalogs", t)["catalogs"]:
+        if c["name"] != SHARED:
+            trino_catalog(c["name"], t)
