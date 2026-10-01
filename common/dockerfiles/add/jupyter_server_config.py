@@ -98,17 +98,14 @@ c.JupyterFs.resources = [
         },
     }
 ]
-# JupyterHub learners: their OWN bucket as a drive, with a key that can only reach it.
-# notebooks/ for notebooks, dags/ for Airflow (picked up by the "learners" DAG bundle).
-if os.environ.get("LAKE_BUCKET") and os.environ.get("LAKE_S3_KEY"):
-    c.JupyterFs.resources.insert(0, {
-        "name": f"my bucket ({os.environ['LAKE_BUCKET']})",
-        "url": f"s3://{os.environ['LAKE_BUCKET']}",
-        "type": "fsspec",
-        "auth": "none",
-        "kwargs": {
-            "key": os.environ["LAKE_S3_KEY"],
-            "secret": os.environ["LAKE_S3_SECRET"],
-            "client_kwargs": {"endpoint_url": os.environ.get("AWS_S3_ENDPOINT", "http://minio:9000")},
-        },
-    })
+# JupyterHub learners: ~/work/notebooks and ~/work/dags live in the normal file browser
+# and are mirrored to their own bucket (dags/ → Airflow). See lab_sync.py.
+import sys  # noqa: E402
+sys.path.insert(0, "/etc/jupyter")
+import lab_sync  # noqa: E402
+
+c.JupyterFs.root_manager_class = lab_sync.SyncedFileManager
+try:                                    # never block the server from starting
+    lab_sync.initial_sync("/home/jovyan/work")
+except Exception as exc:
+    print(f"[lab_sync] initial sync failed: {exc}", flush=True)

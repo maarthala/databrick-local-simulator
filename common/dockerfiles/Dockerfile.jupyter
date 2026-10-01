@@ -50,6 +50,7 @@ COPY --chown=jovyan:jovyan add/00-spark.py /home/jovyan/.ipython/profile_default
 # home-dir ownership pitfalls of mounting into ~/.jupyter), and the entrypoint
 # clones/configures the repo when GIT_AUTOPUSH=1. Both are inert unless enabled.
 COPY add/jupyter_server_config.py /etc/jupyter/jupyter_server_config.py
+COPY add/lab_sync.py /etc/jupyter/lab_sync.py
 COPY add/jupyter-entrypoint.sh /usr/local/bin/jupyter-entrypoint.sh
 RUN chmod +x /usr/local/bin/jupyter-entrypoint.sh \
  && mkdir -p /home/jovyan/work && chown -R jovyan:jovyan /home/jovyan/work
