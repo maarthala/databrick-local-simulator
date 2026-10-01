@@ -15,6 +15,19 @@ data:
   de-lab-realm.json: |
 {{ .Files.Get "files/keycloak/de-lab-realm.json" | replace "http://de.lan" (printf "http://%s" .Values.ingress.baseHost) | indent 4 }}
 ---
+# Login/registration theme "de-lab" (landing-page colours) — copies of
+# common/keycloak/themes/de-lab/login/*, mounted into /opt/keycloak/themes.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-theme
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+  theme.properties: |
+{{ .Files.Get "files/keycloak/theme/theme.properties" | indent 4 }}
+  de-lab.css: |
+{{ .Files.Get "files/keycloak/theme/de-lab.css" | indent 4 }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -60,8 +73,15 @@ spec:
             limits:   { memory: 1Gi }
           volumeMounts:
             - { name: realm, mountPath: /opt/keycloak/data/import, readOnly: true }
+            - { name: theme, mountPath: /opt/keycloak/themes/de-lab/login, readOnly: true }
       volumes:
         - { name: realm, configMap: { name: keycloak-realm } }
+        - name: theme
+          configMap:
+            name: keycloak-theme
+            items:
+              - { key: theme.properties, path: theme.properties }
+              - { key: de-lab.css, path: resources/css/de-lab.css }
 ---
 apiVersion: v1
 kind: Service

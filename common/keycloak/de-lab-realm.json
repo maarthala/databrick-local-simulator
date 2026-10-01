@@ -4,7 +4,7 @@
   "enabled": true,
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
-  "loginWithEmailAllowed": true,
+  "loginWithEmailAllowed": false,
   "resetPasswordAllowed": false,
   "rememberMe": true,
   "verifyEmail": false,
@@ -96,5 +96,7 @@
         }
       }
     ]
-  }
+  },
+  "loginTheme": "de-lab",
+  "displayNameHtml": "ShopFlow <span class=\"dot\">\u00b7</span> Learning Lab<span class=\"tag\">Sign in to your Data Engineering lab</span>"
 }

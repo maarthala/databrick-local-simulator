@@ -1,0 +1,78 @@
+/* DE Learning Lab — same tokens as the landing page (local/home/index.html) */
+:root{
+  --bg:#0b1020; --panel:#141b2e; --panel2:#1b2438; --line:#2a3550;
+  --ink:#e8edf7; --muted:#9aa8c7; --accent:#6d8bff; --accent2:#39d0c4;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+  /* PatternFly 5 globals → our palette */
+  --pf-v5-global--FontFamily--text:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --pf-v5-global--FontFamily--heading:var(--pf-v5-global--FontFamily--text);
+  --pf-v5-global--Color--100:var(--ink);
+  --pf-v5-global--Color--200:var(--muted);
+  --pf-v5-global--BackgroundColor--100:var(--panel);
+  --pf-v5-global--primary-color--100:var(--accent);
+  --pf-v5-global--primary-color--200:#5672f0;
+  --pf-v5-global--link--Color:var(--accent2);
+  --pf-v5-global--link--Color--hover:#6fe3d9;
+  --pf-v5-global--BorderColor--100:var(--line);
+  --pf-v5-global--BorderRadius--sm:8px;
+}
+html, body, .pf-v5-c-login{
+  color:var(--ink);
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(109,139,255,.18), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, rgba(57,208,196,.12), transparent 55%),
+    var(--bg) !important;
+  background-attachment:fixed !important;
+}
+/* brand header: "ShopFlow · Learning Lab" */
+#kc-header-wrapper, .pf-v5-c-login__header .pf-v5-c-brand{
+  color:var(--ink); font-size:2.1rem; font-weight:800; letter-spacing:.5px; text-align:center;
+  text-transform:none; padding:8px 0 4px;
+}
+#kc-header-wrapper .dot{color:var(--accent)}
+#kc-header-wrapper .tag{display:block; color:var(--muted); font-size:1rem; font-weight:400; margin-top:8px; letter-spacing:0}
+.pf-v5-c-login__header{justify-content:center}
+/* the card */
+.pf-v5-c-login__main{
+  background:var(--panel) !important; border:1px solid var(--line); border-radius:16px;
+  box-shadow:var(--shadow); color:var(--ink);
+}
+.pf-v5-c-login__main-header, .pf-v5-c-login__main-body, .pf-v5-c-login__main-footer{background:transparent}
+.pf-v5-c-title, #kc-page-title{color:var(--ink) !important; font-weight:700}
+.pf-v5-c-form__label, .pf-v5-c-form__label-text, .pf-v5-c-check__label{color:var(--muted) !important}
+/* inputs */
+.pf-v5-c-form-control{
+  --pf-v5-c-form-control--BackgroundColor:var(--panel2);
+  --pf-v5-c-form-control--Color:var(--ink);
+  --pf-v5-c-form-control--before--BorderColor:var(--line);
+  --pf-v5-c-form-control--after--BorderColor:transparent;
+  --pf-v5-c-form-control--hover--after--BorderColor:var(--accent);
+  --pf-v5-c-form-control--focus--after--BorderColor:var(--accent);
+  border-radius:8px;
+}
+.pf-v5-c-form-control > input, .pf-v5-c-form-control > select{color:var(--ink); background:transparent}
+.pf-v5-c-input-group .pf-v5-c-button.pf-m-control{
+  background:var(--panel2); color:var(--muted); border-color:var(--line);
+}
+/* primary button = landing page accent gradient */
+.pf-v5-c-button.pf-m-primary{
+  --pf-v5-c-button--m-primary--BackgroundColor:var(--accent);
+  --pf-v5-c-button--m-primary--hover--BackgroundColor:#5672f0;
+  background:linear-gradient(135deg, var(--accent), var(--accent2)) !important;
+  border:0; border-radius:10px; font-weight:700; color:#0b1020 !important;
+}
+.pf-v5-c-button.pf-m-primary:hover{filter:brightness(1.08)}
+.pf-v5-c-button.pf-m-link, a{color:var(--accent2)}
+/* "New user? Register" band */
+.pf-v5-c-login__main-footer-band{border-top:1px solid var(--line); color:var(--muted)}
+.pf-v5-c-login__main-footer-band a{color:var(--accent2); font-weight:600}
+/* alerts (wrong password etc.) */
+.pf-v5-c-alert{background:var(--panel2); border-radius:10px}
+.pf-v5-c-alert__title{color:var(--ink)}
+/* language switcher etc. */
+.pf-v5-c-login__main-header-utilities, .pf-v5-c-menu-toggle{color:var(--muted)}
+/* no PatternFly accent bar on top of the card; themed checkbox */
+.pf-v5-c-login__main{border-top:1px solid var(--line) !important}
+.pf-v5-c-login__main-header{border-top:0 !important}
+.pf-v5-c-login__main::before, .pf-v5-c-login__main::after{display:none !important}
+input[type="checkbox"]{accent-color:var(--accent)}
