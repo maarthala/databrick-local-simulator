@@ -254,6 +254,39 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "airflow",
+      "name": "Airflow \u2014 orchestration",
+      "publicClient": false,
+      "secret": "airflow-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8011/auth/oauth-authorized/keycloak",
+        "http://localhost:8001/auth/oauth-authorized/keycloak",
+        "http://airflow.de.lan/auth/oauth-authorized/keycloak"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8011/*##http://localhost:8001/*##http://airflow.de.lan/*"
+      },
+      "webOrigins": [
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [

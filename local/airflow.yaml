@@ -23,8 +23,11 @@ x-airflow-common:
     AWS_REGION: us-east-1
     AWS_ACCESS_KEY_ID: minioadmin
     AWS_SECRET_ACCESS_KEY: minioadmin
+    # UI login with the lab account (Keycloak, client airflow) — see airflow_webserver_config.py
+    KEYCLOAK_ENABLED: '1'
   volumes:
     - ./code:/code
+    - ../common/dockerfiles/add/airflow_webserver_config.py:/opt/airflow/webserver_config.py:ro
     - ./configs/airflow.cfg:/opt/airflow/config/airflow.cfg
     - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
     - ./init_scripts/airflow:/init_scripts
