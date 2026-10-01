@@ -38,7 +38,7 @@
     .cat.active{background:rgba(109,139,255,.16); color:var(--ink); font-weight:600}
     .tag{font-size:.68rem; padding:1px 7px; border-radius:999px; border:1px solid var(--line); color:var(--muted); margin-left:auto}
     .tag.read{border-color:rgba(57,208,196,.5); color:var(--accent2)} .tag.write{border-color:rgba(226,185,59,.55); color:#f3d98b}
-    .newcat{display:flex; gap:6px; padding:6px 8px} .newcat input{flex:1; min-width:0}
+    .newcat{display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 8px} .newcat input{flex:1; min-width:90px}
     .empty{color:var(--muted); padding:10px 9px; font-size:.88rem}
     main{overflow:auto; padding:18px 22px; display:flex; flex-direction:column; gap:14px}
     .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px}
@@ -217,9 +217,12 @@
     }
 
     $('new').onclick = function () {
-      var box = $('newrow'); if (box.firstChild) return box.querySelector('input').focus();
+      var box = $('newrow'); if (box.firstChild) { box.innerHTML = ''; return; }   // ＋ New again = close
       var d = el('div', 'newcat'), inp = el('input'); inp.type = 'text'; inp.placeholder = 'name, e.g. sales';
-      var ok = el('button', 'primary small', 'Create'); d.appendChild(el('span', 'sub', state.user + '_')); d.appendChild(inp); d.appendChild(ok); box.appendChild(d); inp.focus();
+      var ok = el('button', 'primary small', 'Create'), cancel = el('button', 'small', 'Cancel');
+      d.appendChild(el('span', 'sub', state.user + '_')); d.appendChild(inp); d.appendChild(ok); d.appendChild(cancel);
+      box.appendChild(d); inp.focus();
+      cancel.onclick = function () { box.innerHTML = ''; };
       function create() {
         api('POST', '', {name: inp.value.trim().toLowerCase()}).then(function (r) {
           if (!r.ok) return toast(r.body.error, true);
