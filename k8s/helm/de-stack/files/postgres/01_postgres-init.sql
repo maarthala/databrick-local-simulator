@@ -30,6 +30,10 @@ CREATE DATABASE polarisdb OWNER polaris;
 CREATE SCHEMA IF NOT EXISTS polaris_schema AUTHORIZATION polaris;
 \connect postgres
 
+-- Keycloak (learner logins / registration — the home page's front door)
+CREATE USER keycloak WITH PASSWORD 'keycloak';
+CREATE DATABASE keycloak OWNER keycloak;
+
 -- Optional: Connect to the new database and create schema
 -- \connect airflow
 

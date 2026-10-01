@@ -54,10 +54,11 @@ too many tiny partitions = overhead. You'll rarely tune this early, but being ab
 many partitions a DataFrame has (the lab shows how) helps you reason about performance later.
 
 ## Lab
-Connect to Spark from **Jupyter** at [http://localhost:8008](http://localhost:8008) (token
-`123456`). The notebook is a lightweight **Spark Connect** client: it's pre-wired to the cluster's
-Connect server (`sc://spark-connect:15002`), and the **`iceberg`** lakehouse catalog is already
-configured on the server. So the whole connection is a single line — the equivalent of Unit 2's
+Connect to Spark from **Jupyter** at [http://localhost:8008](http://localhost:8008) (sign in with
+your lab account). The notebook is a lightweight **Spark Connect** client: it's pre-wired to the
+cluster's Connect server (`sc://spark-connect:15002`), and the **`iceberg`** lakehouse catalog is
+already configured — pointing at **your own** lakehouse (`<you>_lake`), so the tables you build in
+this unit are yours alone. So the whole connection is a single line — the equivalent of Unit 2's
 `USE …`:
 
 ```python

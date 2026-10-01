@@ -1,0 +1,49 @@
+# JupyterHub — every learner signs in with Keycloak and gets their OWN Jupyter container
+# (image built by jupyter.yaml) whose `iceberg` catalog is their own Polaris lakehouse.
+# The Hub starts learner containers through the Docker socket on the sparknet network.
+services:
+  jupyterhub:
+    build:
+      context: ../common/dockerfiles
+      dockerfile: Dockerfile.jupyterhub
+    container_name: jupyterhub
+    ports:
+      - "8008:8000"          # same URL learners used before: http://localhost:8008
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - jupyterhub-data:/srv/jupyterhub/data
+    environment:
+      HUB_PUBLIC_URL: http://localhost:8008
+      KEYCLOAK_PUBLIC_URL: http://localhost:8180
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      OAUTH_CLIENT_SECRET: jupyterhub-secret
+      # encrypts the stored Keycloak tokens (auth_state) — lets the Hub re-check the login
+      JUPYTERHUB_CRYPT_KEY: ${JUPYTERHUB_CRYPT_KEY:-6874424c5eb55dec01d4ee3e6089a7b287602717fc11c0dfaa2524b2d7d88877}
+      POLARIS_URL: http://polaris:8181
+      LEARNER_QUOTA_MB: "100"      # each learner's bucket <user>-lake (hard limit)
+      SINGLEUSER_IMAGE: local-jupyter:latest
+      DOCKER_NETWORK: local_sparknet
+      SPARK_REMOTE: sc://spark-connect:15002
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_REGION: us-east-1
+      AWS_S3_ENDPOINT: http://minio:9000
+      GIT_AUTOPUSH: ${GIT_AUTOPUSH:-1}
+      GIT_REPO_URL: ${GIT_REPO_URL:-https://github.com/dev-epireum-com/de-lab.git}
+      GIT_BRANCH: ${GIT_BRANCH:-main}
+      GIT_USERNAME: ${GIT_USERNAME:-x-access-token}
+      GIT_TOKEN: ${GIT_TOKEN:-}
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      polaris:
+        condition: service_started
+      jupyter:
+        condition: service_started   # builds the learner image (local-jupyter)
+    restart: unless-stopped
+    networks:
+      - sparknet
+
+volumes:
+  jupyterhub-data:

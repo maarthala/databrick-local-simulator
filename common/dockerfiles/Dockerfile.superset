@@ -9,7 +9,7 @@ USER root
 RUN uv pip install --python /app/.venv/bin/python --no-cache \
     "SQLAlchemy==1.4.54" \
     "trino[sqlalchemy]" \
-    "psycopg2-binary"
+    "psycopg2-binary" "authlib"
 
 USER superset
 COPY ./add/connections.py /extras/connections.py

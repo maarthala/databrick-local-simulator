@@ -46,7 +46,7 @@ gate the Pages CI uses) before you push.
 | Superset | http://localhost:8004 | admin / admin |
 | SQLPad (SQL workbench) | http://localhost:8003 | admin@de.local / admin1234 |
 | Airflow | http://localhost:8001 | airflow / airflow |
-| Jupyter | http://localhost:8008 | token `123456` |
+| Jupyter (JupyterHub) | http://localhost:8008 | your lab account (Keycloak) — own Jupyter + own lakehouse |
 | Spark master UI | http://localhost:8002 | — |
 
 ## First steps

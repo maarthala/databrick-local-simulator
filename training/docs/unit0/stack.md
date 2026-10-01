@@ -103,12 +103,12 @@ ingress host `http://<tool>.de.lan`. Same services, same logins.
 
 | Tool | Compose URL | k8s host | Login |
 |---|---|---|---|
-| Home portal | http://localhost:8000 | `home.de.lan` | — |
+| Home portal | http://localhost:8000 | `de.lan` | — |
 | Polaris Console | http://localhost:8189 | `polaris-console.de.lan` | `root` / `s3cr3t` (or a persona) |
 | Polaris API | http://localhost:8185 | `polaris.de.lan` | client id/secret |
 | Trino | http://localhost:8007/ui/ | `trino.de.lan` | any user, no password |
 | Superset | http://localhost:8004 | `superset.de.lan` | `admin` / `admin` |
-| Jupyter | http://localhost:8008 | `jupyter.de.lan` | token `123456` |
+| Jupyter (JupyterHub) | http://localhost:8008 | `jupyter.de.lan` | your lab account (own Jupyter + own lakehouse) |
 | Airflow | http://localhost:8001 | `airflow.de.lan` | `airflow` / `airflow` |
 | MinIO console | http://localhost:9001 | `minio.de.lan` | `minioadmin` / `minioadmin` |
 | Spark master UI | http://localhost:8002 | `spark.de.lan` | — |

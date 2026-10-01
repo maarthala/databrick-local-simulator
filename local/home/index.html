@@ -63,25 +63,32 @@
       background:rgba(57,208,196,.1); border:1px solid rgba(57,208,196,.25);
       padding:2px 8px; border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 
-    /* Polaris logins table */
-    .creds{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:6px 6px 14px; overflow-x:auto}
-    .creds table{border-collapse:collapse; width:100%; font-size:.88rem; min-width:520px}
-    .creds th,.creds td{text-align:left; padding:10px 14px; border-bottom:1px solid var(--line)}
-    .creds th{color:var(--muted); font-weight:700; font-size:.72rem; letter-spacing:1.5px; text-transform:uppercase}
-    .creds tbody td:first-child{font-weight:700}
-    .creds tr:last-child td{border-bottom:none}
-    .creds code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent2);
-      background:rgba(57,208,196,.1); border:1px solid rgba(57,208,196,.25); padding:1px 7px; border-radius:6px; font-size:.82rem}
-    .creds .adm{color:var(--accent)}
-    .creds .note{margin:12px 14px 0; color:var(--muted); font-size:.8rem}
 
     footer{margin-top:44px; text-align:center; color:var(--muted); font-size:.9rem}
     footer a{color:var(--accent); font-weight:600}
     @media (max-width:520px){ .brand{font-size:1.9rem} .hero{padding:20px} }
+
+    /* signed-in bar (filled from /api/me — the page sits behind the Keycloak login) */
+    .me{display:flex; justify-content:flex-end; align-items:center; gap:12px; flex-wrap:wrap;
+        padding:14px 0 0; color:var(--muted); font-size:.92rem}
+    .me b{color:var(--ink)}
+    .me .lake{border:1px solid var(--line); background:var(--panel); border-radius:999px; padding:4px 12px}
+    .me .lake.ok{border-color:rgba(57,208,196,.5)}
+    .me .lake.err{border-color:#d9534f; color:#ffb3b0}
+    .me a.out{border:1px solid var(--line); border-radius:8px; padding:4px 10px}
+    .me a.out:hover{border-color:var(--accent); color:var(--ink)}
+    .cred.sso{border-color:rgba(57,208,196,.45); color:var(--accent2)}
   </style>
 </head>
 <body>
   <div class="wrap">
+    <div class="me" id="me" hidden>
+      <span>Hi <b id="me-name"></b></span>
+      <span class="lake" id="me-lake"></span>
+      <a class="out" href="/files.html">📁 My files</a>
+      <a class="out" href="/catalogs.html">🗂️ My catalogs</a>
+      <a class="out" id="me-out" href="#">Log out</a>
+    </div>
     <header>
       <div class="brand">ShopFlow <span class="dot">·</span> Governed Lakehouse</div>
       <div class="tag">A hands-on Data Engineering stack — object storage, a governed catalog, Spark, SQL, orchestration &amp; BI.</div>
@@ -102,7 +109,7 @@
     <div class="grid">
       <a class="card" href="http://localhost:8008" target="_blank">
         <div class="ico">📓</div>
-        <div><h3>Notebook</h3><p><b>Jupyter</b> — Notebooks — Python, pandas &amp; Spark (Spark Connect).</p><span class="cred">token 123456</span></div>
+        <div><h3>Notebook</h3><p><b>Jupyter</b> — Notebooks — Python, pandas &amp; Spark (Spark Connect).</p></div>
       </a>
       <a class="card" href="http://localhost:8002" target="_blank">
         <div class="ico">⚡</div>
@@ -118,49 +125,34 @@
       </a>
       <a class="card" href="http://localhost:8004" target="_blank">
         <div class="ico">📊</div>
-        <div><h3>BI</h3><p><b>Superset</b> — BI dashboards &amp; SQL Lab over the Gold layer.</p><span class="cred">admin / admin</span></div>
+        <div><h3>BI</h3><p><b>Superset</b> — BI dashboards &amp; SQL Lab over the Gold layer.</p></div>
       </a>
       <a class="card" href="http://localhost:8003" target="_blank">
         <div class="ico">🧰</div>
-        <div><h3>SQL workbench</h3><p><b>SQLPad</b> — Run any SQL (incl. INSERT/UPDATE/DDL) on Postgres (OLTP) &amp; Trino (OLAP).</p><span class="cred">admin@de.local / admin1234</span></div>
+        <div><h3>SQL workbench</h3><p><b>SQLPad</b> — Run any SQL (incl. INSERT/UPDATE/DDL) on Postgres (OLTP) &amp; Trino (OLAP).</p></div>
       </a>
     </div>
 
     <div class="section-title">Orchestrate</div>
     <div class="grid">
-      <a class="card" href="http://localhost:8001" target="_blank">
+      <a class="card" id="airflow-tile" href="http://localhost:8001" target="_blank">
         <div class="ico">🌬️</div>
-        <div><h3>Orchestration</h3><p><b>Airflow</b> — Schedule the Bronze→Silver→Gold pipeline.</p><span class="cred">airflow / airflow</span></div>
+        <div><h3>Orchestration</h3><p><b>Airflow</b> — Schedule the Bronze→Silver→Gold pipeline.</p></div>
       </a>
     </div>
 
     <div class="section-title">Govern &amp; store</div>
     <div class="grid">
-      <a class="card" href="http://localhost:8189" target="_blank">
+      <a class="card" href="http://localhost:8189/?sso=1" target="_blank">
         <div class="ico">🗂️</div>
-        <div><h3>Governance</h3><p><b>Polaris Console</b> — Governed Iceberg catalog — catalogs, roles &amp; per-user grants.</p><span class="cred">analyst / analyst</span></div>
+        <div><h3>Governance</h3><p><b>Polaris Console</b> — Governed Iceberg catalog — catalogs, roles &amp; per-user grants.</p></div>
       </a>
-      <a class="card" href="http://localhost:9001" target="_blank">
+      <a class="card" href="http://localhost:9001/rustfs/console/" target="_blank">
         <div class="ico">🪣</div>
-        <div><h3>Storage</h3><p><b>MinIO</b> — S3-compatible object storage — the lake.</p><span class="cred">minioadmin / minioadmin</span></div>
+        <div><h3>Storage</h3><p><b>RustFS</b> — S3-compatible object storage — the lake; you see your own bucket.</p></div>
       </a>
     </div>
 
-    <div class="section-title">Polaris logins — governed catalog users</div>
-    <div class="creds">
-      <table>
-        <thead>
-          <tr><th>Principal</th><th>Client ID / Secret</th><th>Access — bronze / silver / gold</th></tr>
-        </thead>
-        <tbody>
-          <tr><td class="adm">root</td><td><code>root</code> / <code>s3cr3t</code></td><td>Admin — manages the catalog + full content (runs the ingest/build pipeline)</td></tr>
-          <tr><td>analyst</td><td><code>analyst</code> / <code>analyst</code></td><td>gold: read only</td></tr>
-          <tr><td>engineer</td><td><code>engineer</code> / <code>engineer</code></td><td>gold: read · silver: read + write + create</td></tr>
-          <tr><td>lead</td><td><code>lead</code> / <code>lead</code></td><td>bronze + silver + gold: full read + write + create</td></tr>
-        </tbody>
-      </table>
-      <p class="note">Personas log in with <b>client id = secret = name</b> (Polaris Console &amp; API). Realm <code>POLARIS</code>, catalog <code>polaris_lake</code>. Dev defaults — not for production.</p>
-    </div>
 
     <footer>
       🎓 <a href="https://maarthala.github.io/databrick-local-simulator/" target="_blank" rel="noopener">Data Engineering course</a>
@@ -168,5 +160,38 @@
       📖 <a href="https://github.com/maarthala/databrick-local-simulator#readme" target="_blank">Docs &amp; GitHub</a>
     </footer>
   </div>
+  <script>
+    // Who's signed in + their lakehouse. /api/me is served by home-api behind
+    // oauth2-proxy; the first call also creates the learner's lakehouse.
+    (function () {
+      var k8s = /(^|\.)de\.lan$/.test(location.hostname);
+      var auth = k8s ? 'http://auth.de.lan' : 'http://localhost:8180';
+      var back = location.origin + '/';
+      // Log out = clear oauth2-proxy's cookie, then end the Keycloak SSO session.
+      var kcOut = auth + '/realms/de-lab/protocol/openid-connect/logout?client_id=de-lab-home'
+                + '&post_logout_redirect_uri=' + encodeURIComponent(back);
+      document.getElementById('me-out').href = '/oauth2/sign_out?rd=' + encodeURIComponent(kcOut);
+      fetch('/api/me', {credentials: 'same-origin'})
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (me) {
+          if (!me) return;
+          document.getElementById('me-name').textContent = me.user;
+          // Local: Airflow's host port is configurable (AIRFLOW_HOST_PORT in .env)
+          if (!k8s && me.airflow_port) {
+            document.getElementById('airflow-tile').href = 'http://localhost:' + me.airflow_port;
+          }
+          var lake = document.getElementById('me-lake');
+          if (me.status === 'ready') {
+            lake.textContent = 'your lakehouse: ' + me.lakehouse + ' ✓ · bucket: ' + me.bucket;
+            lake.className = 'lake ok';
+          } else {
+            lake.textContent = 'lakehouse not ready — ' + (me.detail || 'try again shortly');
+            lake.className = 'lake err';
+          }
+          document.getElementById('me').hidden = false;
+        })
+        .catch(function () {});
+    })();
+  </script>
 </body>
 </html>

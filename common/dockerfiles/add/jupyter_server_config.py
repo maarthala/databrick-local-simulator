@@ -65,6 +65,23 @@ c.FileContentsManager.post_save_hook = post_save_hook
 # explicitly — it installs the /jupyterfs/resources handler the left-panel browser
 # calls (without it the UI 404s and no drive appears).
 c.ServerApp.jpserver_extensions = {"jupyterfs.extension": True}
+
+
+# An empty "folder marker" object (key "dags/") is listed by s3fs as a child of the
+# folder itself, so the drive shows dags/dags/dags… forever. Hide the self-entry.
+import fsspec  # noqa: E402
+import s3fs  # noqa: E402
+
+
+class _LabS3(s3fs.S3FileSystem):
+    async def _ls(self, path, detail=False, **kwargs):
+        out = await super()._ls(path, detail=True, **kwargs)
+        here = self._strip_protocol(path).rstrip("/")
+        out = [o for o in out if o["name"].rstrip("/") != here]
+        return out if detail else [o["name"] for o in out]
+
+
+fsspec.register_implementation("s3", _LabS3, clobber=True)
 c.ServerApp.contents_manager_class = "jupyterfs.metamanager.MetaManager"
 c.JupyterFs.resources = [
     {
@@ -81,3 +98,14 @@ c.JupyterFs.resources = [
         },
     }
 ]
+# JupyterHub learners: ~/work/notebooks and ~/work/dags live in the normal file browser
+# and are mirrored to their own bucket (dags/ → Airflow). See lab_sync.py.
+import sys  # noqa: E402
+sys.path.insert(0, "/etc/jupyter")
+import lab_sync  # noqa: E402
+
+c.JupyterFs.root_manager_class = lab_sync.SyncedFileManager
+try:                                    # never block the server from starting
+    lab_sync.initial_sync(lab_sync.ROOT)
+except Exception as exc:
+    print(f"[lab_sync] initial sync failed: {exc}", flush=True)

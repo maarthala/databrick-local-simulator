@@ -1,0 +1,333 @@
+{
+  "realm": "de-lab",
+  "displayName": "Epireum's Data Engineering Lab",
+  "enabled": true,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "ssoSessionIdleTimeout": 7200,
+  "ssoSessionMaxLifespan": 43200,
+  "groups": [
+    {
+      "name": "learners"
+    },
+    {
+      "name": "instructors",
+      "realmRoles": [
+        "admin"
+      ]
+    }
+  ],
+  "defaultGroups": [
+    "/learners"
+  ],
+  "clients": [
+    {
+      "clientId": "de-lab-home",
+      "name": "DE Learning Lab \u2014 home page",
+      "publicClient": false,
+      "secret": "de-lab-home-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8000/oauth2/callback",
+        "http://de.lan/oauth2/callback"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:8000/*##http://de.lan/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "de-lab-home",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "jupyterhub",
+      "name": "JupyterHub \u2014 one Jupyter per learner",
+      "publicClient": false,
+      "secret": "jupyterhub-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8008/hub/oauth_callback",
+        "http://jupyter.de.lan/hub/oauth_callback"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "rustfs",
+      "name": "RustFS console \u2014 SSO, own bucket only",
+      "publicClient": false,
+      "secret": "rustfs-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:9001/*",
+        "http://rustfs.de.lan/*",
+        "http://minio.de.lan/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "policy",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "policy",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "sqlpad",
+      "name": "SQLPad \u2014 SQL workbench",
+      "publicClient": false,
+      "secret": "sqlpad-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8003/auth/oidc/callback",
+        "http://sqlpad.de.lan/auth/oidc/callback"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8003/*##http://sqlpad.de.lan/*"
+      },
+      "webOrigins": [
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic"
+      ]
+    },
+    {
+      "clientId": "polaris",
+      "name": "Polaris catalog API (token audience)",
+      "publicClient": false,
+      "secret": "polaris-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "bearerOnly": false
+    },
+    {
+      "clientId": "polaris-ui",
+      "name": "Polaris Console \u2014 sign in with the lab account",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8189/*",
+        "http://polaris-console.de.lan/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8189",
+        "http://polaris-console.de.lan"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "principal_name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "principal_name",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "principal_roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "principal_roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "superset",
+      "name": "Superset \u2014 dashboards",
+      "publicClient": false,
+      "secret": "superset-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8004/oauth-authorized/keycloak",
+        "http://superset.de.lan/oauth-authorized/keycloak"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8004/*##http://superset.de.lan/*"
+      },
+      "webOrigins": [
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "airflow",
+      "name": "Airflow \u2014 orchestration",
+      "publicClient": false,
+      "secret": "airflow-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8011/auth/oauth-authorized/keycloak",
+        "http://localhost:8001/auth/oauth-authorized/keycloak",
+        "http://airflow.de.lan/auth/oauth-authorized/keycloak"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8011/*##http://localhost:8001/*##http://airflow.de.lan/*"
+      },
+      "webOrigins": [
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "instructor",
+      "enabled": true,
+      "email": "instructor@de.lan",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "instructor",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/instructors"
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{},\"pattern\":{\"pattern\":\"^[a-z0-9]{3,30}$\",\"error-message\":\"Use 3\\u201330 lowercase letters and digits (it also names your lakehouse and storage bucket).\"}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}]}"
+          ]
+        }
+      }
+    ]
+  },
+  "loginTheme": "de-lab",
+  "displayNameHtml": "Epireum&#39;s Data Engineering Lab<span class=\"tag\">Your gateway to a Data Engineering career</span>",
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Lab instructors \u2014 admin in SQLPad / tools that read a `roles` claim"
+      }
+    ]
+  }
+}

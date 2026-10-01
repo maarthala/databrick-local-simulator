@@ -61,7 +61,8 @@ learning.
     ```bash
     make ps                       # all services should be "running"/"healthy"
     ```
-    Open the landing page at **<http://localhost:8000>** — every tool tiles off it. Then run the
+    Open the landing page at **<http://localhost:8000>**. It asks you to sign in: **Register** your
+    own account (or use `instructor` / `instructor`). Every tool tiles off it. Then run the
     [setup checklist](prerequisites.md#verify-your-setup).
 
     ### Day-to-day
@@ -114,7 +115,8 @@ learning.
     ```bash
     kubectl -n de-stack get pods         # wait for everything to be Running/Ready
     ```
-    Open the landing page at **`http://home.de.lan`**. All UIs live at `http(s)://<name>.de.lan`
+    Open the landing page at **`http://de.lan`**. Learners **register / sign in** there (Keycloak at
+    `http://auth.de.lan`, realm `de-lab`); each gets their own lakehouse on first login. All UIs live at `http(s)://<name>.de.lan`
     (jupyter, trino, superset, airflow, spark, minio, polaris-console) — the landing page links them.
 
     ### Teardown

@@ -66,7 +66,7 @@ All UIs are at `https?://<name>.de.lan`. Default credentials (change for anythin
 
 | Service | URL | Login |
 |---|---|---|
-| Landing page | `http://home.de.lan` | — |
+| Landing page | `http://de.lan` | — |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | MinIO console | `http://minio.de.lan` | `minioadmin` / `minioadmin` |
 | Polaris Console | `http://polaris-console.de.lan` | `analyst`/`engineer`/`lead` (client id = secret = name); admin `root`/`s3cr3t` |

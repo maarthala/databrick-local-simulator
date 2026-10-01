@@ -1,5 +1,5 @@
 #!/bin/sh
-# Seed MinIO with the demo bucket.
+# Seed the object store (RustFS, S3-compatible; MinIO's mc works against it) with the demo bucket.
 # Runs as a one-shot container (minio-init) after MinIO starts.
 set -e
 
@@ -16,6 +16,10 @@ echo "MinIO is ready."
 
 # Buckets (idempotent).
 mc mb --ignore-existing local/demo-bucket
+
+# Learner access: home-api / JupyterHub create, per learner, the bucket <user>-lake with a
+# hard quota and a storage policy named after the user (only that bucket; instructors:
+# everything) — RustFS doesn't expand ${jwt:…} in resources, so there's no shared policy.
 
 echo "Buckets after setup:"
 mc ls local/

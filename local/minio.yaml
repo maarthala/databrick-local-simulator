@@ -1,29 +1,51 @@
 
 services:
   # S3-compatible object storage (replaces LocalStack). Console UI at :9001.
+  # Object storage: RustFS (S3-compatible, Apache-2.0, maintained) replaced the archived
+  # MinIO. Service + network name stay `minio` (and keys minioadmin) so every client —
+  # Spark s3a, Iceberg/Polaris, Trino, Airflow, home-api — is unchanged.
+  # Console: http://localhost:9001/rustfs/console/ — "Login with Epireum lab account"
+  # (Keycloak, client `rustfs`; the username is the `policy` claim → each learner's own
+  # policy = only <username>-lake, created by home-api/JupyterHub with a hard quota).
   minio:
-    container_name: minio
-    # MinIO stopped publishing community images and deleted minio/minio + minio/mc from
-    # Docker Hub (2026-09). These are unmodified mirrors of the last releases (AGPL-3.0,
-    # source: github.com/minio/minio) — frozen: no further upstream fixes.
-    image: ghcr.io/maarthala/de-stack/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: rustfs
+    image: rustfs/rustfs:1.0.0
     restart: always
-    command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: minioadmin
+      RUSTFS_SECRET_KEY: minioadmin
+      # SSO for the console. RustFS refuses outbound calls to private hosts unless allowed;
+      # discovery goes to the internal Keycloak, tokens carry the PUBLIC issuer.
+      RUSTFS_OUTBOUND_ALLOW_ORIGINS: http://keycloak:8080
+      RUSTFS_IDENTITY_OPENID_ENABLE: "on"
+      RUSTFS_IDENTITY_OPENID_CONFIG_URL: http://keycloak:8080/realms/de-lab/.well-known/openid-configuration
+      RUSTFS_IDENTITY_OPENID_ISSUER: http://localhost:8180/realms/de-lab
+      RUSTFS_IDENTITY_OPENID_CLIENT_ID: rustfs
+      RUSTFS_IDENTITY_OPENID_CLIENT_SECRET: rustfs-secret
+      RUSTFS_IDENTITY_OPENID_CLAIM_NAME: policy
+      RUSTFS_IDENTITY_OPENID_SCOPES: openid,profile
+      RUSTFS_IDENTITY_OPENID_DISPLAY_NAME: Epireum lab account
+      RUSTFS_BROWSER_REDIRECT_URL: http://localhost:9001
+      # Quotas fail closed until the usage scanner has counted a bucket, so a brand-new
+      # learner bucket refuses uploads until the first scan. Lab data is tiny: scan every 10s.
+      RUSTFS_SCANNER_CYCLE: "10"
     ports:
       - "9002:9000"   # S3 API  (9000 is taken by ClickHouse on the host)
-      - "9001:9001"   # Web console
+      - "9001:9001"   # Web console (/rustfs/console/)
     volumes:
-      - minio-data:/data
+      - rustfs-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
     networks:
-      - sparknet
+      sparknet:
+        aliases: [rustfs]
 
   # One-shot: waits for MinIO, then creates the demo buckets and uploads the
   minio-init:
@@ -61,4 +83,5 @@ services:
       - sparknet
 
 volumes:
-  minio-data:
+  minio-data:        # old MinIO data (kept; no longer mounted)
+  rustfs-data:

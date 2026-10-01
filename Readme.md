@@ -56,6 +56,7 @@ integration-level updates (like AdventureWorks or SQLPad) get an entry.
 
 | Date | Release / integration | What it adds | Scope |
 |---|---|---|---|
+| 2026-10-01 | **Learner front door (Keycloak)** | Landing page behind a Keycloak login / self-registration (oauth2-proxy); each learner gets their own Polaris lakehouse (`<name>_lake`, owner) + read-only shared lake on first login (home-api) | local · k8s |
 | 2026-10-01 | **Delta SQL + table maintenance** | Delta SQL extension + DeltaCatalog enabled (`VACUUM`, `OPTIMIZE … ZORDER BY`, `DESCRIBE HISTORY`); Iceberg compaction / z-order / snapshot expiry / orphan cleanup verified from Spark + Trino; default Spark catalog now in-memory (no Hive Metastore) | local · k8s |
 | 2026-09-30 | **Materialized views in `%%sql`** | `CREATE / REFRESH / DROP / SHOW MATERIALIZED VIEW` in notebooks, via Spark 4.1 Declarative Pipelines; results governed in Polaris (lesson 4.5) | local · k8s |
 | 2026-09-29 | **Stack upgrade (Spark 4.1)** | Spark 4.1.3 + Iceberg 1.11 + Delta 4.4, Trino 483, Airflow 3.3.2, Superset 6.1, Polaris 1.8, Postgres 18; images pinned (only polaris-console on `:latest`); MinIO + mc mirrored to GHCR | local · k8s |

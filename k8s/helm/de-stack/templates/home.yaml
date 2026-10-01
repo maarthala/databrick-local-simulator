@@ -17,6 +17,10 @@ data:
    | replace "http://localhost:8189" (printf "http://polaris-console.%s" .Values.ingress.baseHost)
    | replace "http://localhost:9001" (printf "http://minio.%s" .Values.ingress.baseHost)
    | indent 4 }}
+  files.html: |
+{{ .Files.Get "files/home/files.html" | indent 4 }}
+  catalogs.html: |
+{{ .Files.Get "files/home/catalogs.html" | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -39,6 +43,8 @@ spec:
             - { name: http, containerPort: 80 }
           volumeMounts:
             - { name: html, mountPath: /usr/share/nginx/html/index.html, subPath: index.html }
+            - { name: html, mountPath: /usr/share/nginx/html/files.html, subPath: files.html }
+            - { name: html, mountPath: /usr/share/nginx/html/catalogs.html, subPath: catalogs.html }
       volumes:
         - { name: html, configMap: { name: home-html } }
 ---
@@ -58,6 +64,12 @@ kind: Ingress
 metadata:
   name: home
   labels: {{- include "de-stack.labels" . | nindent 4 }}
+  {{- if .Values.keycloak.enabled }}
+  annotations:
+    # oauth2-proxy's session cookie (holds the tokens) is bigger than nginx's default
+    # 4k header buffer → "upstream sent too big header" / 502 right after login.
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
@@ -67,6 +79,107 @@ spec:
           - path: /
             pathType: Prefix
             backend:
+              {{- if .Values.keycloak.enabled }}
+              service: { name: oauth2-proxy, port: { number: 4180 } }
+              {{- else }}
               service: { name: home, port: { number: 80 } }
+              {{- end }}
+{{- end }}
+{{- if .Values.keycloak.enabled }}
+---
+# home-api — "who am I" for the landing page + creates the learner's own lakehouse
+# (Polaris catalog <name>_lake, principal, grants) on first login.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-api
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "home-api") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "home-api") | nindent 8 }}
+    spec:
+      containers:
+        - name: home-api
+          image: {{ .Values.homeApi.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: POLARIS_URL, value: "http://polaris:8181" }
+          ports:
+            - { name: http, containerPort: 8000 }
+          readinessProbe:
+            httpGet: { path: /api/health, port: 8000 }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-api
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "home-api") | nindent 4 }}
+  ports:
+    - { name: http, port: 8000, targetPort: 8000 }
+---
+# oauth2-proxy — guards the landing page with the Keycloak login (realm de-lab).
+# Browser-facing issuer/login on auth.<baseHost>; token + keys via the keycloak Service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "oauth2-proxy") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "de-stack.selector" (dict "app" "oauth2-proxy") | nindent 8 }}
+    spec:
+      containers:
+        - name: oauth2-proxy
+          image: {{ .Values.oauth2Proxy.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: OAUTH2_PROXY_HTTP_ADDRESS, value: "0.0.0.0:4180" }
+            - { name: OAUTH2_PROXY_PROVIDER, value: keycloak-oidc }
+            - { name: OAUTH2_PROXY_CLIENT_ID, value: de-lab-home }
+            - { name: OAUTH2_PROXY_CLIENT_SECRET, value: de-lab-home-secret }
+            - { name: OAUTH2_PROXY_CODE_CHALLENGE_METHOD, value: S256 }
+            - { name: OAUTH2_PROXY_OIDC_ISSUER_URL, value: "http://auth.{{ .Values.ingress.baseHost }}/realms/de-lab" }
+            - { name: OAUTH2_PROXY_SKIP_OIDC_DISCOVERY, value: "true" }
+            - { name: OAUTH2_PROXY_LOGIN_URL, value: "http://auth.{{ .Values.ingress.baseHost }}/realms/de-lab/protocol/openid-connect/auth" }
+            - { name: OAUTH2_PROXY_REDEEM_URL, value: "http://keycloak:8080/realms/de-lab/protocol/openid-connect/token" }
+            - { name: OAUTH2_PROXY_OIDC_JWKS_URL, value: "http://keycloak:8080/realms/de-lab/protocol/openid-connect/certs" }
+            - { name: OAUTH2_PROXY_REDIRECT_URL, value: "http://{{ .Values.ingress.baseHost }}/oauth2/callback" }
+            - { name: OAUTH2_PROXY_UPSTREAMS, value: "http://home:80/,http://home-api:8000/api/" }
+            - { name: OAUTH2_PROXY_PASS_USER_HEADERS, value: "true" }
+            - { name: OAUTH2_PROXY_EMAIL_DOMAINS, value: "*" }
+            - { name: OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL, value: "true" }
+            - { name: OAUTH2_PROXY_OIDC_EMAIL_CLAIM, value: preferred_username }   # registration asks no email
+            - { name: OAUTH2_PROXY_SKIP_PROVIDER_BUTTON, value: "true" }
+            - { name: OAUTH2_PROXY_COOKIE_SECRET, value: {{ .Values.oauth2Proxy.cookieSecret | quote }} }
+            - { name: OAUTH2_PROXY_COOKIE_SECURE, value: "false" }
+            - { name: OAUTH2_PROXY_COOKIE_NAME, value: _de_lab }
+            # one CSRF/PKCE cookie per login attempt (second tab / stale login page → 500 otherwise)
+            - { name: OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST, value: "true" }
+            - { name: OAUTH2_PROXY_COOKIE_CSRF_EXPIRE, value: 15m }
+            - { name: OAUTH2_PROXY_WHITELIST_DOMAINS, value: "auth.{{ .Values.ingress.baseHost }}" }
+          ports:
+            - { name: http, containerPort: 4180 }
+          readinessProbe:
+            httpGet: { path: /ping, port: 4180 }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "de-stack.selector" (dict "app" "oauth2-proxy") | nindent 4 }}
+  ports:
+    - { name: http, port: 4180, targetPort: 4180 }
 {{- end }}
 {{- end }}
