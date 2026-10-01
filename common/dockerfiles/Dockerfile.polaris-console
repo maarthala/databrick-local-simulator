@@ -20,4 +20,10 @@ RUN set -e; cd /opt/app-root/src; B=$(ls assets/index-*.js); \
     sed -i "s#/$B#/$N#" index.html; grep -q "/$N" index.html; \
     grep -q 'lab-sso-' index.html; \
     chown -R polaris /opt/app-root/src
+# The page itself (index.html, every SPA route) must be re-checked, or browsers keep the
+# old console after an update (the hashed .js bundles may stay cached). Local had this from
+# the polaris-proxy; on k8s the ingress talks to this nginx directly.
+RUN set -e; F=/opt/app-root/etc/nginx.default.d/default.conf; \
+    sed -i 's#try_files $uri $uri/ /index.html;#try_files $uri $uri/ /index.html;\n        add_header Cache-Control "no-cache" always;\n        add_header X-Frame-Options "SAMEORIGIN" always;\n        add_header X-Content-Type-Options "nosniff" always;#' "$F"; \
+    grep -q 'Cache-Control "no-cache"' "$F"
 USER polaris
