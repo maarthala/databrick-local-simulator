@@ -29,7 +29,7 @@ except Exception as _e:  # noqa: BLE001
 
 
 # --- More catalogs: your own extra catalogs + ones other learners shared with you ------
-def use_catalog(catalog, alias=None):
+def use_catalog(catalog, alias=None, quiet=False):
     """Make another Polaris catalog usable in Spark, with YOUR login (same server and
     settings as `iceberg`). Catalogs come from the lab's "My catalogs" page:
         use_catalog("kiran_sales")
@@ -41,8 +41,19 @@ def use_catalog(catalog, alias=None):
         if k == base or k.startswith(base + "."):
             spark.conf.set("spark.sql.catalog." + alias + k[len(base):], v)
     spark.conf.set(f"spark.sql.catalog.{alias}.warehouse", catalog)
-    print(f"✓ catalog `{alias}` → Polaris catalog {catalog}")
+    if not quiet:
+        print(f"✓ catalog `{alias}` → Polaris catalog {catalog}")
     return alias
+
+
+# The course's shared lake (read-only for learners) as `shared` — e.g. shared.gold.daily_sales —
+# next to your own `iceberg`. Only under JupyterHub; elsewhere `iceberg` IS the shared lake.
+if _LAKE:
+    try:
+        use_catalog(_os_env.get("SHARED_CATALOG", "polaris_lake"), "shared", quiet=True)
+        print("✓ shared = the course's shared lake (read-only) — e.g. shared.gold.daily_sales")
+    except Exception as _e:  # noqa: BLE001
+        print(f"⚠ shared catalog not set ({_e})")
 
 
 # --- Materialized views for `%%sql` ------------------------------------------------
