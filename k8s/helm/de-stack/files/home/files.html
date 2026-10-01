@@ -7,12 +7,13 @@
   <style>
     :root{
       --bg:#0b1020; --panel:#141b2e; --panel2:#1b2438; --line:#2a3550;
-      --ink:#e8edf7; --muted:#9aa8c7; --accent:#6d8bff; --accent2:#39d0c4; --danger:#ff6b6b;
+      --ink:#e8edf7; --muted:#9aa8c7; --accent:#6d8bff; --accent2:#39d0c4; --danger:#ff6b6b; --gold:#e2b93b;
       --shadow:0 10px 30px rgba(0,0,0,.35);
     }
     *{box-sizing:border-box}
+    html,body{height:100%}
     body{
-      margin:0; min-height:100vh; color:var(--ink);
+      margin:0; color:var(--ink); display:flex; flex-direction:column;
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
       background:
         radial-gradient(1200px 600px at 80% -10%, rgba(109,139,255,.18), transparent 60%),
@@ -20,228 +21,359 @@
         var(--bg);
     }
     a{color:inherit; text-decoration:none}
-    .wrap{max-width:1120px; margin:0 auto; padding:0 20px 64px}
-    .top{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:18px 0 4px; color:var(--muted); font-size:.92rem}
-    .top a:hover{color:var(--ink)}
-    h1{font-size:1.9rem; margin:18px 0 4px; font-weight:800}
-    h1 .dot{color:var(--accent)}
-    .sub{color:var(--muted); margin-bottom:18px}
-    .sub code{background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:1px 6px; color:var(--accent2)}
-    .bar{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
-         background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; box-shadow:var(--shadow)}
+    button{font:inherit; cursor:pointer; border-radius:9px; padding:7px 13px; border:1px solid var(--line); background:var(--panel2); color:var(--ink)}
+    button:hover{border-color:var(--accent)}
+    button:disabled{opacity:.45; cursor:not-allowed}
+    button.primary{border:0; font-weight:700; color:#0b1020; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+    button.danger{border-color:rgba(255,107,107,.6); color:#ffb3b0}
+    button.danger:hover{background:rgba(255,107,107,.12)}
+    button.icon{padding:3px 8px; font-size:.85rem; background:transparent; border-color:transparent; color:var(--muted)}
+    button.icon:hover{border-color:var(--line); color:var(--ink)}
+    button.icon.del:hover{border-color:var(--danger); color:var(--danger)}
+    input[type=text]{font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:7px 10px; outline:none}
+    input[type=text]:focus{border-color:var(--accent)}
+
+    /* ---- header ---- */
+    header{display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 20px;
+           border-bottom:1px solid var(--line); background:rgba(11,16,32,.6); backdrop-filter:blur(6px)}
+    .brand{display:flex; align-items:center; gap:14px}
+    .brand a.back{color:var(--muted); font-size:.92rem} .brand a.back:hover{color:var(--ink)}
+    .brand h1{margin:0; font-size:1.25rem; font-weight:800}
+    .brand h1 .dot{color:var(--accent)}
+    .brand h1 .bucket{color:var(--accent2)}
+    #who{color:var(--muted); font-size:.9rem}
+
+    /* ---- two-pane app ---- */
+    .app{flex:1; display:grid; grid-template-columns:270px 1fr; min-height:0}
+    aside{border-right:1px solid var(--line); background:rgba(20,27,46,.55); overflow:auto; padding:12px 8px}
+    aside .title{font-size:.75rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); padding:4px 10px 8px}
+    .tree ul{list-style:none; margin:0; padding-left:16px}
+    .tree > ul{padding-left:0}
+    .node{display:flex; align-items:center; gap:4px; padding:4px 6px; border-radius:7px; cursor:pointer; white-space:nowrap; font-size:.93rem; color:var(--muted)}
+    .node:hover{background:rgba(109,139,255,.08); color:var(--ink)}
+    .node.active{background:rgba(109,139,255,.16); color:var(--ink); font-weight:600}
+    .caret{width:16px; text-align:center; font-size:.75rem; color:var(--muted); flex:none}
+    .caret.leaf{visibility:hidden}
+    .badge{font-size:.68rem; margin-left:6px; padding:1px 6px; border-radius:999px; border:1px solid rgba(226,185,59,.5); color:#f3d98b}
+    main{display:flex; flex-direction:column; min-width:0; min-height:0; padding:16px 20px; gap:12px}
+    .toolbar{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+             background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px}
     .crumbs{display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:.95rem}
     .crumbs a{color:var(--accent2)} .crumbs a:hover{text-decoration:underline}
     .crumbs .sep{color:var(--muted)}
-    .btns{display:flex; gap:8px; flex-wrap:wrap}
-    button{font:inherit; cursor:pointer; border-radius:10px; padding:8px 14px; border:1px solid var(--line);
-           background:var(--panel2); color:var(--ink)}
-    button:hover{border-color:var(--accent)}
-    button.primary{border:0; font-weight:700; color:#0b1020; background:linear-gradient(135deg,var(--accent),var(--accent2))}
-    button.icon{padding:4px 9px; font-size:.85rem; background:transparent}
-    button.icon.del:hover{border-color:var(--danger); color:var(--danger)}
-    .banner{margin-top:14px; padding:12px 14px; border-radius:12px; border:1px solid rgba(226,185,59,.5);
-            background:rgba(226,185,59,.08); color:#f3d98b; display:none}
-    .panel{margin-top:14px; background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; position:relative}
+    .btns{display:flex; gap:8px}
+    .banner{padding:10px 14px; border-radius:10px; border:1px solid rgba(226,185,59,.5); background:rgba(226,185,59,.08); color:#f3d98b; display:none; font-size:.92rem}
+    .banner code, .hint code{background:var(--panel2); border-radius:5px; padding:1px 5px}
+    .list{position:relative; flex:1; min-height:240px; overflow:auto; background:var(--panel); border:1px solid var(--line); border-radius:12px}
     table{width:100%; border-collapse:collapse}
-    th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); font-size:.94rem}
-    th{color:var(--muted); font-weight:600; font-size:.82rem; text-transform:uppercase; letter-spacing:.04em; background:var(--panel2)}
-    tr:last-child td{border-bottom:0}
+    th,td{text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); font-size:.93rem}
+    th{position:sticky; top:0; z-index:1; color:var(--muted); font-weight:600; font-size:.76rem; text-transform:uppercase; letter-spacing:.05em; background:var(--panel2)}
     tbody tr:hover{background:rgba(109,139,255,.06)}
+    td.name{display:flex; align-items:center; gap:8px}
     td.name a{color:var(--ink)} td.name a:hover{color:var(--accent2)}
     td.num, th.num{text-align:right; white-space:nowrap; color:var(--muted)}
-    td.act{text-align:right; white-space:nowrap}
-    .tag{font-size:.72rem; margin-left:8px; padding:2px 7px; border-radius:999px; border:1px solid rgba(226,185,59,.5); color:#f3d98b}
-    .empty{padding:36px; text-align:center; color:var(--muted)}
-    .drop{position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:1.1rem; font-weight:700;
-          background:rgba(11,16,32,.85); border:2px dashed var(--accent2); border-radius:14px; color:var(--accent2)}
-    .panel.dragging .drop{display:flex}
-    .progress{margin-top:12px; display:flex; flex-direction:column; gap:6px}
+    td.act{text-align:right; white-space:nowrap; width:1%}
+    tr.newrow td{background:rgba(57,208,196,.06)}
+    tr.newrow input{width:260px}
+    .empty{padding:40px; text-align:center; color:var(--muted)}
+    .drop{position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-weight:700; font-size:1.05rem;
+          background:rgba(11,16,32,.86); border:2px dashed var(--accent2); border-radius:12px; color:var(--accent2); z-index:2}
+    .list.dragging .drop{display:flex}
+    .hint{color:var(--muted); font-size:.85rem}
+    .uploads{display:flex; flex-direction:column; gap:6px}
     .prow{font-size:.85rem; color:var(--muted)}
-    .prow .track{height:6px; background:var(--panel2); border-radius:6px; overflow:hidden; margin-top:4px}
+    .prow .track{height:5px; background:var(--panel2); border-radius:5px; overflow:hidden; margin-top:3px}
     .prow .fill{height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--accent2))}
-    .toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--panel2); border:1px solid var(--line);
-           padding:10px 16px; border-radius:10px; box-shadow:var(--shadow); display:none; max-width:90vw}
+
+    /* ---- dialog ---- */
+    .scrim{position:fixed; inset:0; background:rgba(5,8,18,.65); display:none; align-items:center; justify-content:center; z-index:10}
+    .dialog{width:min(460px,92vw); background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:20px}
+    .dialog h3{margin:0 0 8px; font-size:1.1rem}
+    .dialog p{margin:0 0 12px; color:var(--muted); line-height:1.45; white-space:pre-line}
+    .dialog p b{color:var(--ink)}
+    .dialog input{width:100%; margin-bottom:12px}
+    .dialog .row{display:flex; justify-content:flex-end; gap:8px}
+    .dialog.warn h3{color:#f3d98b}
+    .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--panel2); border:1px solid var(--line);
+           padding:10px 16px; border-radius:10px; box-shadow:var(--shadow); display:none; max-width:90vw; z-index:11}
     .toast.err{border-color:var(--danger); color:#ffb3b0}
+    @media (max-width:760px){ .app{grid-template-columns:1fr} aside{max-height:30vh; border-right:0; border-bottom:1px solid var(--line)} }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <a href="/">← Lab home</a>
-      <span id="who"></span>
+  <header>
+    <div class="brand">
+      <a class="back" href="/">← Lab home</a>
+      <h1>My files <span class="dot">·</span> <span class="bucket" id="bucket">…</span></h1>
     </div>
-    <h1>My files <span class="dot">·</span> <span id="bucket">…</span></h1>
-    <div class="sub">Your own storage bucket — only you can see it. Use a file from Spark with its path, e.g. <code id="example">s3a://…/uploads/orders.csv</code></div>
+    <span id="who"></span>
+  </header>
 
-    <div class="bar">
-      <div class="crumbs" id="crumbs"></div>
-      <div class="btns">
-        <button id="mkdir">＋ New folder</button>
-        <button id="refresh">↻ Refresh</button>
-        <button class="primary" id="upload">⬆ Upload files</button>
-        <input type="file" id="picker" multiple hidden>
+  <div class="app">
+    <aside>
+      <div class="title">Folders</div>
+      <div class="tree"><ul id="tree"></ul></div>
+    </aside>
+
+    <main>
+      <div class="toolbar">
+        <div class="crumbs" id="crumbs"></div>
+        <div class="btns">
+          <button id="mkdir">＋ New folder</button>
+          <button id="refresh" title="Refresh">↻</button>
+          <button class="primary" id="upload">⬆ Upload</button>
+          <input type="file" id="picker" multiple hidden>
+        </div>
       </div>
-    </div>
-    <div class="banner" id="table-banner">⚠ This folder is an <b>Iceberg table</b>. Don't upload into or delete files here —
-      that breaks the table. Change it with SQL instead (e.g. <code>DROP TABLE … PURGE</code>).</div>
-    <div class="progress" id="progress"></div>
-
-    <div class="panel" id="panel">
-      <table>
-        <thead><tr><th>Name</th><th class="num">Size</th><th class="num">Modified</th><th></th></tr></thead>
-        <tbody id="rows"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
-      </table>
-      <div class="drop">Drop files to upload into this folder</div>
-    </div>
+      <div class="banner" id="table-banner">🧊 This folder is an <b>Iceberg table</b>. Don't upload into or delete files here —
+        it breaks the table. Change it with SQL instead, e.g. <code>DROP TABLE … PURGE</code>.</div>
+      <div class="uploads" id="uploads"></div>
+      <div class="list" id="list">
+        <table>
+          <thead><tr><th>Name</th><th class="num">Size</th><th class="num">Modified</th><th></th></tr></thead>
+          <tbody id="rows"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+        </table>
+        <div class="drop">Drop files to upload into this folder</div>
+      </div>
+      <div class="hint">Only you can see this bucket. Use a file from Spark with its path — click ⧉ to copy it, e.g. <code id="example">s3a://…/uploads/orders.csv</code></div>
+    </main>
   </div>
+
+  <div class="scrim" id="scrim"><div class="dialog" id="dialog">
+    <h3 id="d-title"></h3><p id="d-text"></p>
+    <input type="text" id="d-input" autocomplete="off">
+    <div class="row"><button id="d-cancel">Cancel</button><button id="d-ok" class="danger">Delete</button></div>
+  </div></div>
   <div class="toast" id="toast"></div>
 
   <script>
     // "My files": everything goes through /api/files (home-api behind the Keycloak login);
-    // the server always uses YOUR bucket, so there is no bucket name to choose here.
-    var state = {prefix: decodeURIComponent(location.hash.slice(1) || ''), bucket: ''};
+    // the server always uses YOUR bucket — there is no bucket name to choose here.
     var $ = function (id) { return document.getElementById(id); };
+    var state = {prefix: decodeURIComponent(location.hash.slice(1) || ''), bucket: '', tables: {}};
+    var nodes = {};   // prefix -> {li, ul, caret, label, loaded, open}
 
+    // ---------- helpers ----------
     function toast(msg, err) {
       var t = $('toast'); t.textContent = msg; t.className = 'toast' + (err ? ' err' : '');
       t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, 3500);
     }
-    function size(n) {
-      if (n < 1024) return n + ' B';
-      var u = ['KB', 'MB', 'GB']; var i = -1;
-      do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
-      return n.toFixed(n < 10 ? 1 : 0) + ' ' + u[i];
-    }
+    function size(n) { if (n < 1024) return n + ' B'; var u = ['KB', 'MB', 'GB'], i = -1;
+      do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1); return n.toFixed(n < 10 ? 1 : 0) + ' ' + u[i]; }
     function when(iso) { return iso ? new Date(iso).toLocaleString() : ''; }
     function api(method, path, params) {
       var q = new URLSearchParams(params || {}).toString();
       return fetch('/api/files' + path + (q ? '?' + q : ''), {method: method, credentials: 'same-origin'})
         .then(function (r) { return r.json().then(function (j) { return {ok: r.ok, status: r.status, body: j}; }); });
     }
+    function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
     function go(prefix) { location.hash = encodeURIComponent(prefix); }
-    window.addEventListener('hashchange', function () {
-      state.prefix = decodeURIComponent(location.hash.slice(1) || ''); load();
-    });
+    function parentOf(prefix) { var p = prefix.split('/').filter(Boolean).slice(0, -1).join('/'); return p ? p + '/' : ''; }
+    function looksLikeTable(childNames) { return childNames.indexOf('metadata') >= 0; }
 
-    function crumbs() {
-      var c = $('crumbs'); c.innerHTML = '';
-      var root = document.createElement('a'); root.href = '#'; root.textContent = '🪣 ' + (state.bucket || 'bucket');
-      c.appendChild(root);
-      var acc = '';
-      state.prefix.split('/').filter(Boolean).forEach(function (part) {
-        acc += part + '/';
-        var s = document.createElement('span'); s.className = 'sep'; s.textContent = '/'; c.appendChild(s);
-        var a = document.createElement('a'); a.href = '#' + encodeURIComponent(acc); a.textContent = part; c.appendChild(a);
+    // ---------- dialog (replaces browser prompt/confirm) ----------
+    function dialog(opts) {
+      return new Promise(function (resolve) {
+        $('d-title').textContent = opts.title; $('d-text').innerHTML = opts.html || '';
+        $('dialog').className = 'dialog' + (opts.warn ? ' warn' : '');
+        var inp = $('d-input'); inp.style.display = opts.typeToConfirm ? 'block' : 'none'; inp.value = '';
+        inp.placeholder = opts.typeToConfirm || '';
+        var ok = $('d-ok'); ok.textContent = opts.ok || 'Delete'; ok.disabled = !!opts.typeToConfirm;
+        inp.oninput = function () { ok.disabled = inp.value !== opts.typeToConfirm; };
+        $('scrim').style.display = 'flex'; (opts.typeToConfirm ? inp : ok).focus();
+        function close(v) { $('scrim').style.display = 'none'; document.onkeydown = null; resolve(v); }
+        ok.onclick = function () { close(true); }; $('d-cancel').onclick = function () { close(false); };
+        document.onkeydown = function (e) { if (e.key === 'Escape') close(false); if (e.key === 'Enter' && !ok.disabled) close(true); };
       });
     }
 
-    function row(cells) {
-      var tr = document.createElement('tr');
-      cells.forEach(function (c) { var td = document.createElement('td'); if (c.cls) td.className = c.cls;
-        if (c.node) td.appendChild(c.node); else td.textContent = c.text || ''; tr.appendChild(td); });
-      return tr;
+    // ---------- tree ----------
+    function treeNode(prefix, name) {
+      var li = el('li'), row = el('div', 'node'), caret = el('span', 'caret', '▸'), label = el('span', null, (prefix ? '📁 ' : '🪣 ') + name);
+      row.appendChild(caret); row.appendChild(label); li.appendChild(row);
+      var ul = el('ul'); ul.style.display = 'none'; li.appendChild(ul);
+      var n = nodes[prefix] = {li: li, ul: ul, caret: caret, row: row, label: label, loaded: false, open: false};
+      caret.onclick = function (e) { e.stopPropagation(); toggle(prefix); };
+      row.onclick = function () { go(prefix); };
+      if (state.tables[prefix]) markTable(prefix);
+      return li;
     }
-    function btn(label, title, cls, fn) {
-      var b = document.createElement('button'); b.className = 'icon ' + (cls || ''); b.textContent = label; b.title = title;
-      b.onclick = fn; return b;
+    function markTable(prefix) {
+      var n = nodes[prefix]; if (!n || n.label.querySelector('.badge')) return;
+      n.label.textContent = '🧊 ' + n.label.textContent.replace(/^\S+\s/, ''); n.label.appendChild(el('span', 'badge', 'table'));
     }
-    function actions(list) { var d = document.createElement('span'); list.forEach(function (b) { d.appendChild(b); d.appendChild(document.createTextNode(' ')); }); return d; }
+    function fill(prefix, folders) {
+      var n = nodes[prefix]; if (!n) return;
+      n.loaded = true;
+      var keep = {};
+      folders.forEach(function (f) {      // reuse existing nodes so expanded folders stay expanded
+        keep[f.prefix] = true;
+        n.ul.appendChild(nodes[f.prefix] ? nodes[f.prefix].li : treeNode(f.prefix, f.name));
+      });
+      Array.prototype.slice.call(n.ul.children).forEach(function (li) {
+        var gone = Object.keys(nodes).filter(function (k) { return nodes[k].li === li && !keep[k]; });
+        gone.forEach(function (k) { li.remove(); Object.keys(nodes).forEach(function (d) { if (d.indexOf(k) === 0) delete nodes[d]; }); });
+      });
+      n.caret.classList.toggle('leaf', folders.length === 0);
+      if (looksLikeTable(folders.map(function (f) { return f.name; }))) { state.tables[prefix] = true; markTable(prefix); }
+    }
+    function expand(prefix) {
+      var n = nodes[prefix]; if (!n) return Promise.resolve();
+      n.open = true; n.ul.style.display = 'block'; n.caret.textContent = '▾';
+      if (n.loaded) return Promise.resolve();
+      return api('GET', '', {prefix: prefix}).then(function (r) { if (r.ok) fill(prefix, r.body.folders); });
+    }
+    function toggle(prefix) {
+      var n = nodes[prefix];
+      if (n.open) { n.open = false; n.ul.style.display = 'none'; n.caret.textContent = '▸'; } else expand(prefix);
+    }
+    function revealPath(prefix) {           // expand the root, every ancestor and the current folder
+      var parts = prefix.split('/').filter(Boolean), acc = '', chain = [''];
+      parts.forEach(function (p) { acc += p + '/'; chain.push(acc); });
+      return chain.reduce(function (pr, p) { return pr.then(function () { return expand(p); }); }, Promise.resolve());
+    }
+    function highlight() {
+      Object.keys(nodes).forEach(function (k) { nodes[k].row.classList.toggle('active', k === state.prefix); });
+    }
+
+    // ---------- list ----------
+    function crumbs() {
+      var c = $('crumbs'); c.innerHTML = '';
+      var root = el('a', null, '🪣 ' + state.bucket); root.href = '#'; c.appendChild(root);
+      var acc = '';
+      state.prefix.split('/').filter(Boolean).forEach(function (part) {
+        acc += part + '/'; c.appendChild(el('span', 'sep', '/'));
+        var a = el('a', null, part); a.href = '#' + encodeURIComponent(acc); c.appendChild(a);
+      });
+    }
+    function cell(node, cls) { var td = el('td', cls); if (node) td.appendChild(node); return td; }
+    function iconBtn(label, title, cls, fn) { var b = el('button', 'icon ' + (cls || ''), label); b.title = title; b.onclick = fn; return b; }
+    function group(btns) { var s = el('span'); btns.forEach(function (b) { s.appendChild(b); }); return s; }
 
     function load() {
-      api('GET', '', {prefix: state.prefix}).then(function (r) {
+      return api('GET', '', {prefix: state.prefix}).then(function (r) {
         if (!r.ok) { $('rows').innerHTML = ''; return toast(r.body.error || 'could not list files', true); }
-        var d = r.body; state.bucket = d.bucket;
-        $('bucket').textContent = d.bucket;
-        $('example').textContent = 's3a://' + d.bucket + '/uploads/orders.csv';
+        var d = r.body;
+        if (!state.bucket) {                     // first load: build the tree root
+          state.bucket = d.bucket; $('bucket').textContent = d.bucket;
+          $('example').textContent = 's3a://' + d.bucket + '/uploads/orders.csv';
+          $('tree').appendChild(treeNode('', d.bucket));
+        }
+        if (nodes[state.prefix]) fill(state.prefix, d.folders);
+        if (d.is_table) { state.tables[state.prefix] = true; markTable(state.prefix); }
         $('table-banner').style.display = d.is_table ? 'block' : 'none';
         crumbs();
         var rows = $('rows'); rows.innerHTML = '';
         if (state.prefix) {
-          var up = document.createElement('a'); up.href = '#'; up.textContent = '⬑ ..';
-          var parent = state.prefix.split('/').filter(Boolean).slice(0, -1).join('/');
-          up.onclick = function (e) { e.preventDefault(); go(parent ? parent + '/' : ''); };
-          rows.appendChild(row([{node: up, cls: 'name'}, {}, {}, {}]));
+          var up = el('a', null, '⬑  ..'); up.href = '#' + encodeURIComponent(parentOf(state.prefix));
+          var tr = el('tr'); tr.appendChild(cell(up, 'name')); tr.appendChild(el('td')); tr.appendChild(el('td')); tr.appendChild(el('td')); rows.appendChild(tr);
         }
         d.folders.forEach(function (f) {
-          var a = document.createElement('a'); a.href = '#' + encodeURIComponent(f.prefix); a.textContent = '📁 ' + f.name;
-          rows.appendChild(row([{node: a, cls: 'name'}, {text: '—', cls: 'num'}, {cls: 'num'},
-            {cls: 'act', node: actions([btn('🗑', 'Delete folder', 'del', function () { delFolder(f); })])}]));
+          var a = el('a', null, (state.tables[f.prefix] ? '🧊 ' : '📁 ') + f.name); a.href = '#' + encodeURIComponent(f.prefix);
+          var tr = el('tr'); tr.appendChild(cell(a, 'name')); tr.appendChild(el('td', 'num', '—')); tr.appendChild(el('td', 'num'));
+          tr.appendChild(cell(group([iconBtn('🗑', 'Delete folder', 'del', function () { delFolder(f); })]), 'act'));
+          rows.appendChild(tr);
         });
         d.files.forEach(function (f) {
-          var a = document.createElement('a'); a.textContent = '📄 ' + f.name;
-          a.href = '/api/files/download?' + new URLSearchParams({key: f.key});
-          rows.appendChild(row([{node: a, cls: 'name'}, {text: size(f.size), cls: 'num'}, {text: when(f.modified), cls: 'num'},
-            {cls: 'act', node: actions([
-              btn('⧉', 'Copy Spark path', '', function () {
-                var p = 's3a://' + d.bucket + '/' + f.key;
-                (navigator.clipboard ? navigator.clipboard.writeText(p) : Promise.reject()).then(
-                  function () { toast('Copied ' + p); }, function () { window.prompt('Spark path:', p); });
-              }),
-              btn('⬇', 'Download', '', function () { location.href = a.href; }),
-              btn('🗑', 'Delete file', 'del', function () { delFile(f); })])}]));
+          var a = el('a', null, '📄 ' + f.name); a.href = '/api/files/download?' + new URLSearchParams({key: f.key});
+          var tr = el('tr'); tr.appendChild(cell(a, 'name')); tr.appendChild(el('td', 'num', size(f.size))); tr.appendChild(el('td', 'num', when(f.modified)));
+          tr.appendChild(cell(group([
+            iconBtn('⧉', 'Copy Spark path', '', function () {
+              var p = 's3a://' + d.bucket + '/' + f.key;
+              (navigator.clipboard ? navigator.clipboard.writeText(p) : Promise.reject()).then(
+                function () { toast('Copied ' + p); }, function () { toast(p); });
+            }),
+            iconBtn('⬇', 'Download', '', function () { location.href = a.href; }),
+            iconBtn('🗑', 'Delete file', 'del', function () { delFile(f); })]), 'act'));
+          rows.appendChild(tr);
         });
         if (!d.folders.length && !d.files.length) {
-          var tr = document.createElement('tr'); tr.innerHTML = '<td colspan="4" class="empty">This folder is empty — drop files here or click “Upload files”.</td>';
-          rows.appendChild(tr);
+          var e = el('tr'); var td = el('td', 'empty', 'This folder is empty — drop files here or click “Upload”.'); td.colSpan = 4; e.appendChild(td); rows.appendChild(e);
         }
       });
     }
+    function refresh() { return revealPath(state.prefix).then(load).then(highlight); }
 
+    // ---------- actions ----------
+    function newFolderRow() {
+      if ($('rows').querySelector('tr.newrow')) return $('rows').querySelector('tr.newrow input').focus();
+      var tr = el('tr', 'newrow'), td = el('td'); td.colSpan = 4;
+      var inp = el('input'); inp.type = 'text'; inp.placeholder = 'folder name, e.g. uploads';
+      var ok = el('button', 'primary', 'Create'), cancel = el('button', null, 'Cancel');
+      td.appendChild(document.createTextNode('📁 ')); td.appendChild(inp); td.appendChild(document.createTextNode(' ')); td.appendChild(ok);
+      td.appendChild(document.createTextNode(' ')); td.appendChild(cancel); tr.appendChild(td);
+      $('rows').insertBefore(tr, $('rows').firstChild); inp.focus();
+      function create() {
+        var n = inp.value.trim().replace(/^\/+|\/+$/g, '');
+        if (!n) return inp.focus();
+        if (/[\\]|(^|\/)\.\.(\/|$)/.test(n)) return toast('Invalid folder name', true);
+        api('POST', '/mkdir', {prefix: state.prefix + n + '/'}).then(function (r) {
+          if (!r.ok) return toast(r.body.error, true);
+          toast('Created ' + n + '/'); if (nodes[state.prefix]) nodes[state.prefix].loaded = false; refresh();
+        });
+      }
+      ok.onclick = create; cancel.onclick = function () { tr.remove(); };
+      inp.onkeydown = function (e) { if (e.key === 'Enter') create(); if (e.key === 'Escape') tr.remove(); };
+    }
     function delFile(f) {
-      if (!confirm('Delete ' + f.name + '?')) return;
-      api('DELETE', '', {key: f.key}).then(function (r) { r.ok ? (toast('Deleted ' + f.name), load()) : toast(r.body.error, true); });
+      dialog({title: 'Delete file?', html: 'Delete <b>' + f.name.replace(/</g, '&lt;') + '</b> from your bucket? This cannot be undone.'}).then(function (yes) {
+        if (!yes) return;
+        api('DELETE', '', {key: f.key}).then(function (r) { r.ok ? (toast('Deleted ' + f.name), load()) : toast(r.body.error, true); });
+      });
     }
     function delFolder(f) {
-      var typed = prompt('Delete the folder "' + f.name + '" and EVERYTHING in it?\nType the folder name to confirm:');
-      if (typed !== f.name) { if (typed !== null) toast('Name did not match — nothing deleted', true); return; }
-      api('DELETE', '/folder', {prefix: f.prefix}).then(function (r) {
-        if (r.status === 409 && r.body.table) {
-          if (!confirm('⚠ "' + f.name + '" is an Iceberg TABLE.\n\nDeleting its files breaks the table — the proper way is SQL:\n  DROP TABLE … PURGE\n\nDelete the files anyway?')) return;
-          return api('DELETE', '/folder', {prefix: f.prefix, confirm_table: '1'}).then(done);
-        }
-        done(r);
+      var name = f.name.replace(/</g, '&lt;');
+      dialog({title: 'Delete folder?', html: 'Delete <b>' + name + '/</b> and <b>everything inside it</b>? This cannot be undone.\nType the folder name to confirm.',
+              typeToConfirm: f.name}).then(function (yes) {
+        if (!yes) return;
+        api('DELETE', '/folder', {prefix: f.prefix}).then(function (r) {
+          if (r.status === 409 && r.body.table) {
+            return dialog({warn: true, title: '🧊 This is an Iceberg table', ok: 'Delete files anyway',
+              html: '<b>' + name + '</b> is a lakehouse table. Deleting its files breaks the table — the proper way is SQL:\n<code>DROP TABLE … PURGE</code>'})
+              .then(function (yes2) { if (yes2) api('DELETE', '/folder', {prefix: f.prefix, confirm_table: '1'}).then(done); });
+          }
+          done(r);
+        });
       });
-      function done(r) { r.ok ? (toast('Deleted ' + r.body.deleted + ' file(s)'), load()) : toast(r.body.error, true); }
+      function done(r) {
+        if (!r.ok) return toast(r.body.error, true);
+        toast('Deleted ' + r.body.deleted + ' file(s)');
+        if (nodes[state.prefix]) nodes[state.prefix].loaded = false; refresh();
+      }
     }
-
     function uploadFiles(files) {
       Array.prototype.forEach.call(files, function (file) {
-        var key = state.prefix + file.name;
-        var p = document.createElement('div'); p.className = 'prow';
-        p.innerHTML = '<span></span><div class="track"><div class="fill"></div></div>';
-        p.firstChild.textContent = '⬆ ' + file.name; $('progress').appendChild(p);
+        var key = state.prefix + file.name, p = el('div', 'prow');
+        p.appendChild(el('span', null, '⬆ ' + file.name)); var tr = el('div', 'track'), fillEl = el('div', 'fill'); tr.appendChild(fillEl); p.appendChild(tr);
+        $('uploads').appendChild(p);
         var xhr = new XMLHttpRequest();
         xhr.open('PUT', '/api/files/upload?' + new URLSearchParams({key: key}));
         xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-        xhr.upload.onprogress = function (e) { if (e.lengthComputable) p.querySelector('.fill').style.width = (100 * e.loaded / e.total) + '%'; };
+        xhr.upload.onprogress = function (e) { if (e.lengthComputable) fillEl.style.width = (100 * e.loaded / e.total) + '%'; };
         xhr.onload = function () {
-          var ok = xhr.status === 200; var body = {};
-          try { body = JSON.parse(xhr.responseText); } catch (e) {}
+          var ok = xhr.status === 200, body = {}; try { body = JSON.parse(xhr.responseText); } catch (e) {}
           toast(ok ? 'Uploaded ' + file.name : (body.error || 'Upload failed'), !ok);
-          setTimeout(function () { p.remove(); }, 800); load();
+          setTimeout(function () { p.remove(); }, 700); load();
         };
         xhr.onerror = function () { toast('Upload failed: ' + file.name, true); p.remove(); };
         xhr.send(file);
       });
     }
 
+    // ---------- wiring ----------
+    $('mkdir').onclick = newFolderRow;
+    $('refresh').onclick = function () { if (nodes[state.prefix]) nodes[state.prefix].loaded = false; refresh(); };
     $('upload').onclick = function () { $('picker').click(); };
     $('picker').onchange = function () { uploadFiles(this.files); this.value = ''; };
-    $('refresh').onclick = load;
-    $('mkdir').onclick = function () {
-      var n = prompt('New folder name:', 'uploads');
-      if (!n) return; n = n.replace(/^\/+|\/+$/g, '');
-      api('POST', '/mkdir', {prefix: state.prefix + n + '/'}).then(function (r) {
-        r.ok ? (toast('Created ' + n + '/'), go(state.prefix + n + '/')) : toast(r.body.error, true); });
-    };
-    var panel = $('panel');
-    ['dragenter', 'dragover'].forEach(function (ev) { panel.addEventListener(ev, function (e) { e.preventDefault(); panel.classList.add('dragging'); }); });
-    ['dragleave', 'drop'].forEach(function (ev) { panel.addEventListener(ev, function (e) { e.preventDefault(); if (ev === 'drop' || e.target === panel.querySelector('.drop')) panel.classList.remove('dragging'); }); });
-    panel.addEventListener('drop', function (e) { if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
+    window.addEventListener('hashchange', function () { state.prefix = decodeURIComponent(location.hash.slice(1) || ''); refresh(); });
+    var list = $('list');
+    ['dragenter', 'dragover'].forEach(function (ev) { list.addEventListener(ev, function (e) { e.preventDefault(); list.classList.add('dragging'); }); });
+    list.addEventListener('dragleave', function (e) { if (e.target === list.querySelector('.drop')) list.classList.remove('dragging'); });
+    list.addEventListener('drop', function (e) { e.preventDefault(); list.classList.remove('dragging'); if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
 
     fetch('/api/me', {credentials: 'same-origin'}).then(function (r) { return r.ok ? r.json() : null; })
       .then(function (me) { if (me) $('who').textContent = 'Signed in as ' + me.user; });
-    load();
+    load().then(refresh);
   </script>
 </body>
 </html>
