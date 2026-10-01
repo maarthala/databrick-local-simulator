@@ -303,3 +303,147 @@ def reset_secret(name):
     if st != 200:
         raise RuntimeError(f"reset secret for {name}: HTTP {st}")
     return new
+
+
+# ---- "My catalogs": extra catalogs + sharing (run with the admin token, on behalf of a
+# learner — every call checks that the learner OWNS the catalog it changes) ------------
+_M = "/api/management/v1"
+_NAME = re.compile(r"^[a-z0-9_]{1,24}$")
+_SHARE_PRIVS = {
+    ("namespace", "read"): ["NAMESPACE_READ_PROPERTIES", "TABLE_LIST", "TABLE_READ_PROPERTIES", "TABLE_READ_DATA"],
+    ("namespace", "write"): ["NAMESPACE_READ_PROPERTIES", "TABLE_LIST", "TABLE_READ_PROPERTIES", "TABLE_READ_DATA",
+                             "TABLE_WRITE_DATA", "TABLE_WRITE_PROPERTIES", "TABLE_CREATE"],
+    ("table", "read"): ["TABLE_READ_PROPERTIES", "TABLE_READ_DATA"],
+    ("table", "write"): ["TABLE_READ_PROPERTIES", "TABLE_READ_DATA", "TABLE_WRITE_DATA", "TABLE_WRITE_PROPERTIES"],
+}
+
+
+def _get(path, t):
+    st, body = _call("GET", path, token=t)
+    if st != 200:
+        raise RuntimeError(f"GET {path}: HTTP {st}")
+    return body
+
+
+def _owned(name, cat, t):
+    """The learner owns `cat` if their principal-role holds its `owner` catalog role."""
+    st, body = _call("GET", f"{_M}/principal-roles/{name}/catalog-roles/{cat}", token=t)
+    return st == 200 and any(r["name"] == "owner" for r in body.get("roles", []))
+
+
+def my_catalogs(name):
+    """Catalogs the learner owns, and catalogs shared with them (with what's shared)."""
+    t = _admin_token()
+    owned, shared = [], []
+    for c in _get(f"{_M}/catalogs", t)["catalogs"]:
+        cat = c["name"]
+        st, body = _call("GET", f"{_M}/principal-roles/{name}/catalog-roles/{cat}", token=t)
+        roles = [r["name"] for r in (body or {}).get("roles", [])] if st == 200 else []
+        if "owner" in roles:
+            owned.append({"name": cat, "location": c["properties"].get("default-base-location"),
+                          "default": cat == f"{name}_lake"})
+        elif any(r.startswith("share_") for r in roles):
+            shared.append({"name": cat, "shares": [_describe_share(cat, r, t) for r in roles if r.startswith("share_")]})
+    return {"owned": owned, "shared": shared}
+
+
+def create_catalog(name, short):
+    """New catalog <name>_<short>, stored in the learner's bucket, owned by them."""
+    if not _NAME.match(short or "") or short == "lake":
+        raise ValueError("catalog name: 1-24 of a-z, 0-9, _ (and not 'lake')")
+    t = _admin_token()
+    cat, loc = f"{name}_{short}", f"s3://{bucket_name(name)}/catalogs/{short}"
+    st, _ = _call("POST", f"{_M}/catalogs", {"catalog": {
+        "name": cat, "type": "INTERNAL",
+        "properties": {"default-base-location": loc, "polaris.config.drop-with-purge.enabled": "true"},
+        "storageConfigInfo": {"storageType": "S3", "allowedLocations": [loc], "endpoint": S3_ENDPOINT,
+                              "pathStyleAccess": True, "region": "us-east-1"}}}, t)
+    if st == 409:
+        raise ValueError(f"{cat} already exists")
+    _ok(st, "create catalog")
+    _ok(_call("POST", f"{_M}/catalogs/{cat}/catalog-roles", {"catalogRole": {"name": "owner"}}, t)[0], "owner role")
+    _ok(_call("PUT", f"{_M}/catalogs/{cat}/catalog-roles/owner/grants",
+              {"grant": {"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}}, t)[0], "owner grant")
+    _ok(_call("PUT", f"{_M}/principal-roles/{name}/catalog-roles/{cat}", {"catalogRole": {"name": "owner"}}, t)[0],
+        "attach owner")
+    return {"name": cat, "location": loc}
+
+
+def catalog_tree(name, cat):
+    """Namespaces + tables of a catalog the learner owns (for the share picker)."""
+    t = _admin_token()
+    if not _owned(name, cat, t):
+        raise PermissionError("not your catalog")
+    out = []
+    for ns in _get(f"/api/catalog/v1/{cat}/namespaces", t)["namespaces"]:
+        n = ".".join(ns)
+        tables = _get(f"/api/catalog/v1/{cat}/namespaces/{urllib.parse.quote(chr(31).join(ns))}/tables", t)
+        out.append({"namespace": n, "tables": [i["name"] for i in tables.get("identifiers", [])]})
+    return out
+
+
+def _share_role(grantee, access, namespace, table=None):
+    tail = re.sub(r"[^a-z0-9_]", "_", f"{namespace}__{table}" if table else namespace)
+    return f"share_{grantee}_{access}_{'t' if table else 'n'}_{tail}"[:120]
+
+
+def _describe_share(cat, role, t):
+    grants = _get(f"{_M}/catalogs/{cat}/catalog-roles/{role}/grants", t).get("grants", [])
+    g = grants[0] if grants else {}
+    privs = {x["privilege"] for x in grants}
+    return {"role": role, "namespace": ".".join(g.get("namespace", [])), "table": g.get("tableName"),
+            "access": "write" if "TABLE_WRITE_DATA" in privs else "read"}
+
+
+def share(name, cat, grantee, access, namespace, table=None):
+    """Give another learner read / write on a namespace or table of a catalog you own."""
+    if access not in ("read", "write"):
+        raise ValueError("access must be read or write")
+    grantee = lake_name(grantee or "")
+    if grantee == name:
+        raise ValueError("that's you")
+    t = _admin_token()
+    if not _owned(name, cat, t):
+        raise PermissionError("not your catalog")
+    if _call("GET", f"{_M}/principal-roles/{grantee}", token=t)[0] != 200:
+        raise ValueError(f"no learner called {grantee}")
+    ns = namespace.split(".")
+    role = _share_role(grantee, access, namespace, table)
+    _ok(_call("POST", f"{_M}/catalogs/{cat}/catalog-roles", {"catalogRole": {"name": role}}, t)[0], "share role")
+    kind = "table" if table else "namespace"
+    for priv in _SHARE_PRIVS[(kind, access)]:
+        g = {"type": kind, "namespace": ns, "privilege": priv}
+        if table:
+            g["tableName"] = table
+        _ok(_call("PUT", f"{_M}/catalogs/{cat}/catalog-roles/{role}/grants", {"grant": g}, t)[0], f"grant {priv}")
+    _ok(_call("PUT", f"{_M}/principal-roles/{grantee}/catalog-roles/{cat}", {"catalogRole": {"name": role}}, t)[0],
+        "assign share")
+    return {"role": role, "grantee": grantee, "access": access, "namespace": namespace, "table": table}
+
+
+def list_shares(name, cat):
+    """Shares on a catalog you own: who has what."""
+    t = _admin_token()
+    if not _owned(name, cat, t):
+        raise PermissionError("not your catalog")
+    out = []
+    for r in _get(f"{_M}/catalogs/{cat}/catalog-roles", t).get("roles", []):
+        if not r["name"].startswith("share_"):
+            continue
+        d = _describe_share(cat, r["name"], t)
+        who = _get(f"{_M}/catalogs/{cat}/catalog-roles/{r['name']}/principal-roles", t).get("roles", [])
+        d["grantees"] = [p["name"] for p in who]
+        out.append(d)
+    return out
+
+
+def revoke(name, cat, role):
+    """Remove a share (the catalog role) from a catalog you own."""
+    if not role.startswith("share_"):
+        raise ValueError("not a share")
+    t = _admin_token()
+    if not _owned(name, cat, t):
+        raise PermissionError("not your catalog")
+    for p in _get(f"{_M}/catalogs/{cat}/catalog-roles/{role}/principal-roles", t).get("roles", []):
+        _ok(_call("DELETE", f"{_M}/principal-roles/{p['name']}/catalog-roles/{cat}/{role}", token=t)[0], "unassign")
+    _ok(_call("DELETE", f"{_M}/catalogs/{cat}/catalog-roles/{role}", token=t)[0], "delete share")

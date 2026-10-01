@@ -28,6 +28,23 @@ except Exception as _e:  # noqa: BLE001
     print("  Start it once spark-connect is up: spark = SparkSession.builder.getOrCreate()")
 
 
+# --- More catalogs: your own extra catalogs + ones other learners shared with you ------
+def use_catalog(catalog, alias=None):
+    """Make another Polaris catalog usable in Spark, with YOUR login (same server and
+    settings as `iceberg`). Catalogs come from the lab's "My catalogs" page:
+        use_catalog("kiran_sales")
+        spark.sql("SELECT * FROM kiran_sales.sales.orders")
+    Polaris decides what you may do in it (owner, or what was shared with you)."""
+    alias = alias or catalog
+    base = "spark.sql.catalog.iceberg"
+    for k, v in spark.conf.getAll.items():
+        if k == base or k.startswith(base + "."):
+            spark.conf.set("spark.sql.catalog." + alias + k[len(base):], v)
+    spark.conf.set(f"spark.sql.catalog.{alias}.warehouse", catalog)
+    print(f"✓ catalog `{alias}` → Polaris catalog {catalog}")
+    return alias
+
+
 # --- Materialized views for `%%sql` ------------------------------------------------
 # Spark only runs CREATE MATERIALIZED VIEW inside a Declarative Pipeline, and Trino
 # can't create them on a REST catalog (Polaris). So `%%sql` turns these statements into

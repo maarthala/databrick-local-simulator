@@ -15,6 +15,16 @@ the logged-in user; nothing from the browser can point at another bucket.
   DELETE /api/files?key=…                   delete a file
   DELETE /api/files/folder?prefix=…[&confirm_table=1]  delete a folder (tables need confirm)
 
+"My catalogs" — catalogs the learner owns or that are shared with them; create a catalog
+<name>_<x> (stored in their bucket); share a namespace/table with another learner
+(read / write) and revoke. Polaris enforces the access; ownership is checked here.
+  GET    /api/catalogs                                   owned + shared-with-me
+  POST   /api/catalogs?name=sales                        create <user>_sales
+  GET    /api/catalogs/tree?catalog=…                    namespaces + tables (owner)
+  GET    /api/catalogs/shares?catalog=…                  who has what (owner)
+  POST   /api/catalogs/shares?catalog&grantee&access&namespace[&table]
+  DELETE /api/catalogs/shares?catalog=…&role=…           revoke
+
 Only reachable through oauth2-proxy (it is not published), so the identity headers can
 be trusted. Standard library only.
 """
@@ -159,20 +169,58 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:                       # show it on the page, don't crash
             return self._json(500, {"error": str(e)})
 
+    def _catalogs(self, method):
+        """All /api/catalogs* calls — always on behalf of the logged-in learner."""
+        path, q = self._route()
+        user = self._user()
+        if not user:
+            return self._json(401, {"error": "not logged in"})
+        name = lake_name(user)
+        try:
+            self._ensure(name)
+            if method == "GET" and path == "/api/catalogs":
+                return self._json(200, lh.my_catalogs(name))
+            if method == "POST" and path == "/api/catalogs":
+                return self._json(200, lh.create_catalog(name, (q.get("name") or "").strip().lower()))
+            if method == "GET" and path == "/api/catalogs/tree":
+                return self._json(200, lh.catalog_tree(name, q.get("catalog", "")))
+            if method == "GET" and path == "/api/catalogs/shares":
+                return self._json(200, lh.list_shares(name, q.get("catalog", "")))
+            if method == "POST" and path == "/api/catalogs/shares":
+                return self._json(200, lh.share(name, q.get("catalog", ""), q.get("grantee", "").strip(),
+                                                q.get("access", "read"), q.get("namespace", ""), q.get("table") or None))
+            if method == "DELETE" and path == "/api/catalogs/shares":
+                lh.revoke(name, q.get("catalog", ""), q.get("role", ""))
+                return self._json(200, {"revoked": q.get("role")})
+            return self._json(404, {"error": "not found"})
+        except PermissionError as e:
+            return self._json(403, {"error": str(e)})
+        except ValueError as e:
+            return self._json(400, {"error": str(e)})
+        except Exception as e:
+            return self._json(500, {"error": str(e)})
+
+    def _dispatch(self, method):
+        if self.path.startswith("/api/catalogs"):
+            return self._catalogs(method)
+        return self._files(method)
+
     def do_PUT(self):
-        return self._files("PUT")
+        return self._dispatch("PUT")
 
     def do_POST(self):
-        return self._files("POST")
+        return self._dispatch("POST")
 
     def do_DELETE(self):
-        return self._files("DELETE")
+        return self._dispatch("DELETE")
 
     def do_GET(self):
         if self.path == "/api/health":
             return self._json(200, {"ok": True})
         if self.path.startswith("/api/files"):
             return self._files("GET")
+        if self.path.startswith("/api/catalogs"):
+            return self._catalogs("GET")
         if self.path != "/api/me":
             return self._json(404, {"error": "not found"})
         user = self._user()
