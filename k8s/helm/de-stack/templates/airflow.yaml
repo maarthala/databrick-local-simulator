@@ -41,9 +41,9 @@ data:
 {{ $.Files.Get $path | indent 4 }}
 {{- end }}
 ---
-# Single-pod Airflow: `airflow standalone` runs api-server + scheduler +
-# dag-processor + triggerer in one process (Airflow's built-in dev mode), and
-# handles db migrate itself. We pre-create a fixed admin (airflow/airflow) first.
+# Single-pod Airflow: api-server + scheduler + dag-processor + triggerer in one pod.
+# With Keycloak: started directly, FAB auth manager (lab-account login). Without:
+# `airflow standalone` (SimpleAuthManager, fixed admin airflow/airflow).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -72,11 +72,21 @@ spec:
           args:
             - bash
             - -c
+{{- if .Values.keycloak.enabled }}
+            # The Airflow components in one pod, started directly — `airflow standalone`
+            # would force its SimpleAuthManager and ignore the FAB (lab account) login.
+            # If any of them exits, the pod restarts.
+            - |
+              airflow db migrate || exit 1
+              airflow scheduler & airflow dag-processor & airflow triggerer & airflow api-server &
+              wait -n; echo "an Airflow component exited — restarting"; exit 1
+{{- else }}
             - >
               airflow db migrate &&
               printf '{"%s": "%s"}' "{{ .Values.airflow.adminUser }}" "{{ .Values.airflow.adminPassword }}"
               > /opt/airflow/simple_auth_manager_passwords.json.generated &&
               exec airflow standalone
+{{- end }}
           env:
             - { name: AIRFLOW__CORE__EXECUTOR, value: "LocalExecutor" }
 {{- if .Values.keycloak.enabled }}
