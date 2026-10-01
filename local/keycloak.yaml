@@ -75,6 +75,7 @@ services:
       OAUTH2_PROXY_PASS_USER_HEADERS: "true"
       OAUTH2_PROXY_EMAIL_DOMAINS: "*"
       OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "true"   # self-registered users
+      OAUTH2_PROXY_OIDC_EMAIL_CLAIM: preferred_username            # registration asks no email — use the username
       OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"                   # straight to Keycloak's login/register page
       OAUTH2_PROXY_COOKIE_SECRET: "de-lab-local-cookie-secret-32ch!"   # must be 16/24/32 bytes (lab only)
       OAUTH2_PROXY_COOKIE_SECURE: "false"                         # plain http in the lab

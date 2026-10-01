@@ -11,29 +11,58 @@
   "ssoSessionIdleTimeout": 7200,
   "ssoSessionMaxLifespan": 43200,
   "groups": [
-    { "name": "learners" },
-    { "name": "instructors" }
+    {
+      "name": "learners"
+    },
+    {
+      "name": "instructors"
+    }
   ],
-  "defaultGroups": ["/learners"],
+  "defaultGroups": [
+    "/learners"
+  ],
   "clients": [
     {
       "clientId": "de-lab-home",
-      "name": "DE Learning Lab — home page",
+      "name": "DE Learning Lab \u2014 home page",
       "publicClient": false,
       "secret": "de-lab-home-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:8000/oauth2/callback", "http://de.lan/oauth2/callback"],
-      "webOrigins": ["+"],
+      "redirectUris": [
+        "http://localhost:8000/oauth2/callback",
+        "http://de.lan/oauth2/callback"
+      ],
+      "webOrigins": [
+        "+"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:8000/*##http://de.lan/*"
       },
       "protocolMappers": [
-        { "name": "groups", "protocol": "openid-connect", "protocolMapper": "oidc-group-membership-mapper",
-          "config": { "claim.name": "groups", "full.path": "false", "id.token.claim": "true", "access.token.claim": "true", "userinfo.token.claim": "true" } },
-        { "name": "audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
-          "config": { "included.client.audience": "de-lab-home", "id.token.claim": "false", "access.token.claim": "true" } }
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "de-lab-home",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
       ]
     }
   ],
@@ -43,10 +72,29 @@
       "enabled": true,
       "email": "instructor@de.lan",
       "emailVerified": true,
-      "firstName": "Course",
-      "lastName": "Instructor",
-      "credentials": [{ "type": "password", "value": "instructor", "temporary": false }],
-      "groups": ["/instructors"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "instructor",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/instructors"
+      ]
     }
-  ]
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}]}"
+          ]
+        }
+      }
+    ]
+  }
 }

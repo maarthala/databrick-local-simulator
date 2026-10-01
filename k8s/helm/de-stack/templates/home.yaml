@@ -152,6 +152,7 @@ spec:
             - { name: OAUTH2_PROXY_PASS_USER_HEADERS, value: "true" }
             - { name: OAUTH2_PROXY_EMAIL_DOMAINS, value: "*" }
             - { name: OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL, value: "true" }
+            - { name: OAUTH2_PROXY_OIDC_EMAIL_CLAIM, value: preferred_username }   # registration asks no email
             - { name: OAUTH2_PROXY_SKIP_PROVIDER_BUTTON, value: "true" }
             - { name: OAUTH2_PROXY_COOKIE_SECRET, value: {{ .Values.oauth2Proxy.cookieSecret | quote }} }
             - { name: OAUTH2_PROXY_COOKIE_SECURE, value: "false" }
