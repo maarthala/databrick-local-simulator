@@ -65,20 +65,36 @@ learning.
     own account (or use `instructor` / `instructor`). Every tool tiles off it. Then run the
     [setup checklist](prerequisites.md#verify-your-setup).
 
+    ### Fill the shared lake (once)
+    `make polaris-seed` creates the shared lake (`polaris_lake`) with **empty** bronze / silver /
+    gold namespaces. The ready-made ShopFlow tables the lessons read — `shared.gold.daily_sales`
+    in a notebook, `iceberg.gold.daily_sales` in Trino / SQLPad / Superset — are built by an
+    Airflow pipeline. Run it once:
+
+    1. Open **Airflow** (landing page → Orchestration), signed in as `instructor`.
+    2. Find **`shopflow_medallion`**, switch it **on** (new DAGs start paused) and press
+       **▶ Trigger**.
+    3. After about **2–3 minutes** all three tasks are green: Bronze → Silver → Gold.
+
+    Until then those queries answer *table not found*. Re-run it after a reset (`make down`,
+    `make restart`).
+
     ### Day-to-day
     | Command | What it does |
     |---|---|
     | `make ps` | show running services |
     | `make logs` (`make logs S=trino`) | tail logs (all, or one service) |
     | `make docs` | rebuild the course site after editing `training/docs/**` |
-    | `make restart` | `down` then `up`, so it **wipes data** too (then re-run `make polaris-seed`) |
+    | `make restart` | `down` then `up`, so it **wipes data** too (then re-run `make polaris-seed` and the `shopflow_medallion` DAG) |
     | `make down` | **stop the stack and remove volumes** (wipes data) |
     | `docker compose stop` / `docker compose start` | pause and resume, **keeping** your data and catalog |
     | `make clean` | remove the images built for this stack |
 
     !!! warning "`make down` deletes the volumes"
         It runs `docker compose down -v`, so the object store (RustFS), Postgres, the catalog and the
-        lab accounts are wiped. Use it
+        **lab accounts** are wiped — everyone registers again afterwards (`instructor` comes back
+        by itself), and each learner's lakehouse and bucket are recreated, empty, on their next
+        sign-in. Use it
         for a clean reset; use `docker compose stop` if you only want to pause and keep your data.
 
 === "Kubernetes"
@@ -137,6 +153,6 @@ learning.
   `main` — and the stack's landing page links straight to it, so it's always the current version.
 
 ## You can now…
-- Bring the whole stack up with Docker Compose (`cp .env.example .env`, `make init`, `make up`, `make polaris-seed`) or on Kubernetes (Ansible)
+- Bring the whole stack up with Docker Compose (`cp .env.example .env`, `make init`, `make up`, `make polaris-seed`, then the `shopflow_medallion` DAG once) or on Kubernetes (Ansible)
 - Verify every service is running and reach the landing page
 - Tear it down / reset cleanly, and know which command wipes data

@@ -48,6 +48,9 @@ with the ready-made ShopFlow tables such as `gold.daily_sales`):
 SELECT * FROM shared.gold.daily_sales LIMIT 10   -- the course's ready-made Gold table
 ```
 
+(*Table not found*? The shared lake hasn't been filled yet — whoever runs the stack starts the
+`shopflow_medallion` DAG once, see [0.2](deploy.md#fill-the-shared-lake-once).)
+
 So in Jupyter, the Unit 4 lessons build `iceberg.bronze/silver/gold` **in your own lakehouse** —
 nobody else's tables get in your way, and you can't break theirs.
 
