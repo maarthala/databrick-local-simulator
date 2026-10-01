@@ -159,7 +159,8 @@ df.count()                              # keep working with the DataFrame in Pyt
     `%%sql` works on **catalog tables** with no setup. To `%%sql` a raw file in object storage,
     register it as a temp view once (see [3.9](upload-register.md)):
     ```python
-    spark.read.parquet("s3a://demo-bucket/shopflow/history/orders") \
+    import os   # your own files — e.g. the history you export in 4.2
+    spark.read.parquet(f"s3a://{os.environ['LAKE_BUCKET']}/raw/shopflow/history/orders") \
          .createOrReplaceTempView("orders_hist")
     ```
     ```sql

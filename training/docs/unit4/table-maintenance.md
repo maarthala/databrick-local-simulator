@@ -166,37 +166,40 @@ Delta tables get the same treatment with shorter commands. Write a small-files D
 lake:
 
 ```python
-path = "s3a://demo-bucket/delta/orders_maint"
+import os
+path = f"s3a://{os.environ['LAKE_BUCKET']}/delta/orders_maint"     # in your own bucket
 orders = spark.table("iceberg.silver.orders")
 for hour in range(10):
     orders.where(f"order_id % 10 = {hour}").repartition(4) \
           .write.format("delta").mode("overwrite" if hour == 0 else "append").save(path)
 ```
 
-A Delta table is addressed by its path as `` delta.`<path>` ``:
+A Delta table is addressed by its path as `` delta.`<path>` ``. In `%%sql`, `${LAKE_BUCKET}`
+stands for your bucket's name (`%%sql` fills in `${name}` from your notebook variables or the
+environment):
 
 ```sql
 %%sql
-DESCRIBE DETAIL delta.`s3a://demo-bucket/delta/orders_maint`
+DESCRIBE DETAIL delta.`s3a://${LAKE_BUCKET}/delta/orders_maint`
 ```
 
 `numFiles` should be about **40**. Compact, then Z-order:
 
 ```sql
 %%sql
-OPTIMIZE delta.`s3a://demo-bucket/delta/orders_maint`
+OPTIMIZE delta.`s3a://${LAKE_BUCKET}/delta/orders_maint`
 ```
 
 ```sql
 %%sql
-OPTIMIZE delta.`s3a://demo-bucket/delta/orders_maint` ZORDER BY (country, category)
+OPTIMIZE delta.`s3a://${LAKE_BUCKET}/delta/orders_maint` ZORDER BY (country, category)
 ```
 
 Every operation is in the history (Delta's version of `.snapshots`):
 
 ```sql
 %%sql
-DESCRIBE HISTORY delta.`s3a://demo-bucket/delta/orders_maint`
+DESCRIBE HISTORY delta.`s3a://${LAKE_BUCKET}/delta/orders_maint`
 ```
 
 ### `VACUUM`
@@ -205,7 +208,7 @@ retention period (**7 days** by default):
 
 ```sql
 %%sql
-VACUUM delta.`s3a://demo-bucket/delta/orders_maint`
+VACUUM delta.`s3a://${LAKE_BUCKET}/delta/orders_maint`
 ```
 
 Our files are only minutes old, so that deletes nothing. Delta also **refuses** a retention under
@@ -218,19 +221,19 @@ spark.conf.set("spark.databricks.delta.retentionDurationCheck.enabled", "false")
 
 ```sql
 %%sql
-VACUUM delta.`s3a://demo-bucket/delta/orders_maint` RETAIN 0 HOURS DRY RUN
+VACUUM delta.`s3a://${LAKE_BUCKET}/delta/orders_maint` RETAIN 0 HOURS DRY RUN
 ```
 
 ```sql
 %%sql
-VACUUM delta.`s3a://demo-bucket/delta/orders_maint` RETAIN 0 HOURS
+VACUUM delta.`s3a://${LAKE_BUCKET}/delta/orders_maint` RETAIN 0 HOURS
 ```
 
 Now try to time-travel to the first version:
 
 ```sql
 %%sql
-SELECT sum(line_amount) FROM delta.`s3a://demo-bucket/delta/orders_maint` VERSION AS OF 0
+SELECT sum(line_amount) FROM delta.`s3a://${LAKE_BUCKET}/delta/orders_maint` VERSION AS OF 0
 ```
 
 It **fails**: its files are gone. That's the trade VACUUM makes: **storage back, history
@@ -242,8 +245,8 @@ without opening any data files.)
 spark.sql("DROP TABLE iceberg.sandbox.orders_maint PURGE")
 spark.conf.set("spark.databricks.delta.retentionDurationCheck.enabled", "true")
 ```
-(The Delta files stay in `demo-bucket/delta/orders_maint`. Delete the folder in the RustFS console
-if you like — instructors only; learners see just their own bucket there.)
+(The Delta files stay in your bucket under `delta/orders_maint/` — delete the folder in
+**📁 My files** when you no longer need it; it counts toward your 100 MB.)
 
 ## How often?
 | Task | Typical schedule |

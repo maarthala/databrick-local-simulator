@@ -173,8 +173,15 @@ def _mv_handle(sql):
 try:
     from IPython.core.magic import register_cell_magic
 
+    def _sql_vars(cell):
+        """${name} → a notebook variable, else an environment variable (like Databricks'
+        ${param}): e.g. s3a://${LAKE_BUCKET}/raw/… — your own bucket. Unknown names stay."""
+        ns = get_ipython().user_ns  # noqa: F821
+        return _re.sub(r"\$\{(\w+)\}", lambda m: str(ns.get(m[1], _os.environ.get(m[1], m[0]))), cell)
+
     @register_cell_magic
     def sql(line, cell):  # usage:  %%sql \n SELECT ... FROM iceberg.gold.tbl
+        cell = _sql_vars(cell)
         mv = _mv_handle(cell)
         if mv is not None:
             return mv

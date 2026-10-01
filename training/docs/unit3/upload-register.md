@@ -27,8 +27,7 @@ landing page uploads to the same place. Any S3 client works too — RustFS is S3
 inside the stack at `http://minio:9000` — but the console needs no tooling.)
 
 In the notebook your bucket's name is in the `LAKE_BUCKET` environment variable, so the Python below
-builds the path for you. In the **SQL** cells, replace `YOUR-BUCKET` with your bucket name (shown at
-the top of the landing page, e.g. `ravi-lake`).
+builds the path for you; in `%%sql` cells write `${LAKE_BUCKET}` and it's filled in the same way.
 
 ### 2 · Read it in the notebook
 `spark` is already there ([3.7](spark.md)). Point it at the path:
@@ -71,7 +70,7 @@ You can register the file without the DataFrame step, but there's a trap. The ob
 %%sql
 -- DON'T: the csv.`path` shorthand accepts NO options, so it can't set header=true
 CREATE TABLE iceberg.bronze.customers_upload USING iceberg AS
-SELECT * FROM csv.`s3a://YOUR-BUCKET/uploads/customers.csv`
+SELECT * FROM csv.`s3a://${LAKE_BUCKET}/uploads/customers.csv`
 ```
 Because that shorthand can't be told that row 1 is a header, you get generic columns
 **`_c0, _c1, _c2`** *and* the header line (`id,name,country`) lands as a **data row**:
@@ -88,7 +87,7 @@ cells):
 ```sql
 %%sql
 CREATE TEMPORARY VIEW customers_raw USING csv
-OPTIONS (path 's3a://YOUR-BUCKET/uploads/customers.csv', header 'true', inferSchema 'true')
+OPTIONS (path 's3a://${LAKE_BUCKET}/uploads/customers.csv', header 'true', inferSchema 'true')
 ```
 ```sql
 %%sql
@@ -109,7 +108,7 @@ no stray header row.
     ```sql
     %%sql
     CREATE TEMPORARY VIEW customers_raw (id INT, name STRING, country STRING) USING csv
-    OPTIONS (path 's3a://YOUR-BUCKET/uploads/customers.csv', header 'true')
+    OPTIONS (path 's3a://${LAKE_BUCKET}/uploads/customers.csv', header 'true')
     ```
     This is the SQL twin of the DataFrame reader's `.option("header", True)` / `.schema(...)` — the
     header/options `spark.read` sets in Python become the `OPTIONS (...)` clause in SQL.

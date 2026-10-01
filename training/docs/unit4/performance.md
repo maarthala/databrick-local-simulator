@@ -15,7 +15,9 @@ the cluster's cores. Partitions are *the* reason Spark scales.
 ```python
 from pyspark.sql.functions import spark_partition_id
 
-df = spark.read.parquet("s3a://demo-bucket/shopflow/history/orders")
+import os
+RAW = f"s3a://{os.environ['LAKE_BUCKET']}/raw/shopflow"    # exported in 4.2
+df = spark.read.parquet(f"{RAW}/history/orders")
 # how many chunks this DataFrame is split into
 print(df.select(spark_partition_id()).distinct().count())
 ```
@@ -55,7 +57,7 @@ Both change the partition count, but differently:
 
 ```python
 # Fewer output files when writing (cheap — no shuffle):
-df.coalesce(1).write.parquet("s3a://demo-bucket/uploads/orders_single")
+df.coalesce(1).write.mode("overwrite").parquet(f"s3a://{os.environ['LAKE_BUCKET']}/tmp/orders_single")
 
 # Rebalance / partition by a key before a heavy op (costs a shuffle, but evens skew):
 df.repartition(8, "customer_id")
@@ -129,7 +131,7 @@ Spark skips data it doesn't need — if you let it:
 
 ```python
 # reads just one day's files, only two columns:
-spark.read.parquet("s3a://demo-bucket/shopflow/history/orders") \
+spark.read.parquet(f"{RAW}/history/orders") \
      .where("dt = '2023-08-05'").select("order_id", "status").show()
 ```
 **Filter early, select only the columns you need** — the cheapest optimisation there is.

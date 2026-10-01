@@ -116,21 +116,29 @@ customers.show(5)
 product, one order, one order line-item, respectively — unchanged from Postgres.
 
 ### Prepare & read the Parquet history from object storage
-Our stack ships without the archival files, so **create a small export once** (this simulates
-ShopFlow's nightly "archive old orders" job), then ingest it like any file source:
+Our stack ships without the archival files, so **create a small export once — into your own
+bucket** (this simulates ShopFlow's nightly "archive old orders" job, and a partner's CSV
+export), then ingest it like any file source. Your bucket's name is in `LAKE_BUCKET`; the
+files go under `raw/shopflow/` (about 1 MB of your 100 MB):
 
 ```python
+import os
 from pyspark.sql import functions as F
 
-# One-time: write "archived" orders (older than 2024) as date-partitioned Parquet
+RAW = f"s3a://{os.environ['LAKE_BUCKET']}/raw/shopflow"     # e.g. s3a://ravi-lake/raw/shopflow
+
+# One-time: write "archived" orders (older than 2024) as date-partitioned Parquet …
 (read_pg("orders")
     .withColumn("dt", F.to_date("order_ts"))
     .filter(F.col("dt") < F.lit("2024-01-01"))
     .write.mode("overwrite").partitionBy("dt")
-    .parquet("s3a://demo-bucket/shopflow/history/orders/"))
+    .parquet(f"{RAW}/history/orders/"))
+# … and the customer list as a CSV file (used further down)
+read_pg("customers").coalesce(1).write.mode("overwrite").option("header", True) \
+    .csv(f"{RAW}/exports/customers/")
 
-# Now read it back — exactly how you'd ingest any file source
-hist = spark.read.parquet("s3a://demo-bucket/shopflow/history/orders/")
+# Now read the history back — exactly how you'd ingest any file source
+hist = spark.read.parquet(f"{RAW}/history/orders/")
 hist.printSchema()
 print("history rows:", hist.count())
 ```
@@ -151,10 +159,13 @@ print("history rows:", hist.count())
   **Parquet** files, `overwrite` any prior export, and **`partitionBy("dt")`** split them into one
   folder *per date* (`dt=2023-11-30/…`). The path uses `s3a://` — Spark's connector for
   S3-compatible object storage (here, RustFS — inside the stack it's still reached at `http://minio:9000`).
+  Open **📁 My files → raw/shopflow/** afterwards: one folder per date, plus the CSV.
+- **`.coalesce(1)…csv(…)`** — the same idea for the customer list: one CSV file with a header
+  row (`coalesce(1)` = write a single file instead of one per partition).
 
 **Read it step by step — the read-back:**
 
-- **`spark.read.parquet("s3a://…")`** — load those Parquet files straight into a DataFrame. This is
+- **`spark.read.parquet(f"{RAW}/…")`** — load those Parquet files straight into a DataFrame. This is
   the file-source counterpart to the JDBC read: same `spark.read`, different `.parquet(...)` source.
 - **`hist.printSchema()`** — print the inferred column names and types (Parquet carries its own
   schema, so Spark reads it back without you re-declaring anything).
@@ -221,9 +232,9 @@ land it in the lakehouse in a **single statement** — no `spark.read`, no `.wri
 **Parquet** — read the S3 path *as a table*, then `CREATE TABLE … AS SELECT` (CTAS) into Bronze:
 
 ```python
-spark.sql("""
+spark.sql(f"""
   CREATE TABLE iceberg.bronze.orders_history_sql AS
-  SELECT * FROM parquet.`s3a://demo-bucket/shopflow/history/orders/`
+  SELECT * FROM parquet.`{RAW}/history/orders/`
 """)
 ```
 
@@ -238,9 +249,9 @@ spark.sql("""
 **CSV** needs its header and types declared, so read it through a **temporary view** first, then load:
 
 ```python
-spark.sql("""
+spark.sql(f"""
   CREATE TEMPORARY VIEW customers_csv USING csv
-  OPTIONS (path 's3a://demo-bucket/shopflow/exports/customers/', header true, inferSchema true)
+  OPTIONS (path '{RAW}/exports/customers/', header true, inferSchema true)
 """)
 spark.sql("CREATE TABLE iceberg.bronze.customers_csv AS SELECT * FROM customers_csv")
 ```
