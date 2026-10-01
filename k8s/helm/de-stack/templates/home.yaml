@@ -19,6 +19,8 @@ data:
    | indent 4 }}
   files.html: |
 {{ .Files.Get "files/home/files.html" | indent 4 }}
+  catalogs.html: |
+{{ .Files.Get "files/home/catalogs.html" | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -42,6 +44,7 @@ spec:
           volumeMounts:
             - { name: html, mountPath: /usr/share/nginx/html/index.html, subPath: index.html }
             - { name: html, mountPath: /usr/share/nginx/html/files.html, subPath: files.html }
+            - { name: html, mountPath: /usr/share/nginx/html/catalogs.html, subPath: catalogs.html }
       volumes:
         - { name: html, configMap: { name: home-html } }
 ---
