@@ -12,6 +12,18 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
+      # "Login with SSO" (Keycloak realm de-lab, client minio). The token's `policy` claim =
+      # the user's group → MinIO policy learners (only <username>-lake) / instructors (all);
+      # policies are created by minio-init. Discovery is fetched on the internal address;
+      # Keycloak returns the browser-facing login URL in it.
+      MINIO_IDENTITY_OPENID_CONFIG_URL: http://keycloak:8080/realms/de-lab/.well-known/openid-configuration
+      MINIO_IDENTITY_OPENID_CLIENT_ID: minio
+      MINIO_IDENTITY_OPENID_CLIENT_SECRET: minio-secret
+      MINIO_IDENTITY_OPENID_CLAIM_NAME: policy
+      MINIO_IDENTITY_OPENID_SCOPES: openid,profile
+      MINIO_IDENTITY_OPENID_REDIRECT_URI: http://localhost:9001/oauth_callback
+      MINIO_IDENTITY_OPENID_DISPLAY_NAME: Epireum lab account
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
     ports:
       - "9002:9000"   # S3 API  (9000 is taken by ClickHouse on the host)
       - "9001:9001"   # Web console
