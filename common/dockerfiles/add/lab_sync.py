@@ -20,6 +20,7 @@ from jupyter_server.services.contents.largefilemanager import LargeFileManager
 from tornado import web
 
 FOLDERS = ("notebooks", "dags")
+ROOT = "/home/jovyan/work"                     # the learner's persistent volume
 BUCKET = os.environ.get("LAKE_BUCKET", "")
 ENABLED = bool(BUCKET and os.environ.get("LAKE_S3_KEY"))
 log = logging.getLogger("lab_sync")
@@ -37,7 +38,7 @@ def fs():
 
 
 def synced(path):
-    """API path like 'dags/etl/a.py' → is it inside a synced folder?"""
+    """Path relative to ROOT, like 'dags/etl/a.py' → is it inside a synced folder?"""
     parts = (path or "").strip("/").split("/")
     return ENABLED and len(parts) > 1 and parts[0] in FOLDERS and not any(p.startswith(".") for p in parts)
 
@@ -110,22 +111,29 @@ def initial_sync(root):
 
 
 class SyncedFileManager(LargeFileManager):
-    """The normal file manager + mirroring of notebooks/ and dags/ to the learner's bucket."""
+    """The normal file manager + mirroring of notebooks/ and dags/ to the learner's bucket.
+    Works on real file paths (relative to ROOT), whatever the server's root_dir is."""
+
+    def _rel(self, path):
+        return os.path.relpath(self._get_os_path(path), ROOT)
 
     def save(self, model, path=""):
         out = super().save(model, path)
-        if synced(path) and model.get("type") != "directory" and model.get("chunk", -1) == -1:
-            _upload(self._get_os_path(path), path.strip("/"))
+        rel = self._rel(path)
+        if synced(rel) and model.get("type") != "directory" and model.get("chunk", -1) == -1:
+            _upload(self._get_os_path(path), rel)
         return out
 
     def delete_file(self, path):
+        rel = self._rel(path)
         super().delete_file(path)
-        if synced(path):
-            _remove(path)
+        if synced(rel):
+            _remove(rel)
 
     def rename_file(self, old_path, new_path):
+        old, new = self._rel(old_path), self._rel(new_path)
         super().rename_file(old_path, new_path)
-        if synced(old_path):
-            _remove(old_path)
-        if synced(new_path):
-            _upload_tree(self.root_dir, new_path.strip("/"))
+        if synced(old):
+            _remove(old)
+        if synced(new):
+            _upload_tree(ROOT, new)

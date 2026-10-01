@@ -53,8 +53,9 @@ fi
 # Started by JupyterHub (one server per learner): the Hub sets JUPYTERHUB_API_TOKEN and
 # handles login, so run the single-user server. Otherwise: standalone Lab with a token.
 if [ -n "${JUPYTERHUB_API_TOKEN:-}" ]; then
+  # Hub learners: root = their persistent volume (the container itself is disposable)
   exec jupyterhub-singleuser --ip=0.0.0.0 --port=8888 \
-    --ServerApp.root_dir=/home/jovyan "$@"
+    --ServerApp.root_dir=/home/jovyan/work "$@"
 fi
 
 exec jupyter lab --ip=0.0.0.0 --port=8888 --no-browser \

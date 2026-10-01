@@ -106,6 +106,6 @@ import lab_sync  # noqa: E402
 
 c.JupyterFs.root_manager_class = lab_sync.SyncedFileManager
 try:                                    # never block the server from starting
-    lab_sync.initial_sync("/home/jovyan/work")
+    lab_sync.initial_sync(lab_sync.ROOT)
 except Exception as exc:
     print(f"[lab_sync] initial sync failed: {exc}", flush=True)
