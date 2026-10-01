@@ -42,6 +42,16 @@ spec:
             - { name: SQLPAD_ADMIN,          value: "{{ .Values.sqlpad.adminEmail }}" }
             - { name: SQLPAD_ADMIN_PASSWORD, value: "{{ .Values.sqlpad.adminPassword }}" }
             - { name: SQLPAD_APP_LOG_LEVEL,  value: "warn" }
+            {{- if .Values.keycloak.enabled }}
+            # Sign in with the lab account (Keycloak realm de-lab, client sqlpad); learners are
+            # pre-created by home-api / JupyterHub on first lab login (see lakehouse.invite_sqlpad).
+            - { name: PUBLIC_URL,                 value: "http://sqlpad.{{ .Values.ingress.baseHost }}" }
+            - { name: SQLPAD_OIDC_ISSUER,         value: "http://keycloak:8080/realms/de-lab" }
+            - { name: SQLPAD_OIDC_CLIENT_ID,      value: sqlpad }
+            - { name: SQLPAD_OIDC_CLIENT_SECRET,  value: sqlpad-secret }
+            - { name: SQLPAD_OIDC_SCOPE,          value: "openid profile" }
+            - { name: SQLPAD_OIDC_LINK_HTML,      value: "Sign in with Epireum lab account" }
+            {{- end }}
             - { name: SQLPAD_QUERY_RESULT_MAX_ROWS, value: "50000" }
             # OLTP — ShopFlow (Postgres)
             - { name: SQLPAD_CONNECTIONS__shopflow__name,     value: "ShopFlow — OLTP (Postgres)" }

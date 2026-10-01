@@ -15,7 +15,10 @@
       "name": "learners"
     },
     {
-      "name": "instructors"
+      "name": "instructors",
+      "realmRoles": [
+        "admin"
+      ]
     }
   ],
   "defaultGroups": [
@@ -124,6 +127,46 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "sqlpad",
+      "name": "SQLPad \u2014 SQL workbench",
+      "publicClient": false,
+      "secret": "sqlpad-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8003/auth/oidc/callback",
+        "http://sqlpad.de.lan/auth/oidc/callback"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8003/*##http://sqlpad.de.lan/*"
+      },
+      "webOrigins": [
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic"
+      ]
     }
   ],
   "users": [
@@ -158,5 +201,13 @@
     ]
   },
   "loginTheme": "de-lab",
-  "displayNameHtml": "Epireum&#39;s Data Engineering Lab<span class=\"tag\">Your gateway to a Data Engineering career</span>"
+  "displayNameHtml": "Epireum&#39;s Data Engineering Lab<span class=\"tag\">Your gateway to a Data Engineering career</span>",
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Lab instructors \u2014 admin in SQLPad / tools that read a `roles` claim"
+      }
+    ]
+  }
 }

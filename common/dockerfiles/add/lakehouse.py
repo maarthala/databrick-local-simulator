@@ -31,6 +31,8 @@ S3_KEY = os.environ.get("AWS_ACCESS_KEY_ID", "minioadmin")
 S3_SECRET = os.environ.get("AWS_SECRET_ACCESS_KEY", "minioadmin")
 S3_REGION = os.environ.get("AWS_REGION", "us-east-1")
 QUOTA_MB = int(os.environ.get("LEARNER_QUOTA_MB", "20"))      # per-learner bucket, hard limit
+SQLPAD = os.environ.get("SQLPAD_URL", "http://sqlpad:3000")
+SQLPAD_ADMIN = os.environ.get("SQLPAD_ADMIN", "admin@de.local:admin1234")
 NAMESPACES = ("bronze", "silver", "gold")
 
 
@@ -220,12 +222,33 @@ def _admin_token():
     return tok["access_token"]
 
 
+def invite_sqlpad(name, admin=False):
+    """Pre-create the learner in SQLPad (user id = Keycloak username). SQLPad's OIDC login
+    only auto-creates users whose EMAIL domain is allowed — our learners have no email —
+    but it signs in any user that already exists. Instructors are SQLPad admins."""
+    user, role = storage_user(name), "admin" if admin else "editor"
+    auth = "Basic " + __import__("base64").b64encode(SQLPAD_ADMIN.encode()).decode()
+    def req(method, path, body=None):
+        r = urllib.request.Request(SQLPAD + path, method=method, headers={
+            "Authorization": auth, "Content-Type": "application/json"},
+            data=None if body is None else json.dumps(body).encode())
+        with urllib.request.urlopen(r, timeout=10) as resp:
+            return json.loads(resp.read() or b"null")
+    users = {u["email"]: u for u in req("GET", "/api/users")}
+    if user not in users:
+        req("POST", "/api/users", {"email": user, "name": user, "role": role})
+    elif users[user]["role"] != role:
+        req("PUT", f"/api/users/{users[user]['id']}", {"role": role})
+
+
 def provision(name, instructor=False):
-    """Create (or confirm) the learner's bucket, storage policy, lakehouse + Polaris identity."""
+    """Create (or confirm) the learner's bucket, storage policy, lakehouse + Polaris identity,
+    and their SQLPad account."""
     bucket = bucket_name(name)
     create_bucket(bucket)
     set_quota(bucket)
     put_storage_policy(name, admin=instructor)
+    invite_sqlpad(name, admin=instructor)
     t = _admin_token()
     m, cat = "/api/management/v1", f"{name}_lake"
     loc = f"s3://{bucket}"
