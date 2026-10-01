@@ -35,6 +35,12 @@ c.GenericOAuthenticator.manage_groups = True                     # Keycloak grou
 c.GenericOAuthenticator.auth_state_groups_key = "oauth_user.groups"
 c.GenericOAuthenticator.admin_groups = {"instructors"}          # Hub admin page
 c.Authenticator.auto_login = True                               # straight to Keycloak (SSO → silent)
+# Follow the Keycloak session: keep the tokens and re-check them every minute. After a
+# logout / switching user on the home page, the old token is rejected → the Hub signs
+# you in again as whoever is logged in to Keycloak now (not the previous user).
+c.GenericOAuthenticator.enable_auth_state = True
+c.Authenticator.auth_refresh_age = 60
+c.Authenticator.refresh_pre_spawn = True
 
 # ---- one container per learner ------------------------------------------------------
 c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
