@@ -2,7 +2,8 @@
 
 In 6.1 you *saw* the persona matrix. Here you'll *build* it by clicking — create a
 user, give it a role, grant that role access — entirely in the **Polaris Console**.
-No command line, and no separate login server: Polaris manages its own users.
+No command line: Polaris manages its own users (*principals*). (Your lab account is one
+of them too — signing in to the Console with it maps you to your own principal.)
 
 ## How access works
 
@@ -17,8 +18,16 @@ user (principal) ─► principal-role ─► catalog-role ─► privilege on a
 
 Grant once to the role, and every user who holds it gets that access.
 
-Open the **Polaris Console** — <http://localhost:8189> (k8s:
-`http://polaris-console.de.lan`) — and sign in as **`root` / `s3cr3t`** (the admin).
+Open the **Polaris Console** admin login — <http://localhost:8189/login?local=1> (k8s: `http://polaris-console.de.lan/login?local=1` — the
+`?local=1` shows the **Client ID / Secret** form instead of signing you in with your lab account) — and sign in as
+**`root` / `s3cr3t`** (the admin).
+
+!!! info "An admin lesson"
+    Creating principals and roles needs the Polaris **admin** (`root`), so in a class this
+    is instructor-led (or done on your own laptop stack). With your lab account you can't
+    create users — but you *can* share your own tables with other learners on
+    **🗂️ My catalogs** ([0.3](../setup/workspace.md)), which builds exactly this
+    user → role → grant chain for you.
 
 ---
 
@@ -59,8 +68,8 @@ can see the tables). Save.
 
 ## Log in as the user
 
-There's no separate identity server — a user signs into the Console (or any engine)
-with the **Client ID + Secret** from step 1. Whoever holds those credentials *is*
+A principal signs into the Console (the `?local=1` form) or any engine with the
+**Client ID + Secret** from step 1. Whoever holds those credentials *is*
 that principal and sees exactly its grants.
 
 !!! note "Memorable persona logins"
@@ -70,11 +79,12 @@ that principal and sees exactly its grants.
     randomly generated values instead; use the seed (or the reset API) when you want
     a memorable pair.
 
-!!! tip "Where an IdP (SSO) would fit"
-    Client-secret logins are simplest for training. In production you'd front *human*
-    logins with an identity provider (Keycloak, Okta, Entra) for passwords + MFA +
-    SSO, while services keep using client secrets. Polaris would trust the IdP's
-    token and map a claim to a principal-role — the grants model below is unchanged.
+!!! tip "Where the IdP (SSO) fits — your lab account"
+    Human logins in this lab already go through an identity provider: your **lab account**
+    (Keycloak). Polaris trusts its token and maps your username to your own principal +
+    principal-role — exactly how production fronts people with Okta / Entra (+ MFA), while
+    services and these demo principals keep using client secrets. The grants model below
+    is the same either way.
 
 ## Privileges you'll grant most
 

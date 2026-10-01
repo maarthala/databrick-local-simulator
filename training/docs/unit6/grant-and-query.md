@@ -35,7 +35,14 @@ analyst (principal) ─► analyst_role ─► sales_reader (catalog-role) ─�
 
 ## Do it — grant analyst read-only on `demo.sales` (Console)
 
-Sign in to the Console (<http://localhost:8189>) as `root` / `s3cr3t`.
+Sign in to the Console as `root` / `s3cr3t` at <http://localhost:8189/login?local=1> (k8s: `http://polaris-console.de.lan/login?local=1` — the
+`?local=1` shows the **Client ID / Secret** form instead of signing you in with your lab account).
+
+!!! tip "Learners: the same grant, without the admin"
+    Sharing *your own* tables with another learner doesn't need root: on **🗂️ My catalogs**
+    pick a namespace or table → **Share** → their username → **read** or **read + write**.
+    Behind the scenes it creates exactly the chain below (a catalog role with these
+    privileges, bound to their principal-role) — and **Revoke** removes it.
 
 **1. Create the catalog role:** Catalogs → `<your catalog>` → **Catalog Roles → Create** → name it `sales_reader`.
 
@@ -54,7 +61,7 @@ That's it — analyst now has read-only access, granted through the role.
 
 ## Verify (in the UI)
 
-Sign out and **sign back in to the Console as `analyst` / `analyst`**:
+Sign out and **sign back in at `/login?local=1` as `analyst` / `analyst`**:
 
 - You can **see** the `demo` namespace and the `sales` table, and **open** it → ✅ read works.
 - **Create / Delete** actions on it are unavailable → ⛔ it's read-only.
@@ -66,9 +73,9 @@ Log back in as `root` to keep administering.
 Reading through Polaris vends **short-lived, scoped credentials** — a user can only read
 tables they're granted. Whoever queries as **analyst** (signed into the Console, or an
 engine configured with analyst's client id/secret) sees exactly `demo.sales` and nothing
-they weren't granted. The pre-wired notebook `spark` connects as **root** (full access),
-so use it for building/teaching; to *demonstrate* per-user enforcement, sign in as the
-persona.
+they weren't granted. Your notebook's `spark` signs in as **you** (your own principal), so
+it's enforced there too: a table another learner shared with you is readable after
+`use_catalog("<their catalog>")`, and anything not shared answers *forbidden*.
 
 ## Revoke
 In the Console, remove a grant, unbind the role, or delete the catalog-role — access

@@ -193,8 +193,9 @@ Run through this checklist once — if all three pass, you're ready for Unit 1.
 
 1. **Sign in to the landing page** — open [http://localhost:8000](http://localhost:8000). You're sent
    to the **DE Learning Lab** login page: click **Register** to create your own account (or sign in
-   as `instructor` / `instructor`). After signing in you see the ShopFlow tiles and, at the top,
-   **"your lakehouse: <name>_lake ✓"** — your own private lakehouse, created on first login.
+   as `instructor` / `instructor`). After signing in you see the lab's tools in four columns and,
+   in the top bar, **"your lakehouse: <name>_lake ✓"** — your own private lakehouse, created on
+   first login.
 2. **Single sign-on works** — open the **Governance** tile (Polaris Console). It signs you in with
    your lab account without asking again; your own lakehouse `<name>_lake` is there.
 3. **SQL works** — either in the Trino CLI or Superset SQL Lab:

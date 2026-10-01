@@ -84,7 +84,7 @@ running the pipeline on a schedule so it stays current.
 | ① | **Postgres** | The live application database — a data *source* | (internal) | — |
 | ① / ② | **RustFS** | S3-compatible object storage: raw history *and* the lakehouse tables (in-stack endpoint `http://minio:9000`) | http://localhost:9001/rustfs/console/ | your lab account (you see your own `<username>-lake` bucket) |
 | ② | **Spark** | Ingests sources and builds Bronze→Silver→Gold | http://localhost:8002 | — |
-| ②/③ | **Apache Polaris** | Iceberg REST catalog `iceberg` (warehouse `polaris_lake`) + per-user access (RBAC) | http://localhost:8189 | root / s3cr3t |
+| ②/③ | **Apache Polaris** | Iceberg REST catalog `iceberg` (warehouse `polaris_lake`) + per-user access (RBAC) | http://localhost:8189 | your lab account · admin `root` / `s3cr3t` at `/login?local=1` |
 | ④ | **Trino** | Distributed SQL engine over the lakehouse | http://localhost:8007/ui/ | any user, no password |
 | ④ | **Superset** | BI dashboards on the Gold layer | http://localhost:8004 | your lab account |
 | ④ | **Jupyter** | Notebooks (Spark) for exploration & labs | http://localhost:8008 | your lab account |

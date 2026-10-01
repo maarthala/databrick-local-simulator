@@ -28,8 +28,10 @@ open — Superset, Airflow, SQLPad — keeps its own session until you log out t
 | 📓 Jupyter | your own server | your notebooks, with `spark` ready and `iceberg` = your lakehouse |
 | 🧰 SQLPad user | `<you>` | your saved queries |
 
-The bar at the top of the landing page shows it: **"your lakehouse: `<you>_lake` ✓ · bucket:
-`<you>-lake`"**, plus links to **📁 My files** and **🗂️ My catalogs**.
+The top bar of the landing page shows it: **"your lakehouse: `<you>_lake` ✓ · bucket:
+`<you>-lake`"**, plus **📁 My files**, **🗂️ My catalogs** and **Log out**. Below it, the
+tools are grouped in four columns — *Build & explore*, *Query & visualise*, *Orchestrate*,
+*Govern & store*.
 
 ## Which lake am I querying?
 
@@ -69,7 +71,9 @@ server starts (**File → Hub Control Panel → Stop My Server → Start**). Any
 folders stays in your Jupyter workspace only.
 
 **📁 My files** (landing page) is a file manager for your bucket — browse, upload, download, new
-folder, delete. The **RustFS console** (Storage tile) shows the same bucket.
+folder, delete. The **RustFS console** (Storage tile) shows the same bucket. (Its bucket
+**Settings** page is for instructors — learners get *Access Denied* there; everything about
+your files works in the browser view and My files.)
 
 !!! warning "100 MB per learner"
     Your bucket holds at most **100 MB** — plenty for code and lesson data. If it's full, saving
@@ -106,6 +110,9 @@ tells you whose is whose.
 - **＋ New** creates a catalog `<you>_<name>`, stored in your bucket.
 - **Share** a namespace or a single table with another learner — **read** or **write** — and
   **revoke** it again. Polaris enforces it: they see exactly what you shared.
+- **Open in Polaris Console ↗** opens the catalog in the Console, signed in as you — browse
+  it, add namespaces and tables. (The Console's own **Catalogs** list shows `0` for learners:
+  listing *all* catalogs is admin-only, so open yours from here.)
 
 ## You can now…
 - Register, sign in once and reach every tool with your lab account

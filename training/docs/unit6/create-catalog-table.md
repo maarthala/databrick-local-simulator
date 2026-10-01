@@ -20,10 +20,21 @@ Key idea to hold onto:
 So a catalog/namespace is just *registration*; the **table** is the first thing that
 writes to object storage.
 
-## A · Create a catalog (Polaris Console)
+## A · Create a catalog
 
-Open the Console — <http://localhost:8189> (k8s: `http://polaris-console.de.lan`) —
-sign in as `root` / `s3cr3t`, then **Catalogs → Create catalog**:
+**As a learner — on 🗂️ My catalogs** (landing page): click **＋ New**, type `learn`,
+**Create**. You get **`<you>_learn`** — e.g. `ravi_learn` — stored in your own bucket at
+`s3://<you>-lake/catalogs/learn`, and you're its owner. Click **Open in Polaris Console ↗**
+to see it in the Console.
+
+!!! note "Why not *Catalogs → Create catalog* in the Console?"
+    Creating catalogs there needs the Polaris **admin** — with your lab account it answers
+    *403*. (For the same reason the Console's **Catalogs** list shows `0` for learners:
+    listing *all* catalogs is admin-only. Open yours from My catalogs.)
+
+**As the admin — in the Console** (instructors, or your own laptop stack): open
+<http://localhost:8189/login?local=1> (k8s: `http://polaris-console.de.lan/login?local=1` — the
+`?local=1` shows the **Client ID / Secret** form instead of signing you in with your lab account), sign in as `root` / `s3cr3t`, then **Catalogs → Create catalog**:
 
 - **Name:** `learn`
 - **Storage type:** `S3`
@@ -47,11 +58,12 @@ Grant your admin write access so you can create tables in it: on the catalog →
 
 A **namespace** (schema) is a folder for tables. A **table** has a schema and holds rows.
 
-!!! note "Where you create it decides who can query it"
-    The notebook's `spark` is pre-wired only to the **`iceberg`** catalog (= the built-in
-    `polaris_lake`). A brand-new catalog like `learn` is **not** visible to the notebook
-    until Spark is configured with it. So to create-and-query in one go, build under the
-    **`iceberg`** catalog. (Use your own `learn` catalog once you add a Spark config for it.)
+!!! note "Make the new catalog visible to Spark"
+    The notebook's `spark` knows **`iceberg`** (your own lakehouse `<you>_lake`) and
+    **`shared`** out of the box. A brand-new catalog needs one line first —
+    `use_catalog("<you>_learn")` — after which `spark.sql("… <you>_learn.demo.sales …")`
+    works with your login. The steps below use **`iceberg`** so they run as-is; swap in
+    your `<you>_learn` catalog to build there instead.
 
 In a notebook (`spark` is already there):
 
@@ -79,9 +91,10 @@ You can also create the namespace/table visually in the **Console** (Catalog →
 **Create namespace** / **Create Iceberg Table**); the notebook is just quicker for a
 table with data.
 
-**Watch it land in RustFS** (RustFS console <http://localhost:9001/rustfs/console/> — instructors see `demo-bucket` there — or the CLI): after
-`CREATE TABLE` you'll see `warehouse/demo/sales/metadata/00000-….metadata.json`; after
-`INSERT`, a `data/*.parquet` plus manifest/snapshot files appear.
+**Watch it land in your bucket** (📁 **My files**, or the RustFS console
+<http://localhost:9001/rustfs/console/>): after `CREATE TABLE` you'll see
+`demo/sales/metadata/00000-….metadata.json` in `<you>-lake`; after `INSERT`, a
+`data/*.parquet` plus manifest/snapshot files appear.
 
 ## C · Query the table
 
@@ -100,8 +113,10 @@ FROM iceberg.demo.sales
 GROUP BY product
 ```
 
-The same table is now visible in **Trino**, **Superset**, and the **Polaris Console** —
-one governed copy, every engine.
+The same table is now visible in the **Polaris Console** (open your catalog from
+**My catalogs**) and to every Spark session that signs in as you — one governed copy.
+(Trino and Superset read the course's *shared* lake, not your own — see
+[0.3](../setup/workspace.md).)
 
 ## 🎯 This runs unchanged on Azure, Databricks, Snowflake & Fabric
 `catalog → schema → table` with `CREATE NAMESPACE` / `CREATE TABLE … USING iceberg` is
@@ -109,7 +124,7 @@ the same in **the Databricks catalog** and **Snowflake** (Snowflake calls it
 database → schema → table). Only the catalog name and storage URL change.
 
 ## You can now…
-- Create a **catalog** in the Console (and set **path-style** for RustFS)
+- Create your own **catalog** on My catalogs (or, as admin, in the Console with **path-style** for RustFS)
 - Create a **namespace** and a **table**, and say when each first touches object storage
-- Query the table from the notebook (DataFrame, `spark.sql`, `%%sql`) — and from Trino/Superset
-- Explain why a *new* catalog needs a Spark config before the notebook can see it
+- Query the table from the notebook (DataFrame, `spark.sql`, `%%sql`)
+- Make a *new* catalog visible to Spark with `use_catalog(...)`

@@ -41,8 +41,9 @@ persona = a Polaris principal (analyst / engineer / lead)
 ## Lab
 
 ### 1 · Sign in to the Console as your persona
-Open the Console — **<http://localhost:8189>** (local) or **`http://polaris-console.de.lan`**
-(k8s) — and sign in with a persona's **Client ID / Client Secret**:
+Open the Console's Client ID / Secret form — **<http://localhost:8189/login?local=1>** (local)
+or **`http://polaris-console.de.lan/login?local=1`** (k8s; without `?local=1` the Console signs
+you in with your lab account) — and sign in with a persona's **Client ID / Client Secret**:
 **`analyst` / `analyst`** (or `engineer` / `lead`; admin is `root` / `s3cr3t`).
 You're now browsing the catalog *as that persona* — Polaris identifies the
 principal and applies its grants.
