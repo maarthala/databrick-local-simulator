@@ -27,7 +27,7 @@ flowchart LR
 ## The six steps
 
 ### 1 · Prototype the logic in a notebook
-Open Jupyter ([http://localhost:8008](http://localhost:8008), token `123456`), connect to Spark
+Open Jupyter ([http://localhost:8008](http://localhost:8008), sign in with your lab account), connect to Spark
 (Spark Connect), and write the transformation **interactively** — run a cell, see the result, adjust.
 This is the fastest feedback loop for getting the *data logic* correct (it's exactly what you did in
 [Unit 4](../unit4/read-bronze.md)):

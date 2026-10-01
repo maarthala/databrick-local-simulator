@@ -68,7 +68,7 @@ roles. Don't confuse them with the personas above:
 | `root` / `s3cr3t` | Polaris (Console or API) | Catalog **admin** — creates catalogs, users, roles & grants |
 | `admin` / `admin` | Superset | BI tool admin (Superset has its own users) |
 | `airflow` / `airflow` | Airflow | Orchestrator admin |
-| token `123456` | Jupyter | Notebook access |
+| your lab account | Jupyter (JupyterHub) | your own notebooks; `iceberg` = your own lakehouse |
 | `minioadmin` / `minioadmin` | MinIO | Object-store root |
 
 The personas (`analyst`/`engineer`/`lead`) are the ones that carry a **data-access role**; the table

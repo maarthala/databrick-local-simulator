@@ -6,8 +6,9 @@ services:
     build:
       context: ../common/dockerfiles
       dockerfile: Dockerfile.jupyter
-    ports:
-      - "8008:8888"
+    # Not published any more: learners use JupyterHub on :8008 (jupyterhub.yaml), which
+    # runs THIS image once per learner. This shared container stays as the admin/test
+    # notebook (docker exec) and so `make up` keeps building the image.
     volumes:
       - ./code:/code
       - ./code/notebook:/home/jovyan/work

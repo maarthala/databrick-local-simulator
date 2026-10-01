@@ -1,11 +1,28 @@
 # Auto-create a Databricks-style `spark` session in every notebook (IPython startup).
 # Uses SPARK_REMOTE (sc://spark-connect:15002) set in the image, so no config needed.
 # Wrapped so a down spark-connect doesn't break kernel startup.
+from os import environ as _os_env
+
+# Under JupyterHub every learner has their own lakehouse (LAKE_* set by the Hub's spawn
+# hook): `iceberg` then means THEIR catalog with THEIR Polaris login, so lesson code
+# (iceberg.bronze/silver/gold…) reads and writes the learner's own tables. Empty outside
+# the Hub → the shared defaults from spark-defaults apply, as before.
+_LAKE = {k: v for k, v in {
+    "spark.sql.catalog.iceberg.warehouse": _os_env.get("LAKE_WAREHOUSE"),
+    "spark.sql.catalog.iceberg.credential": _os_env.get("LAKE_CREDENTIAL"),
+}.items() if v}
+
 try:
     from pyspark.sql import SparkSession
 
     spark = SparkSession.builder.getOrCreate()
+    # point `iceberg` at the learner's own lakehouse BEFORE the catalog is first used
+    for _k, _v in _LAKE.items():
+        spark.conf.set(_k, _v)
     print(f"✓ `spark` ready via Spark Connect (Spark {spark.version})")
+    if _LAKE:
+        print(f"✓ you are {_os_env.get('LAKE_USER', '?')} · "
+              f"iceberg = your lakehouse ({_LAKE['spark.sql.catalog.iceberg.warehouse']})")
 except Exception as _e:  # noqa: BLE001
     print(f"⚠ `spark` not created ({_e}).")
     print("  Start it once spark-connect is up: spark = SparkSession.builder.getOrCreate()")
@@ -56,6 +73,8 @@ def _mv_run(name, query):
             "storage": f"{_MV_STORAGE}/{catalog}/{ns}/{view}",
             "libraries": [{"glob": {"include": "transformations/**"}}],
         }
+        if _LAKE:   # the pipeline runs in its own session — give it the learner's lakehouse too
+            spec["configuration"] = dict(_LAKE)
         with open(f"{work}/spark-pipeline.yml", "w") as f:
             _json.dump(spec, f)
         with open(f"{work}/transformations/{view}.sql", "w") as f:

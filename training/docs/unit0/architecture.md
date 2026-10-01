@@ -87,7 +87,7 @@ running the pipeline on a schedule so it stays current.
 | ②/③ | **Apache Polaris** | Iceberg REST catalog `iceberg` (warehouse `polaris_lake`) + per-user access (RBAC) | http://localhost:8189 | root / s3cr3t |
 | ④ | **Trino** | Distributed SQL engine over the lakehouse | http://localhost:8007/ui/ | any user, no password |
 | ④ | **Superset** | BI dashboards on the Gold layer | http://localhost:8004 | admin / admin |
-| ④ | **Jupyter** | Notebooks (Spark) for exploration & labs | http://localhost:8008 | token `123456` |
+| ④ | **Jupyter** | Notebooks (Spark) for exploration & labs | http://localhost:8008 | your lab account |
 | — | **Airflow** | Orchestrates the whole pipeline on a schedule | http://localhost:8001 | airflow / airflow |
 
 *(On Kubernetes the URLs are `http://<tool>.de.lan` instead of `localhost` — the roles

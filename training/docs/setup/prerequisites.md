@@ -219,7 +219,7 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 | Landing page | [http://localhost:8000](http://localhost:8000) | your own account (**Register** on the login page), or `instructor` / `instructor` |
 | Keycloak (logins) | http://localhost:8180/admin | admin console: `admin` / `admin` (realm **de-lab**) |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
-| Jupyter (notebooks) | http://localhost:8008 | token `123456` |
+| Jupyter (notebooks) | http://localhost:8008 | your lab account — your **own** Jupyter, and `iceberg` = your own lakehouse |
 | Spark master UI | http://localhost:8002 | — |
 | Trino | http://localhost:8007/ui/ (CLI: `:8007`) | any username, no password |
 | SQLPad (SQL workbench) | http://localhost:8003 | `admin@de.local` / `admin1234` |

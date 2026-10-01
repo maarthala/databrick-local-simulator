@@ -64,6 +64,35 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "jupyterhub",
+      "name": "JupyterHub \u2014 one Jupyter per learner",
+      "publicClient": false,
+      "secret": "jupyterhub-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8008/hub/oauth_callback",
+        "http://jupyter.de.lan/hub/oauth_callback"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [
