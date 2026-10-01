@@ -144,16 +144,28 @@ def storage_key(name):
     return key, secret
 
 
+_README = {
+    "notebooks/": "Your notebooks. Save .ipynb files here from Jupyter's \"my bucket\" drive.\n",
+    "dags/": "Airflow DAGs. Any .py here shows up in Airflow within ~30 seconds.\n"
+             "The dag_id must start with your username + '_', e.g. dag_id=\"ravi_daily_sales\".\n",
+}
+
+
 def make_folders(bucket):
-    """notebooks/ and dags/ markers (best effort: a brand-new bucket refuses writes until
-    the quota scanner has seen it — the next provision call creates them)."""
+    """notebooks/ and dags/, each with a README (a real file — an empty "folder marker"
+    object shows up as an endless folder-inside-itself in s3fs-based browsers). Best
+    effort: a brand-new bucket refuses writes until the quota scanner has seen it — the
+    next provision call creates them."""
     import io
     for f in FOLDERS:
+        key = f + "README.md"
         try:
-            _s3("HEAD", bucket, f).close()
+            _s3("HEAD", bucket, key).close()
         except urllib.error.HTTPError:
             try:
-                put_object(bucket, f, io.BytesIO(b""), 0)
+                body = _README[f].encode()
+                put_object(bucket, key, io.BytesIO(body), len(body), "text/markdown")
+                delete_object(bucket, f)              # old empty marker, if any
             except urllib.error.HTTPError:
                 pass
 
