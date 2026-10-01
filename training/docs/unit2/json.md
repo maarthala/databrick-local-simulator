@@ -1,4 +1,4 @@
-# 2.7 Semi-structured data (JSON)
+# 2.9 Semi-structured data (JSON)
 
 ## Concept
 Not all data arrives as neat rows and columns. APIs, application logs, and — most importantly

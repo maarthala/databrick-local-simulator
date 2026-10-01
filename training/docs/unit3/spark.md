@@ -162,6 +162,59 @@ sdf = spark.createDataFrame(pdf)                                       # pandas 
     never call it on a billion-row table. Aggregate in Spark first, then `toPandas()` the small
     result.
 
+### Your own functions in Python (UDFs)
+Spark has hundreds of built-in functions (`F.upper`, `F.round`, `F.date_trunc`, …), and they're
+always the first choice. When none fits, write a **UDF** (user-defined function) in plain Python.
+Reusing the small `df` from above:
+
+```python
+from pyspark.sql.types import DoubleType
+
+@F.udf(DoubleType())
+def with_vat(amount):
+    return round(float(amount) * 1.2, 2)        # ordinary Python, one value at a time
+
+df.withColumn("amount_with_vat", with_vat("amount")).show()
+```
+
+Register it to call it from **SQL** too:
+
+```python
+spark.udf.register("with_vat", with_vat)
+df.createOrReplaceTempView("orders_demo")
+spark.sql("SELECT order_id, amount, with_vat(amount) AS gross FROM orders_demo").show()
+```
+
+For speed, a **pandas UDF** receives a whole **batch** of values as a pandas Series instead of one
+value at a time:
+
+```python
+import pandas as pd
+from pyspark.sql.functions import pandas_udf
+
+@pandas_udf("double")
+def with_vat_fast(amount: pd.Series) -> pd.Series:
+    return (amount * 1.2).round(2)              # vectorised: one call per batch
+
+df.withColumn("amount_with_vat", with_vat_fast("amount")).show()
+```
+
+**Read it step by step:**
+
+- **`@F.udf(DoubleType())`**: turn a Python function into a Spark column function, declaring what
+  type it returns.
+- The function runs **on the Spark workers**, not in this notebook. Spark ships your code to
+  them, which is why the notebook and the workers must run the **same Python version** (this stack
+  uses 3.10 for both).
+- **`spark.udf.register(...)`**: give it a SQL name, for this session only.
+- **`@pandas_udf`**: same idea, but Spark hands over thousands of rows at once as a pandas Series.
+  It's much faster than a plain UDF.
+
+!!! warning "UDFs are a last resort"
+    Spark can't see inside a Python function, so it can't optimise it, and every value has to
+    travel from Spark to Python and back. Prefer built-in functions; if you need a UDF, prefer a
+    **pandas UDF**. (The SQL-only options are in [2.7 Functions](../unit2/functions.md).)
+
 ### "Submitting a Spark job"
 Interactive notebook cells are great for exploring. For **production**, the same code is run
 non-interactively — a **Spark job** submitted on a schedule. On this stack that's
@@ -223,9 +276,11 @@ sorted by revenue.
 | **`spark.sql(...)`** | Run SQL over the `iceberg` catalog; returns a DataFrame (still lazy until an action) |
 | **`toPandas()` / `createDataFrame()`** | Spark → pandas (collects to one machine) / pandas → Spark (scales out) |
 | **Spark job / `spark-submit`** | Run the same code non-interactively (Airflow schedules it) |
+| **UDF / pandas UDF** | Your own Python function used on Spark columns; the pandas version works on whole batches (faster) |
 
 ## You can now…
 - Connect to Spark from a notebook and run DataFrame ops and `spark.sql`
 - See how Spark's verbs mirror pandas — at cluster scale
 - Move data between pandas and Spark (and know when *not* to `toPandas()`)
+- Write a Python **UDF** / **pandas UDF**, and use it from SQL
 - Understand what "submitting a Spark job" means — the bridge into Unit 4

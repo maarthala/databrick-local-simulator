@@ -100,7 +100,7 @@ That one idea unlocks everything a bare lake lacked:
 Big tables are usually **partitioned** — split into subfolders by a column, e.g.
 `orders/dt=2024-06-01/…`. A query filtering on that column reads only the matching
 folders. Over-partitioning creates the **small-files problem** (millions of tiny files),
-which compaction (`OPTIMIZE`) fixes.
+which compaction (`OPTIMIZE`) fixes (hands-on in [4.7](../unit4/table-maintenance.md)).
 
 ## Why it matters for ShopFlow
 When the daily simulation sends an **updated** or **late-arriving** order, a plain Parquet

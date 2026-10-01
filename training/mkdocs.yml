@@ -86,11 +86,13 @@ nav:
       - "2.2 Joins & aggregations": unit2/joins-aggregations.md
       - "2.3 Window functions": unit2/window-functions.md
       - "2.4 CTEs & complex analytics": unit2/ctes.md
-      - "2.5 Conditional logic, NULLs & filtering": unit2/conditional.md
-      - "2.6 MERGE & upserts": unit2/merge.md
-      - "2.7 Semi-structured data (JSON)": unit2/json.md
-      - "2.8 Challenge: cohort report": unit2/challenge.md
-      - "2.9 Challenge: AdventureWorks": unit2/adventureworks-challenge.md
+      - "2.5 Views": unit2/views.md
+      - "2.6 Conditional logic, NULLs & filtering": unit2/conditional.md
+      - "2.7 Functions (built-in, lambdas & your own)": unit2/functions.md
+      - "2.8 MERGE & upserts": unit2/merge.md
+      - "2.9 Semi-structured data (JSON)": unit2/json.md
+      - "2.10 Challenge: cohort report": unit2/challenge.md
+      - "2.11 Challenge: AdventureWorks": unit2/adventureworks-challenge.md
   - "3 · Python — Notebook":
       - "3.1 Python & notebooks for DE": unit3/python-essentials.md
       - "3.2 pandas": unit3/pandas.md
@@ -106,10 +108,12 @@ nav:
       - "4.2 Read the lake (Bronze)": unit4/read-bronze.md
       - "4.3 Transform to Silver": unit4/transform-silver.md
       - "4.4 Spark SQL & aggregates (Gold)": unit4/spark-sql-gold.md
-      - "4.5 Challenge: build a Gold mart": unit4/challenge.md
-      - "4.6 Spark performance & tuning": unit4/performance.md
-      - "4.7 How Spark runs (architecture & query lifecycle)": unit4/spark-architecture.md
-      - "4.8 Data skew & salting": unit4/skew.md
+      - "4.5 Materialized views": unit4/materialized-views.md
+      - "4.6 Challenge: build a Gold mart": unit4/challenge.md
+      - "4.7 Table maintenance (OPTIMIZE, Z-order, VACUUM)": unit4/table-maintenance.md
+      - "4.8 Spark performance & tuning": unit4/performance.md
+      - "4.9 How Spark runs (architecture & query lifecycle)": unit4/spark-architecture.md
+      - "4.10 Data skew & salting": unit4/skew.md
   - "5 · Orchestration (Airflow)":
       - "5.1 Airflow basics": unit5/basics.md
       - "5.2 Build the medallion DAG": unit5/medallion-dag.md

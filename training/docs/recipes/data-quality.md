@@ -57,7 +57,7 @@ print("passed:", good.count(), " quarantined:", bad.count())
 
 - **`spark.createDataFrame([...], ['id','country','amount'])`** — builds a small DataFrame from
   Python literals so we control exactly which rows are bad. Row `2` has `None` for `country` (a
-  **NULL** — see [2.5](../unit2/conditional.md)); row `3` has a negative `amount`. Rows `1` and
+  **NULL** — see [2.6](../unit2/conditional.md)); row `3` has a negative `amount`. Rows `1` and
   `4` are clean.
 - **`bad = src.filter("country IS NULL OR amount <= 0")`** — **`filter`** keeps only the rows that
   match a condition; here the condition is the *negation* of our expectations, so `bad` collects
@@ -211,7 +211,7 @@ Harden the gate with three upgrades:
 | **Fail-fast** | Stop the pipeline when too much of a batch is broken |
 | **Reject rate** | Fraction of a batch that failed the rules (`bad / total`) |
 | **`filter`** | Keep only rows matching a condition — used to split good vs bad |
-| **`IS NULL` / `IS NOT NULL`** | Test for a missing value ([2.5](../unit2/conditional.md)) |
+| **`IS NULL` / `IS NOT NULL`** | Test for a missing value ([2.6](../unit2/conditional.md)) |
 | **`count()`** | An **action** — runs the recipe and returns a row count |
 | **Action vs lazy** | Most ops build a recipe; an action forces it to run |
 | **`assert`** | Plain Python — raise unless a condition holds; the fail-fast gate |

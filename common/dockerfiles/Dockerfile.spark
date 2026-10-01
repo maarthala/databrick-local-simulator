@@ -53,4 +53,9 @@ RUN cd /opt/spark/jars && \
 
 RUN chown spark:spark /opt/spark/jars/*.jar && chmod 644 /opt/spark/jars/*.jar
 
+# pandas + pyarrow on the workers: pandas UDFs (@pandas_udf, applyInPandas) run here and
+# fail with "No module named 'pandas'" without them. Same versions the Jupyter image (also
+# Python 3.10) resolves, so client and workers serialize data the same way.
+RUN python3 -m pip install --no-cache-dir "pandas==2.3.3" "numpy==2.2.6" "pyarrow==25.0.1"
+
 USER spark

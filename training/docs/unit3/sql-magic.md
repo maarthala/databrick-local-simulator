@@ -129,6 +129,11 @@ GROUP BY c.country
 ORDER BY revenue DESC
 ```
 
+### 5 · Materialized views
+`%%sql` also understands `CREATE / REFRESH / DROP / SHOW MATERIALIZED VIEW`: a stored query whose
+result is kept as a table and recomputed when you refresh it. They're built on Gold data, so they're
+taught in **[4.5 Materialized views](../unit4/materialized-views.md)**, after you've built Gold.
+
 ### `%%sql` vs `spark.sql(...)`
 Two ways to run SQL — pick by what you need next:
 

@@ -140,8 +140,8 @@ For ShopFlow sales the grain is **one order line**. So `order_items` is the fact
 !!! danger "Get the grain wrong and every total is wrong"
     Mixing grains is *the* classic bug. Join a one-row-per-**order** table to a
     one-row-per-**line** table and an order-level number (like `orders.total`) gets **counted once
-    per line** — the **fan-out** trap from [2.5](../unit2/conditional.md) /
-    [2.9](../unit2/adventureworks-challenge.md). **One fact table = one grain. Never mix.** If you
+    per line** — the **fan-out** trap from [2.6](../unit2/conditional.md) /
+    [2.11](../unit2/adventureworks-challenge.md). **One fact table = one grain. Never mix.** If you
     need order-level *and* line-level facts, that's **two** fact tables.
 
 ## Measures aren't all equal — additivity

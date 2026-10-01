@@ -63,7 +63,7 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
 
 ### Hints
 - `MERGE INTO … ON t.order_id=s.order_id AND t.product_id=s.product_id WHEN MATCHED THEN UPDATE
-  SET * WHEN NOT MATCHED THEN INSERT *` is the whole trick — the [2.6](../unit2/merge.md) /
+  SET * WHEN NOT MATCHED THEN INSERT *` is the whole trick — the [2.8](../unit2/merge.md) /
   [4.3](../unit4/transform-silver.md) skill applied to a data product.
 - Derive `iso_week` with `concat(year(order_date), '-W', lpad(weekofyear(order_date), 2, '0'))`.
 - Iceberg's **`writeTo(...).overwritePartitions()`** replaces exactly the partitions present in
