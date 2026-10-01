@@ -11,7 +11,7 @@ token/userinfo on the internal address (as oauth2-proxy does) — no hosts-file 
 """
 import os
 
-from lakehouse import lake_name, provision, reset_secret
+from lakehouse import bucket_name, lake_name, provision, reset_secret
 
 env = os.environ
 c = get_config()  # noqa: F821
@@ -65,6 +65,9 @@ async def pre_spawn(spawner):
         "LAKE_USER": name,
         "LAKE_WAREHOUSE": f"{name}_lake",
         "LAKE_CREDENTIAL": f"{name}:{secret}",
+        "LAKE_BUCKET": bucket_name(name),
+        # %%sql materialized-view pipeline files go to the learner's own bucket too
+        "MV_PIPELINE_STORAGE": f"s3a://{bucket_name(name)}/pipelines/mv",
         "GIT_AUTHOR_NAME": spawner.user.name,
         "GIT_AUTHOR_EMAIL": f"{spawner.user.name}@de.lan",
     })

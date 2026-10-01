@@ -14,7 +14,7 @@ import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from lakehouse import POLARIS, lake_name, provision
+from lakehouse import POLARIS, bucket_name, lake_name, provision
 
 _ready = set()            # learners already provisioned since start (skip the API calls)
 _lock = threading.Lock()
@@ -43,7 +43,7 @@ class Handler(BaseHTTPRequestHandler):
         me = {"user": user, "email": h.get("X-Forwarded-Email", ""),
               # oauth2-proxy's keycloak provider adds roles as "role:…" — keep real groups only
               "groups": [g for g in (h.get("X-Forwarded-Groups") or "").split(",") if g and not g.startswith("role:")],
-              "lakehouse": f"{name}_lake", "principal": name}
+              "lakehouse": f"{name}_lake", "bucket": bucket_name(name), "principal": name}
         try:
             with _lock:
                 if name not in _ready:
