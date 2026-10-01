@@ -25,6 +25,10 @@ spec:
             - { name: CSRF_ENABLED, value: "False" }
             - { name: WTF_CSRF_ENABLED, value: "False" }
             - { name: TALISMAN_ENABLED, value: "False" }
+            {{- if .Values.keycloak.enabled }}
+            # Sign in with the lab account (Keycloak, client superset) — see superset_config.py
+            - { name: KEYCLOAK_ENABLED, value: "1" }
+            {{- end }}
           command:
             - /bin/bash
             - -c

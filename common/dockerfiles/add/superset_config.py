@@ -21,3 +21,49 @@ SECRET_KEY = os.environ.get("SUPERSET_SECRET_KEY", "change-me-for-real-deploymen
 # Course/dev quality-of-life (these ARE real config keys).
 WTF_CSRF_ENABLED = False
 TALISMAN_ENABLED = False
+
+# ---- Sign in with the lab account (Keycloak realm de-lab, client `superset`) ----------
+# On when KEYCLOAK_ENABLED=1. Users are created on first sign-in; Keycloak groups map to
+# Superset roles (instructors → Admin, learners → Alpha) and are re-synced every login.
+# Endpoints come from Keycloak's discovery document fetched on the INTERNAL address:
+# Keycloak returns the browser-facing authorize URL and internal token/keys URLs, and
+# tokens carry the public issuer — no hosts-file tricks.
+if os.environ.get("KEYCLOAK_ENABLED") == "1":
+    from flask_appbuilder.security.manager import AUTH_OAUTH
+    from superset.security import SupersetSecurityManager
+
+    _KC = os.environ.get("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080").rstrip("/") + "/realms/de-lab"
+
+    AUTH_TYPE = AUTH_OAUTH
+    AUTH_USER_REGISTRATION = True
+    AUTH_USER_REGISTRATION_ROLE = "Alpha"
+    AUTH_ROLES_MAPPING = {"instructors": ["Admin"], "learners": ["Alpha"]}
+    AUTH_ROLES_SYNC_AT_LOGIN = True
+    OAUTH_PROVIDERS = [{
+        "name": "keycloak",
+        "icon": "fa-key",
+        "token_key": "access_token",
+        "remote_app": {
+            "client_id": os.environ.get("KEYCLOAK_CLIENT_ID", "superset"),
+            "client_secret": os.environ.get("KEYCLOAK_CLIENT_SECRET", "superset-secret"),
+            "server_metadata_url": f"{_KC}/.well-known/openid-configuration",
+            "api_base_url": f"{_KC}/protocol/openid-connect/",
+            "client_kwargs": {"scope": "openid profile"},
+        },
+    }]
+
+    class LabSecurityManager(SupersetSecurityManager):
+        """Learners have no email: username is the identity; groups → role mapping."""
+
+        def oauth_user_info(self, provider, response=None):
+            me = self.appbuilder.sm.oauth_remotes[provider].get("userinfo").json()
+            user = me["preferred_username"]
+            return {
+                "username": user,
+                "first_name": me.get("given_name") or user,
+                "last_name": me.get("family_name") or "",
+                "email": me.get("email") or f"{user}@de.lan",   # Superset needs a unique email
+                "role_keys": me.get("groups", []),
+            }
+
+    CUSTOM_SECURITY_MANAGER = LabSecurityManager
