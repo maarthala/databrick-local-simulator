@@ -124,7 +124,9 @@ jupyter:
   # JupyterHub: Keycloak login, one Jupyter pod per learner (KubeSpawner) with their own
   # lakehouse + a work volume; notebooks/ and dags/ mirror to their bucket.
   repo: jupyter              # the single-user image (one pod per learner)
-  tag: latest
+  # A dated tag, not :latest — re-importing :latest on the node left the OLD image behind the
+  # tag (learner pods started without jupyter-entrypoint.sh). Bump it with every new build.
+  tag: "20261001-1"
   hubImage: ghcr.io/maarthala/de-stack/jupyterhub:latest
   userStorage: 1Gi           # per-learner work volume (PVC claim-<user>)
   userMemory: 1G
