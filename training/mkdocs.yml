@@ -106,10 +106,12 @@ nav:
       - "4.2 Read the lake (Bronze)": unit4/read-bronze.md
       - "4.3 Transform to Silver": unit4/transform-silver.md
       - "4.4 Spark SQL & aggregates (Gold)": unit4/spark-sql-gold.md
-      - "4.5 Challenge: build a Gold mart": unit4/challenge.md
-      - "4.6 Spark performance & tuning": unit4/performance.md
-      - "4.7 How Spark runs (architecture & query lifecycle)": unit4/spark-architecture.md
-      - "4.8 Data skew & salting": unit4/skew.md
+      - "4.5 Materialized views": unit4/materialized-views.md
+      - "4.6 Challenge: build a Gold mart": unit4/challenge.md
+      - "4.7 Table maintenance (OPTIMIZE, Z-order, VACUUM)": unit4/table-maintenance.md
+      - "4.8 Spark performance & tuning": unit4/performance.md
+      - "4.9 How Spark runs (architecture & query lifecycle)": unit4/spark-architecture.md
+      - "4.10 Data skew & salting": unit4/skew.md
   - "5 · Orchestration (Airflow)":
       - "5.1 Airflow basics": unit5/basics.md
       - "5.2 Build the medallion DAG": unit5/medallion-dag.md

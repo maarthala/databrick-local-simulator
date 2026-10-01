@@ -129,52 +129,10 @@ GROUP BY c.country
 ORDER BY revenue DESC
 ```
 
-### 5 · Materialized views — a stored query that refreshes on demand
-A **view** re-runs its query every time you read it. A **materialized view** runs the query once,
-**stores the result as a real table**, and re-runs it only when you **refresh** it — fast reads,
-explicit freshness. `%%sql` supports them directly (after Unit 4, so Gold exists):
-
-```sql
-%%sql
-CREATE MATERIALIZED VIEW iceberg.sandbox.revenue_by_category AS
-SELECT category, SUM(revenue) AS revenue, COUNT(*) AS products
-FROM iceberg.gold.top_products
-GROUP BY category
-```
-
-It's now an ordinary Iceberg table in the governed catalog — query it here, or from Trino, SQLPad and
-Superset:
-
-```sql
-%%sql
-SELECT * FROM iceberg.sandbox.revenue_by_category ORDER BY revenue DESC
-```
-
-When the source changes, the view **does not** update by itself — refresh it:
-
-```sql
-%%sql
-REFRESH MATERIALIZED VIEW iceberg.sandbox.revenue_by_category
-```
-
-The rest of the family:
-
-| Statement | What it does |
-|---|---|
-| `CREATE OR REPLACE MATERIALIZED VIEW … AS …` | Change the view's query (recomputes it) |
-| `CREATE MATERIALIZED VIEW IF NOT EXISTS …` | Create only if it isn't there yet |
-| `SHOW MATERIALIZED VIEWS IN iceberg.sandbox` | List views + their stored SQL |
-| `DROP MATERIALIZED VIEW [IF EXISTS] …` | Remove the view |
-
-!!! info "How it works under the hood"
-    Spark only runs `CREATE MATERIALIZED VIEW` inside a **Declarative Pipeline** (Spark 4.1), so
-    `%%sql` quietly runs a one-view pipeline for you. The query is saved on the table as the
-    `mv.definition` property (`SHOW TBLPROPERTIES …`) — that's what `REFRESH` re-runs. Rules: use a
-    **fully-qualified name** (`catalog.namespace.view`), and a refresh **recomputes the whole
-    view**. These statements work in `%%sql` only — not in Trino/SQLPad, which can't create
-    materialized views on the Polaris (REST) catalog.
-
-    In production you'd refresh on a schedule — e.g. an Airflow task ([Unit 5](../unit5/basics.md)).
+### 5 · Materialized views
+`%%sql` also understands `CREATE / REFRESH / DROP / SHOW MATERIALIZED VIEW`: a stored query whose
+result is kept as a table and recomputed when you refresh it. They're built on Gold data, so they're
+taught in **[4.5 Materialized views](../unit4/materialized-views.md)**, after you've built Gold.
 
 ### `%%sql` vs `spark.sql(...)`
 Two ways to run SQL — pick by what you need next:
@@ -213,14 +171,9 @@ df.count()                              # keep working with the DataFrame in Pyt
 notebooks — write SQL against the catalog, get a table back. The `catalog.schema.table` addressing is
 identical.
 
-Materialized views map directly too: **Fabric** *materialized lake views*
-(`CREATE MATERIALIZED LAKE VIEW`), **Databricks** materialized views (Lakeflow Declarative Pipelines —
-the same pipeline idea Spark 4.1 open-sourced), and **Snowflake** materialized / dynamic tables.
-
 ## You can now…
 - Run SQL in a notebook with `%%sql` — qualifying the `iceberg` catalog, no `;`, one per cell
 - **Discover** what exists with `SHOW SCHEMAS / SHOW TABLES / DESCRIBE IN iceberg`
 - **Create** your own namespace, table, and rows (`CREATE SCHEMA` / `CREATE TABLE` / `INSERT`)
 - Choose `%%sql` (display) vs `spark.sql()` (capture & keep working) appropriately
 - Register a raw file as a temp view to `%%sql` it
-- Create, refresh and drop **materialized views** with `%%sql`

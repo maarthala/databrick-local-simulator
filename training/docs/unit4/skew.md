@@ -1,4 +1,4 @@
-# 4.8 Data skew & salting
+# 4.10 Data skew & salting
 
 ## Concept
 A shuffle spreads rows across partitions **by a key**. If one key has far more rows than the
@@ -35,7 +35,7 @@ For a dedup on a near-unique key, this is usually **the whole fix** — the skew
 
 ### 2. Broadcast the small side of a join (skew-proof for joins)
 If one side is small, broadcasting it means **no shuffle** → no skew possible on the big side.
-(See [4.7 — Join strategies](spark-architecture.md#join-strategies-the-route).)
+(See [4.9 — Join strategies](spark-architecture.md#join-strategies-the-route).)
 
 ### 3. More partitions / round-robin (mild skew)
 Rebalances moderately uneven data — not a single extreme hot key.

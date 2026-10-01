@@ -24,6 +24,8 @@ learn next. This page is your dictionary.
 | **Superset** (BI) | Databricks AI/BI Dashboards | Snowsight | **Power BI** (Direct Lake) | Power BI |
 | **Polaris client id/secret + RBAC** (roles/grants) | the Databricks catalog + SCIM/SSO (Entra/Okta) | Snowflake RBAC + SSO | Entra ID | Entra ID |
 | **SQL** (joins, CTEs, window fns, MERGE) | identical | identical | identical | identical |
+| **Materialized views** in `%%sql` (Spark Declarative Pipelines) | Materialized views / Lakeflow Declarative Pipelines | Materialized views / **Dynamic Tables** | **Materialized lake views** | Synapse materialized views |
+| **Table maintenance**: Iceberg `rewrite_data_files` / `expire_snapshots`, Delta `OPTIMIZE` / `VACUUM` | `OPTIMIZE` / `ZORDER` / `VACUUM` (+ predictive optimization) | automatic (managed storage) | `OPTIMIZE` / `VACUUM` + **V-Order** | `OPTIMIZE` / `VACUUM` (Synapse Spark) |
 
 ## The three biggest transfers
 1. **Polaris' governance model *is* the Databricks catalog / Snowflake model** — catalog→

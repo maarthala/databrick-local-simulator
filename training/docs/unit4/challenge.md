@@ -1,4 +1,4 @@
-# 4.5 Challenge: build a Gold mart
+# 4.6 Challenge: build a Gold mart
 
 ## Concept
 You've walked the full medallion with Spark: read the lake into **Bronze** (4.2),

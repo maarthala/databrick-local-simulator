@@ -1,4 +1,4 @@
-# 4.6 Spark performance & tuning
+# 4.8 Spark performance & tuning
 
 ## Concept
 Spark is fast because it works in **parallel** — but *how* it splits, shuffles, and joins data
@@ -141,9 +141,11 @@ means the `shuffle.partitions` number matters less than it used to, but setting 
 helps on small clusters.
 
 !!! tip "Go deeper"
-    - **[4.7 How Spark runs](spark-architecture.md)** — driver vs executors, the query lifecycle,
+    - **[4.9 How Spark runs](spark-architecture.md)** — driver vs executors, the query lifecycle,
       how executors read the source in parallel, and the *route* of a join (broadcast vs sort-merge).
-    - **[4.8 Data skew & salting](skew.md)** — why one hot key stalls the whole job, and how to fix it.
+    - **[4.10 Data skew & salting](skew.md)** — why one hot key stalls the whole job, and how to fix it.
+    - **[4.7 Table maintenance](table-maintenance.md)** — fix the small-files problem at the table level
+      (`OPTIMIZE`, Z-order, `VACUUM`).
 
 ## Quick checklist
 - Set **`spark.sql.shuffle.partitions`** sensibly (low for this stack).

@@ -49,9 +49,9 @@ platform already knowing *why* things work — not just which buttons to press.
 
     ---
 
-    Distributed processing — build Bronze → Silver → Gold and tune it.
+    Distributed processing — build Bronze → Silver → Gold, materialized views, table maintenance, and tuning.
 
-    [8 lessons →](unit4/fundamentals.md)
+    [10 lessons →](unit4/fundamentals.md)
 
 -   ⏱️ **Unit 5 · Orchestration**
 
