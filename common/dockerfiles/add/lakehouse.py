@@ -7,6 +7,9 @@ provision(name)     the learner's own bucket <name>-lake on the object store (Ru
                     (bronze/silver/gold), principal <name>, principal-role <name> owning the
                     catalog, read-only on the shared lake. Idempotent (also moves an older
                     catalog's default location into the learner's bucket).
+storage_key(name)   a per-learner object-store key (<user>-files, their own policy) with a
+                    fresh secret — the Hub hands it to the learner's Jupyter for the
+                    "my bucket" drive. Needs the `mc` client (in the Hub image).
 reset_secret(name)  give principal <name> a fresh random client secret; returns it. The Hub
                     calls this on each spawn and hands the secret only to that learner's server.
 Standard library only.
@@ -30,10 +33,11 @@ S3_ENDPOINT = os.environ.get("LAKE_S3_ENDPOINT", "http://minio:9000")
 S3_KEY = os.environ.get("AWS_ACCESS_KEY_ID", "minioadmin")
 S3_SECRET = os.environ.get("AWS_SECRET_ACCESS_KEY", "minioadmin")
 S3_REGION = os.environ.get("AWS_REGION", "us-east-1")
-QUOTA_MB = int(os.environ.get("LEARNER_QUOTA_MB", "20"))      # per-learner bucket, hard limit
+QUOTA_MB = int(os.environ.get("LEARNER_QUOTA_MB", "100"))      # per-learner bucket, hard limit
 SQLPAD = os.environ.get("SQLPAD_URL", "http://sqlpad:3000")
 SQLPAD_ADMIN = os.environ.get("SQLPAD_ADMIN", "admin@de.local:admin1234")
 NAMESPACES = ("bronze", "silver", "gold")
+FOLDERS = ("notebooks/", "dags/")      # learner code lives in their bucket (dags/ → Airflow)
 
 
 
@@ -120,6 +124,38 @@ def put_storage_policy(name, admin=False):
                                            "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"],
              "Resource": [f"arn:aws:s3:::{bucket}/*"]}]}
     return _admin("PUT", "add-canned-policy", {"name": storage_user(name)}, json.dumps(doc).encode())
+
+
+def storage_key(name):
+    """(access key, secret) for the learner's own bucket: RustFS user <user>-files with the
+    learner's storage policy, given a new random secret on every call. (RustFS's admin API
+    wants MinIO's encrypted payload for users, so this goes through `mc`.)"""
+    import subprocess
+    user = storage_user(name)
+    key, secret = f"{user}-files", secrets.token_urlsafe(24)
+    u = urllib.parse.urlparse(S3_ENDPOINT)
+    env = dict(os.environ, MC_HOST_lab=f"{u.scheme}://{S3_KEY}:{S3_SECRET}@{u.netloc}")
+    def mc(*args, ok=()):
+        r = subprocess.run(["mc", "--json", *args], env=env, capture_output=True, text=True, timeout=30)
+        if r.returncode and not any(o in r.stdout + r.stderr for o in ok):
+            raise RuntimeError(f"mc {args[1]} {args[2]}: {(r.stdout + r.stderr).strip()[:200]}")
+    mc("admin", "user", "add", "lab", key, secret)
+    mc("admin", "policy", "attach", "lab", user, "--user", key, ok=("already",))
+    return key, secret
+
+
+def make_folders(bucket):
+    """notebooks/ and dags/ markers (best effort: a brand-new bucket refuses writes until
+    the quota scanner has seen it — the next provision call creates them)."""
+    import io
+    for f in FOLDERS:
+        try:
+            _s3("HEAD", bucket, f).close()
+        except urllib.error.HTTPError:
+            try:
+                put_object(bucket, f, io.BytesIO(b""), 0)
+            except urllib.error.HTTPError:
+                pass
 
 
 def set_quota(bucket, mb=QUOTA_MB):
@@ -247,6 +283,7 @@ def provision(name, instructor=False):
     bucket = bucket_name(name)
     create_bucket(bucket)
     set_quota(bucket)
+    make_folders(bucket)
     put_storage_policy(name, admin=instructor)
     invite_sqlpad(name, admin=instructor)
     t = _admin_token()

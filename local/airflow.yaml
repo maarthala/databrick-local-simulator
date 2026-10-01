@@ -25,9 +25,22 @@ x-airflow-common:
     AWS_SECRET_ACCESS_KEY: minioadmin
     # UI login with the lab account (Keycloak, client airflow) — see airflow_webserver_config.py
     KEYCLOAK_ENABLED: '1'
+    # DAG sources: the stack's own dags folder + every learner's <user>-lake/dags/ (one
+    # bundle for all learners — see airflow_learner_dags.py; dag-id prefix rule in
+    # airflow_local_settings.py). Learner DAGs show up within ~30 s of saving.
+    PYTHONPATH: /opt/airflow/lab
+    AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST: >-
+      [{"name": "dags-folder", "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle", "kwargs": {}},
+       {"name": "learners", "classpath": "learner_dags.LearnerDagsBundle", "kwargs": {"refresh_interval": 30}}]
+    AIRFLOW_CONN_LEARNER_S3: >-
+      {"conn_type": "aws", "login": "minioadmin", "password": "minioadmin",
+       "extra": {"endpoint_url": "http://minio:9000", "region_name": "us-east-1",
+                 "config_kwargs": {"s3": {"addressing_style": "path"}}}}
   volumes:
     - ./code:/code
     - ../common/dockerfiles/add/airflow_webserver_config.py:/opt/airflow/webserver_config.py:ro
+    - ../common/dockerfiles/add/airflow_learner_dags.py:/opt/airflow/lab/learner_dags.py:ro
+    - ../common/dockerfiles/add/airflow_local_settings.py:/opt/airflow/lab/airflow_local_settings.py:ro
     - ./configs/airflow.cfg:/opt/airflow/config/airflow.cfg
     - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
     - ./init_scripts/airflow:/init_scripts
