@@ -92,6 +92,11 @@ spec:
             - { name: AIRFLOW__CORE__LOAD_EXAMPLES, value: "false" }
 {{- if .Values.git.enabled }}
             - { name: AIRFLOW__CORE__DAGS_FOLDER, value: "/git/repo/{{ .Values.git.dagsPath }}" }
+            # Two DAG bundles: the git repo AND the chart's built-in DAGs (/opt/airflow/dags,
+            # e.g. spark_k8s_dag). With only DAGS_FOLDER, the built-ins went stale and their
+            # runs sat in "queued" forever once git was enabled.
+            - name: AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST
+              value: '[{"name": "dags-folder", "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle", "kwargs": {"path": "/git/repo/{{ .Values.git.dagsPath }}"}}, {"name": "stack-dags", "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle", "kwargs": {"path": "/opt/airflow/dags"}}]'
             # shared library code from the repo, importable by DAGs/tasks
             - { name: PYTHONPATH, value: "/git/repo/{{ .Values.git.srcPath }}" }
 {{- else }}
@@ -114,8 +119,9 @@ spec:
           volumeMounts:
 {{- if .Values.git.enabled }}
             - { name: git-repo, mountPath: /git, readOnly: true }
-{{- else }}
-            # subPath mounts each DAG as a plain file — avoids the ConfigMap
+{{- end }}
+            # Built-in DAGs, mounted with or without git (git mode scans them as a second
+            # bundle). subPath mounts each DAG as a plain file — avoids the ConfigMap
             # atomic-symlink (..data) dirs that break Airflow 3's DAG walker
             # ("Detected recursive loop when walking DAG directory").
 {{- range $path, $_ := .Files.Glob "files/airflow-dags/*.py" }}
@@ -124,7 +130,6 @@ spec:
               subPath: {{ base $path }}
               readOnly: true
 {{- end }}
-{{- end }}
             - { name: logs, mountPath: /opt/airflow/logs }
 {{- if .Values.git.enabled }}
 {{ include "de-stack.gitsync.sidecar" . | indent 8 }}
@@ -132,9 +137,8 @@ spec:
       volumes:
 {{- if .Values.git.enabled }}
 {{ include "de-stack.gitsync.volumes" . | indent 8 }}
-{{- else }}
-        - { name: dags, configMap: { name: airflow-dags } }
 {{- end }}
+        - { name: dags, configMap: { name: airflow-dags } }
         - { name: logs, emptyDir: {} }
 ---
 apiVersion: v1
