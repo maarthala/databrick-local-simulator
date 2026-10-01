@@ -18,16 +18,44 @@ learning.
 
     ### Steps
     ```bash
-    # 0. get the repo
+    # 1. get the repo
     git clone https://github.com/maarthala/databrick-local-simulator.git
-    cd databrick-local-simulator
+    cd databrick-local-simulator/local      # every command below runs from local/
 
-    # bring it up (all commands run from local/)
-    cd local
-    make init          # first run only: download base JARs into ../common/dockerfiles/tmp
-    make up            # build the compose images + start every service
-    make polaris-seed  # provision the governed catalog + personas/RBAC (needed for Unit 6)
+    # 2. first run only
+    cp .env.example .env   # REQUIRED: .env tells Docker Compose which services make up the stack
+    make init              # download Spark/Iceberg jars (~2.5 GB) + prepare AdventureWorks
+
+    # 3. start it
+    make up                # build the images + start every service
+    make polaris-seed      # create the lakehouse catalog (iceberg) + personas
     ```
+
+    !!! warning "Don't skip `cp .env.example .env`"
+        Without `.env`, `make up` stops at once with **`no configuration file provided: not
+        found`**. The file is gitignored, so each clone needs its own copy.
+
+    !!! warning "`make polaris-seed` is needed for everything in `iceberg`, and again after a reset"
+        It creates the `iceberg` lakehouse catalog. Until it runs, every `iceberg.…` query
+        (Units 2–6) fails with **`Unable to find warehouse polaris_lake`**.
+        Postgres keeps no data volume, so the catalog is lost whenever the Postgres container is
+        recreated: after `make down`, `make restart`, or a `make up` that rebuilds it. **Run
+        `make polaris-seed` again** after any of those, or whenever you see that error. It's safe
+        to re-run.
+
+    !!! note "The first `make up` is slow"
+        It builds every image from scratch, which takes **15–30 minutes** depending on your machine
+        and network. Later runs reuse the cache and start in a minute or two.
+
+    ### Optional settings in `.env`
+    | Setting | When you need it |
+    |---|---|
+    | `POSTGRES_HOST_PORT=5433` | something else on your machine already uses port **5432** |
+    | `AIRFLOW_HOST_PORT=8011` | something else already uses port **8001** (then open Airflow at `localhost:8011`) |
+    | `GIT_TOKEN=<token>` | you want Jupyter to auto-push saved notebooks to a git repo. Leave it empty and Jupyter works normally, without auto-push |
+
+    If `make up` fails with **`port is already allocated`**, set the matching port above and run
+    `make up` again.
 
     ### Verify
     ```bash
@@ -42,8 +70,9 @@ learning.
     | `make ps` | show running services |
     | `make logs` (`make logs S=trino`) | tail logs (all, or one service) |
     | `make docs` | rebuild the course site after editing `training/docs/**` |
-    | `make restart` | `down` then `up` |
+    | `make restart` | `down` then `up`, so it **wipes data** too (then re-run `make polaris-seed`) |
     | `make down` | **stop the stack and remove volumes** (wipes data) |
+    | `docker compose stop` / `docker compose start` | pause and resume, **keeping** your data and catalog |
     | `make clean` | remove the images built for this stack |
 
     !!! warning "`make down` deletes the volumes"
@@ -102,6 +131,6 @@ learning.
   `main` — and the stack's landing page links straight to it, so it's always the current version.
 
 ## You can now…
-- Bring the whole stack up with Docker Compose (`make up` + `make polaris-seed`) or on Kubernetes (Ansible)
+- Bring the whole stack up with Docker Compose (`cp .env.example .env`, `make init`, `make up`, `make polaris-seed`) or on Kubernetes (Ansible)
 - Verify every service is running and reach the landing page
 - Tear it down / reset cleanly, and know which command wipes data

@@ -136,7 +136,12 @@ To run it on your **own** laptop, you need Docker and the repo.
     1. Install [**Docker Desktop for Mac**](https://www.docker.com/products/docker-desktop/)
        (Apple Silicon or Intel). Give it plenty of memory in **Settings → Resources**
        (see the note below).
-    2. Install **Git** (`brew install git`, or it ships with the Xcode command-line tools).
+    2. Install the Xcode command-line tools. They bring **Git**, **make**, **curl**, **unzip**,
+       **ruby** and **python3**, everything the setup scripts use:
+
+        ```bash
+        xcode-select --install
+        ```
 
 === "Windows"
 
@@ -145,6 +150,11 @@ To run it on your **own** laptop, you need Docker and the repo.
     2. Install [**Git for Windows**](https://git-scm.com/download/win).
     3. Do the clone/edit inside your **WSL 2** home (e.g. `\\wsl$\Ubuntu\home\you`) — it's far
        faster than the Windows filesystem and avoids CRLF line-ending surprises in shell scripts.
+    4. Inside the WSL shell, install the tools the setup scripts use:
+
+        ```bash
+        sudo apt-get update && sudo apt-get install -y git make curl unzip ruby python3
+        ```
 
 === "Linux"
 
@@ -152,12 +162,24 @@ To run it on your **own** laptop, you need Docker and the repo.
        ([docs.docker.com/engine/install](https://docs.docker.com/engine/install/)).
     2. Add yourself to the `docker` group so you don't need `sudo`:
        `sudo usermod -aG docker $USER` (then log out/in).
-    3. Install **Git** (`sudo apt-get install -y git`).
+    3. Install **Git** and the tools the setup scripts use:
+
+        ```bash
+        sudo apt-get install -y git make curl unzip ruby python3
+        ```
 
 !!! warning "This stack is memory-hungry"
     You're running ~a dozen services (Spark, Trino, Superset, Airflow, Polaris, Postgres, …).
     Give Docker at least **8 GB** of RAM — **12–16 GB** is comfortable. On Docker Desktop set this
     in **Settings → Resources → Memory**. Too little and containers get killed (`exit 137`).
+
+!!! warning "…and needs disk space"
+    Plan for about **25 GB free**: ~2.5 GB of downloads (`make init`) plus ~15–20 GB of Docker
+    images. On Docker Desktop check **Settings → Resources → Disk usage limit**.
+
+!!! info "Why `ruby`?"
+    `make init` uses it to prepare the **AdventureWorks** sample database (lesson 2.11). Without
+    ruby that step is skipped with a warning, and everything else still works.
 
 With Docker and Git installed, follow **[Bring up the stack](deploy.md)** for the exact `make`
 commands (Docker Compose) or the Ansible steps (Kubernetes).
@@ -177,7 +199,11 @@ Run through this checklist once — if all three pass, you're ready for Unit 1.
     ```sql
     SELECT 'ready!' AS status;
     SELECT count(*) FROM shopflow.public.orders;   -- expect 40000
+    SHOW SCHEMAS FROM iceberg;                      -- expect bronze, silver, gold (…)
     ```
+
+    If the last one fails with `Unable to find warehouse polaris_lake`, run `make polaris-seed`
+    (see [Bring up the stack](deploy.md)).
 
 ---
 
@@ -195,7 +221,7 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 | Trino | http://localhost:8007/ui/ (CLI: `:8007`) | any username, no password |
 | SQLPad (SQL workbench) | http://localhost:8003 | `admin@de.local` / `admin1234` |
 | Superset (BI) | http://localhost:8004 | `admin` / `admin` |
-| Airflow | http://localhost:8001 | `airflow` / `airflow` |
+| Airflow | http://localhost:8001 (or the `AIRFLOW_HOST_PORT` you set) | `airflow` / `airflow` |
 | Polaris Console (governance) | http://localhost:8189 | `analyst` / `analyst` (or `engineer` / `lead`; admin `root` / `s3cr3t`) |
 | MinIO console (S3) | http://localhost:9001 | `minioadmin` / `minioadmin` |
 
