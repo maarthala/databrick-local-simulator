@@ -10,7 +10,10 @@ an nginx landing page. Postgres also hosts the **AdventureWorks** OLTP sample DB
 (see below).
 
 ## Prerequisites
-- **Docker** + **Docker Compose** v2.
+- **Docker** + **Docker Compose** v2 (≥ 8 GB RAM for Docker, ~25 GB free disk).
+- `git`, `make`, `curl`, `unzip`, `ruby` (AdventureWorks prep in `make init`), `python3`
+  (`make polaris-seed`). macOS: `xcode-select --install`; Debian/Ubuntu/WSL:
+  `sudo apt-get install -y git make curl unzip ruby python3`.
 - The custom images (spark, jupyter, superset, airflow, home) are **built by
   `make up`**; the rest (polaris, trino, minio, postgres, redis) are stock and pulled.
 
@@ -18,9 +21,11 @@ an nginx landing page. Postgres also hosts the **AdventureWorks** OLTP sample DB
 ```bash
 cp .env.example .env   # first time: create your env (gitignored); set GIT_TOKEN to enable notebook auto-push
 make init   # first time: download base JARs (into ../common/dockerfiles/tmp)
-make up     # build the compose images + start everything
+make up     # build the compose images + start everything (first build: 15–30 min)
+make polaris-seed   # create the iceberg catalog + personas; re-run after make down/restart
 make ps     # status      make logs S=polaris     make down   # stop + remove volumes
 ```
+Ports 5432 / 8001 taken by something else? Set `POSTGRES_HOST_PORT` / `AIRFLOW_HOST_PORT` in `.env`.
 
 The **hands-on Data Engineering course** ([`../training`](../training)) is published to
 **[GitHub Pages](https://maarthala.github.io/databrick-local-simulator/)** (auto-deployed on
