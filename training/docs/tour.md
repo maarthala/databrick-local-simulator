@@ -9,53 +9,80 @@ your own workspace, shared company data, and everything behind one login.
 [▶ Start the course](setup/prerequisites.md){ .md-button }
 [💬 Join the Discord](https://discord.gg/2B5mTgGjM){ .md-button }
 
-## Highlights
+## Highlights — learn it here, use it on Fabric, Databricks & Snowflake
+
+Cloud platforms charge by the hour, and their free tiers run out before you've really learned
+anything. This lab gives you the **same building blocks** — a lakehouse, Spark, SQL warehouses,
+pipelines, governance and BI — on your own machine, free and with no time limit. Learn the
+concepts properly here, then walk into **Microsoft Fabric, Databricks or Snowflake** already knowing
+*why* things work, not just which button to press.
 
 <div class="grid cards" markdown>
+
+-   🚀 **Upskill for the cloud platforms**
+
+    ---
+
+    Every lesson ends with how the same thing works on **Databricks, Snowflake, Fabric** and Azure.
+    Medallion, Delta/Iceberg tables, catalogs and grants, notebooks, jobs and dashboards — you
+    practise the ideas those platforms are built on.
+
+-   🧮 **Practise SQL like at work — OLTP and OLAP**
+
+    ---
+
+    **OLTP**: write `INSERT` / `UPDATE` / `MERGE` against real operational databases (PostgreSQL —
+    the ShopFlow shop and AdventureWorks) in **SQLPad**. **OLAP**: run big joins, window functions
+    and CTEs over the lakehouse with **Trino**. Each SQL lesson shows the **T-SQL** (Fabric
+    Warehouse / Synapse), Spark SQL and Snowflake version too.
+
+-   🧊 **A governed lakehouse**
+
+    ---
+
+    Apache Iceberg tables in object storage, governed by **Apache Polaris** — catalogs, schemas,
+    grants and sharing: the same model as the Databricks catalog and Snowflake roles.
 
 -   🏢 **Works like a company platform**
 
     ---
 
     One sign-in for every tool, your own workspace, shared company data, and roles — learners
-    and a `manager` who administers everyone. Not a toy demo: the same shape you'll meet at work.
-
--   🧊 **A governed lakehouse**
-
-    ---
-
-    Apache Iceberg tables in object storage, governed by **Apache Polaris** — per-user grants,
-    sharing with teammates, and short-lived storage credentials, enforced on every query.
+    and a `manager` who administers everyone. The same shape you'll meet at work.
 
 -   ⚡ **The tools teams actually use**
 
     ---
 
-    **Spark** (via Spark Connect) in **Jupyter**, **Trino** for SQL, **Airflow** for pipelines,
-    **Superset** for dashboards, **SQLPad** for quick SQL — all wired together, nothing to configure.
-
--   🗂️ **Your own workspace**
-
-    ---
-
-    Every account gets its own bucket and lakehouse, a starter notebook and DAG, practice CSVs
-    and a ready-made table — so you can start querying in the first five minutes.
+    **Spark** in **Jupyter**, **Trino** for SQL, **Airflow** for pipelines, **Superset** for
+    dashboards, **SQLPad** for quick SQL — wired together, nothing to configure.
 
 -   💸 **Free, open source, offline**
 
     ---
 
-    Runs on Docker on your laptop (or on Kubernetes for a class). No cloud account, no credit
-    card, no surprise bill — break things and start again for free.
-
--   🎓 **A full course on top**
-
-    ---
-
-    60+ hands-on lessons: SQL, Python, Spark medallion, Airflow, governance, BI and capstones —
-    every skill mapped to **Databricks, Snowflake, Fabric** and Azure.
+    Runs on Docker on your laptop (or Kubernetes for a class). No cloud account, no credit card,
+    no surprise bill — break things and start again for free.
 
 </div>
+
+### Same skills, different logo
+
+What you use here, and what it's called on the platforms you're aiming for:
+
+| You practise here | Microsoft Fabric | Databricks | Snowflake |
+|---|---|---|---|
+| Object storage + **Iceberg** tables | **OneLake** + Delta tables | cloud storage + **Delta Lake** | managed storage, Iceberg tables |
+| **Polaris** catalogs, grants, sharing | Fabric workspace roles + OneLake security, Purview | the **Databricks catalog** | databases, schemas, **RBAC roles** |
+| Jupyter + **Spark** | Fabric **notebooks** (Spark) | Databricks **notebooks** | **Snowpark** |
+| **Trino** — analytical SQL (OLAP) | **SQL analytics endpoint / Warehouse** (T-SQL) | **SQL Warehouse** | virtual **Warehouse** |
+| **PostgreSQL** + SQLPad — operational SQL (OLTP) | **SQL database** in Fabric (T-SQL) | **Lakebase** (Postgres) | **Hybrid tables** |
+| **Airflow** DAGs | **Data Factory** pipelines | **Workflows / Jobs** | **Tasks** |
+| **Superset** dashboards | **Power BI** | AI/BI **dashboards** | **Snowsight** |
+| Bronze → Silver → Gold | medallion on OneLake | medallion (their term) | raw → staging → marts |
+
+The full map, with what's *different* on managed platforms, is in
+[10.1 OSS ⇄ Databricks / Snowflake / Fabric / Azure](platforms/rosetta.md).
 
 ## A quick tour
 
