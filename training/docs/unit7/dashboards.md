@@ -2,9 +2,9 @@
 
 ## Concept
 Everyone above you in the org — a category manager, a CFO, the CEO — doesn't open Jupyter or run
-`spark-submit`. They open a **dashboard**. This lesson is the last mile of the whole pipeline: you
-turn the Gold marts you built in [Units 4–5](../unit4/spark-sql-gold.md) into charts a human reads
-in five seconds.
+a DAG. They open a **dashboard**. This lesson is the last mile of the whole pipeline: you turn the
+Gold marts **you** built in [Units 4–5](../unit4/spark-sql-gold.md) — in your own lakehouse,
+`demouser_lake` — into charts a human reads in five seconds.
 
 !!! info "What is BI, a dashboard, and a chart?"
     **Business intelligence (BI)** is the practice of turning data into pictures a non-technical
@@ -35,14 +35,15 @@ This is the rule you first met back in [Unit 1.4](../unit1/medallion.md): BI alw
 
 ```mermaid
 flowchart LR
-  G["iceberg.gold<br/>daily_sales · top_products · customer_ltv"] --> T["Trino<br/>(iceberg catalog)"]
+  G["demouser_lake.gold<br/>daily_sales · top_products · customer_ltv"] --> T["Trino<br/>(catalog demouser_lake)"]
   T --> SU["Superset<br/>Dataset → Charts → Dashboard"]
   SU --> EXEC["👔 Execs & analysts"]
 ```
 
 **Superset never touches the lake files directly.** It speaks **SQL over Trino** — the same query
-engine you used in Unit 2. Trino exposes the Gold marts through its `iceberg` catalog, so a Gold
-table like `daily_sales` is addressed as `iceberg.gold.daily_sales`. When you drag a chart around
+engine you used in Unit 2. Trino exposes your lakehouse as the catalog **`demouser_lake`**, so your
+Gold table `daily_sales` is addressed as `demouser_lake.gold.daily_sales`. (The course's shared lake
+is the catalog `iceberg`.) When you drag a chart around
 in Superset, under the hood Superset is sending `SELECT …` statements to Trino and drawing the
 answer.
 
@@ -50,7 +51,7 @@ answer.
     Everything in this lesson climbs the same ladder. Learn the four rungs once:
 
     1. **Database connection** — Superset points at Trino. You do this *once* per data source; it's
-       just a URL (a "SQLAlchemy URI") that says "talk to Trino, use the `iceberg` catalog."
+       just a URL (a "SQLAlchemy URI") that says "talk to Trino."
     2. **Dataset** — you register *one* Gold table (e.g. `gold.daily_sales`) as something
        chartable. A dataset is Superset's handle on a table: which columns exist, which are
        numbers to sum, which are dates.
@@ -61,8 +62,14 @@ answer.
     different names.
 
 ## Lab
-Open Superset at [http://localhost:8004](http://localhost:8004) (k8s: `superset.de.lan`) and log
-in as `admin` / `admin`. Everything in this lesson happens in the **browser** — there's no
+Open Superset at [http://localhost:8004](http://localhost:8004) (k8s: `superset.de.lan`) and click
+**Sign in with Epireum lab account**.
+
+!!! note "Build your Gold first"
+    The charts use **your** Gold marts — `daily_sales`, `top_products` and `customer_ltv` from
+    [4.4](../unit4/spark-sql-gold.md) (or `daily_sales` + `top_products` from the
+    [5.2 medallion DAG](../unit5/medallion-dag.md)). Haven't built them? Do that first — or point
+    the charts at the course's shared lake (catalog `iceberg`) to follow along. Everything in this lesson happens in the **browser** — there's no
 container shell to open, no code to run. You'll click through Superset's menus.
 
 ### 1. The lakehouse connection (pre-configured)
@@ -75,8 +82,10 @@ Trino server, and default to its `iceberg` catalog."
 Superset ships with two Trino connections already set up, so you don't have to build them. Find
 them under **Settings → Database Connections**:
 
-- **ShopFlow Lakehouse** → `trino://trino@trino:8080/iceberg` — the governed **Gold** layer (this
-  unit). This is the one you'll use.
+- **ShopFlow Lakehouse** → `trino://trino@trino:8080/iceberg` — the lakehouse (this unit). This is
+  the one you'll use. It can reach **every** Trino catalog — your own `demouser_lake` as well as the
+  shared `iceberg` (the URI only sets the default); you pick the catalog when you query or create
+  a dataset.
 - **shopflow** → `trino://trino@trino:8080/shopflow/public` — the raw source you queried back in
   Unit 2 SQL Lab. You won't chart from this one — BI reads Gold only.
 
@@ -91,14 +100,15 @@ the SQLAlchemy URI, click **Test Connection** (you want to see *Connection looks
     **SQL → SQL Lab**, pick the **ShopFlow Lakehouse** connection, and run:
 
     ```sql
-    SELECT * FROM iceberg.gold.daily_sales ORDER BY order_date DESC LIMIT 10;
+    SELECT * FROM demouser_lake.gold.daily_sales ORDER BY order_date DESC LIMIT 10;
     ```
 
     **Read it step by step:**
 
     - **`SELECT *`** — return every column. Good for a first look at an unfamiliar table.
-    - **`FROM iceberg.gold.daily_sales`** — the fully-qualified Gold table: catalog `iceberg`,
-      schema `gold`, table `daily_sales`.
+    - **`FROM demouser_lake.gold.daily_sales`** — the fully-qualified Gold table: catalog
+      `demouser_lake` (your lakehouse — own account? use `<your username>_lake`), schema `gold`,
+      table `daily_sales`.
     - **`ORDER BY order_date DESC`** — most recent day first (`DESC` = descending).
     - **`LIMIT 10`** — only the 10 newest rows, so it returns instantly.
 
@@ -113,7 +123,7 @@ you can sum" — the metadata a chart needs to offer you the right options.
 
 1. Go to **Datasets → + Dataset**.
 2. Pick database **ShopFlow Lakehouse** (the Trino connection from step 1).
-3. Pick schema **gold**, then table **daily_sales**.
+3. Pick catalog **demouser_lake** (your lakehouse), schema **gold**, then table **daily_sales**.
 4. Click **Create dataset and create chart** — this saves the dataset and drops you straight into
    the chart builder.
 5. Repeat the whole thing for `top_products` and `customer_ltv`. When you're done you have three
@@ -191,7 +201,7 @@ to deliver. Everything upstream was in service of this one page an exec can read
     On **Databricks**, a BI tool reads Gold through a SQL warehouse and **the Databricks catalog
     enforces the grants automatically** — an analyst's dashboard can only surface what their role may read
     (the [Unit 6](../unit6/polaris.md) policy). On this OSS compose stack, Trino/Superset query the
-    **Apache Polaris**-backed `iceberg` catalog without per-user enforcement wired into the query
+    **Apache Polaris**-backed catalogs without per-user enforcement wired into the query
     path, so *by convention* you point BI at **Gold only** and never grant a BI account more than
     read on Gold. The **pattern** — BI reads the small, safe, governed Gold layer — is what transfers.
 
@@ -216,7 +226,7 @@ refreshes. This challenge builds one.
         ORDER BY order_date
         ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
       ) AS revenue_7d_avg
-    FROM iceberg.gold.daily_sales
+    FROM demouser_lake.gold.daily_sales
     ORDER BY order_date;
     ```
 
@@ -264,6 +274,7 @@ refreshes. This challenge builds one.
 | **The Superset ladder** | Database → Dataset → Chart → Dashboard (always this order) |
 | **Database connection** | Superset → Trino, via a SQLAlchemy URI (done once) |
 | **SQLAlchemy URI** | The connection string, e.g. `trino://trino@trino:8080/iceberg` |
+| **Catalog** | Which Trino catalog a dataset reads — your `demouser_lake`, or the shared `iceberg` |
 | **Dataset** | Superset's registered handle on one Gold table you can chart |
 | **Virtual dataset** | A saved SQL Lab query, charted as if it were a table |
 | **SQL Lab** | Superset's built-in SQL editor — type SQL, get rows |
