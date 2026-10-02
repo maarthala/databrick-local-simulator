@@ -34,7 +34,7 @@ spec:
           # so avoid the Hive session-catalog init; the lakehouse uses the iceberg REST catalog.
           # spark.cores.max caps the long-lived Connect app (same as compose). Without it,
           # it grabs every core on the standalone cluster and Airflow Spark jobs wait forever.
-          command: ["/bin/bash", "-c", "export SPARK_NO_DAEMONIZE=1; exec /opt/spark/sbin/start-connect-server.sh --master spark://spark-master:7077 --conf spark.driver.host=$POD_IP --conf spark.driver.bindAddress=0.0.0.0 --conf spark.sql.catalogImplementation=in-memory --conf spark.cores.max=2 --conf spark.executor.cores=1"]
+          command: ["/bin/bash", "-c", "export SPARK_NO_DAEMONIZE=1; exec /opt/spark/sbin/start-connect-server.sh --master spark://spark-master:7077 --driver-memory 2g --conf spark.driver.host=$POD_IP --conf spark.driver.bindAddress=0.0.0.0 --conf spark.sql.catalogImplementation=in-memory --conf spark.cores.max=2 --conf spark.executor.cores=1"]
           env:
             - { name: SPARK_CONF_DIR, value: /opt/spark/conf }
             - name: POD_IP

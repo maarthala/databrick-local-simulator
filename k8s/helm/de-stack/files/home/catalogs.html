@@ -25,11 +25,9 @@
     input[type=text], select{font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:6px 9px; outline:none}
     input[type=text]:focus, select:focus{border-color:var(--accent)}
     code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent2)}
-    header{display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 20px; border-bottom:1px solid var(--line); background:rgba(11,16,32,.6)}
-    .brand{display:flex; align-items:center; gap:14px}
-    .brand a.back{color:var(--muted); font-size:.92rem} .brand a.back:hover{color:var(--ink)}
-    .brand h1{margin:0; font-size:1.25rem; font-weight:800} .brand h1 .dot{color:var(--accent)}
-    #who{color:var(--muted); font-size:.9rem}
+    /* page title (under the shared lab header, lab-header.js) */
+    .pagebar{padding:10px 28px; border-bottom:1px solid var(--line); background:rgba(20,27,46,.45)}
+    .pagebar h1{margin:0; font-size:1.1rem; font-weight:800} .pagebar h1 .dot{color:var(--accent)}
     .app{flex:1; display:grid; grid-template-columns:290px 1fr; min-height:0}
     aside{border-right:1px solid var(--line); background:rgba(20,27,46,.55); overflow:auto; padding:12px 10px}
     .title{font-size:.75rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); padding:10px 8px 6px; display:flex; justify-content:space-between; align-items:center}
@@ -62,10 +60,9 @@
 </style>
 </head>
 <body>
-  <header>
-    <div class="brand"><a class="back" href="/">← Lab home</a><h1>My catalogs <span class="dot">·</span> Polaris</h1></div>
-    <span id="who"></span>
-  </header>
+  <header id="lab-top"></header>
+  <script src="/lab-header.js"></script>
+  <div class="pagebar"><h1>🗂️ My catalogs <span class="dot">·</span> Polaris</h1></div>
   <div class="app">
     <aside>
       <div class="title"><span>My catalogs</span><button class="small" id="new">＋ New</button></div>
@@ -143,6 +140,7 @@
         var c = state.data.shared.filter(function (x) { return x.name === name; })[0];
         var card = el('div', 'card'); card.appendChild(el('h2', null, '🤝 ' + name));
         card.appendChild(el('div', 'sub', 'Shared with you by ' + name.split('_')[0] + '.'));
+        card.appendChild(polarisLink(name));
         m.appendChild(card);
         var acc = el('div', 'card'); acc.appendChild(el('h3', null, 'What you can access'));
         var t = el('table'); t.innerHTML = '<tr><th>Namespace</th><th>Table</th><th>Access</th></tr>';
@@ -240,8 +238,7 @@
       }
       ok.onclick = create; inp.onkeydown = function (e) { if (e.key === 'Enter') create(); if (e.key === 'Escape') box.innerHTML = ''; };
     };
-    fetch('/api/me', {credentials: 'same-origin'}).then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (me) { if (me) { state.user = me.principal || me.user; $('who').textContent = 'Signed in as ' + me.user; } });
+    document.addEventListener('lab:me', function (e) { state.user = e.detail.principal || e.detail.user; });
     load();
   </script>
 </body>

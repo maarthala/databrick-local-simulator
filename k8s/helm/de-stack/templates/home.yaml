@@ -21,6 +21,12 @@ data:
 {{ .Files.Get "files/home/files.html" | indent 4 }}
   catalogs.html: |
 {{ .Files.Get "files/home/catalogs.html" | indent 4 }}
+  lab-header.js: |
+{{ .Files.Get "files/home/lab-header.js" | indent 4 }}
+  default.conf: |
+{{ .Files.Get "files/home/default.conf" | indent 4 }}
+binaryData:
+  epireum-logo.png: {{ .Files.Get "files/home/img/epireum-logo.png" | b64enc }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -45,6 +51,10 @@ spec:
             - { name: html, mountPath: /usr/share/nginx/html/index.html, subPath: index.html }
             - { name: html, mountPath: /usr/share/nginx/html/files.html, subPath: files.html }
             - { name: html, mountPath: /usr/share/nginx/html/catalogs.html, subPath: catalogs.html }
+            - { name: html, mountPath: /usr/share/nginx/html/lab-header.js, subPath: lab-header.js }
+            - { name: html, mountPath: /usr/share/nginx/html/img/epireum-logo.png, subPath: epireum-logo.png }
+            # bigger header limit: oauth2-proxy forwards the session + sign-in cookies
+            - { name: html, mountPath: /etc/nginx/conf.d/default.conf, subPath: default.conf }
       volumes:
         - { name: html, configMap: { name: home-html } }
 ---
@@ -165,6 +175,9 @@ spec:
             - { name: OAUTH2_PROXY_COOKIE_SECRET, value: {{ .Values.oauth2Proxy.cookieSecret | quote }} }
             - { name: OAUTH2_PROXY_COOKIE_SECURE, value: "false" }
             - { name: OAUTH2_PROXY_COOKIE_NAME, value: _de_lab }
+            # session (tokens) in Redis: the cookie holds only a ticket, so request headers stay small
+            - { name: OAUTH2_PROXY_SESSION_STORE_TYPE, value: redis }
+            - { name: OAUTH2_PROXY_REDIS_CONNECTION_URL, value: "redis://redis:6379/1" }
             # one CSRF/PKCE cookie per login attempt (second tab / stale login page → 500 otherwise)
             - { name: OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST, value: "true" }
             - { name: OAUTH2_PROXY_COOKIE_CSRF_EXPIRE, value: 15m }
