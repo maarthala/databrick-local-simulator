@@ -147,16 +147,20 @@ So far data has flowed *out* of the database. **`to_sql`** goes the other way �
 DataFrame and writes it *into* a table, handy for staging a computed result other tools can read:
 
 ```python
-by_country.to_sql("country_revenue_scratch", pg,
-                  if_exists="replace", index=False)
-pd.read_sql("SELECT * FROM country_revenue_scratch", pg)
+import os
+table = f"country_revenue_{os.environ['LAKE_USER']}"   # your own table, e.g. country_revenue_ravi
+
+by_country.to_sql(table, pg, if_exists="replace", index=False)
+pd.read_sql(f"SELECT * FROM {table}", pg)
 ```
 
 **Read it step by step:**
 
 - **`by_country.to_sql(...)`** — `to_sql` is a *method on the DataFrame*, the mirror image of
   `read_sql`. It creates the table (if needed) and inserts the rows.
-- **`"country_revenue_scratch"`** — the target table name to create/write.
+- **`table`** — the target table name to create/write. The ShopFlow database is **shared by the
+  whole class**, so the name ends in your username (`LAKE_USER`) — otherwise every learner would
+  overwrite the same table.
 - **`pg`** — the same engine again; `to_sql` needs to know *where* to write.
 - **`if_exists="replace"`** — what to do if that table already exists. `"replace"` drops and
   recreates it; other choices are `"fail"` (raise an error) and `"append"` (add rows to it).
@@ -175,7 +179,7 @@ from sqlalchemy import create_engine
 # same create_engine() as Postgres — only the URL changes (catalog = iceberg, no password)
 lake = create_engine("trino://learner@trino:8080/iceberg")
 
-# the Gold mart you'll build in Unit 4
+# the course's shared lake: a ready-made Gold mart (you build your own in Unit 4)
 daily = pd.read_sql(
     "SELECT * FROM iceberg.gold.daily_sales ORDER BY order_date DESC LIMIT 14",
     lake,
@@ -188,13 +192,16 @@ daily
 - **`create_engine("trino://learner@trino:8080/iceberg")`** — the *same* `create_engine` you used
   for Postgres, just a **`trino://`** URL of the shape `trino://<user>@<host>:<port>/<catalog>`.
   `learner` is the user (Trino needs no password), `trino:8080` is the query engine, and `iceberg`
-  is the default **catalog** (our lakehouse). The `trino` package ships the SQLAlchemy dialect that
+  is the default **catalog** — the course's **shared** lake. The `trino` package ships the SQLAlchemy dialect that
   makes this URL work — so pandas gets a real **engine**, exactly like Postgres.
 - **`pd.read_sql("SELECT * FROM iceberg.gold.daily_sales ...", lake)`** — the *identical* pandas
   call as for Postgres. Only two things changed: the engine (`lake` instead of `pg`) and the
   fully-qualified table name (`iceberg.gold.daily_sales`).
 - **What comes back** — again a plain DataFrame (the 14 most recent days of the Gold sales mart),
   indistinguishable from one read out of Postgres.
+- **Your own lakehouse** is a catalog too: `<you>_lake` (e.g. `ravi_lake`). Once you've built
+  tables in [Unit 4](../unit4/fundamentals.md), the same engine reads them —
+  `pd.read_sql(f"SELECT * FROM {os.environ['LAKE_USER']}_lake.gold.daily_sales", lake)`.
 
 !!! tip "Give pandas an *engine*, not a raw connection"
     `pd.read_sql` officially supports a **SQLAlchemy engine** (or a URL string). If you instead pass
