@@ -12,6 +12,8 @@ use_directory_urls: true
 
 theme:
   name: material
+  logo: assets/epireum-logo.png
+  favicon: assets/epireum-logo.png
   palette:
     - scheme: default
       primary: indigo
@@ -65,7 +67,7 @@ extra:
 
 nav:
   - Home: index.md
-  - "Epireum's Data Engineering Lab": tour.md
+  - "Course overview": course.md
   - "Help & community": help.md
   - "0 · Getting started":
       - "0.1 Prerequisites & setup": setup/prerequisites.md
