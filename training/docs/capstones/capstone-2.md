@@ -74,7 +74,9 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
     **1 — Silver as an upsert (handles corrected / late lines):**
 
         # a cleaned batch of order lines (same schema as silver.orders), keyed (order_id, product_id)
-        batch.createOrReplaceTempView("incoming")
+        # .localCheckpoint() snapshots the batch first — Spark 4.1 can't plan a MERGE whose
+        # source still points back at tables (same as lesson 4.3)
+        batch.localCheckpoint().createOrReplaceTempView("incoming")
         spark.sql("""
           MERGE INTO iceberg.silver.orders t
           USING incoming s
