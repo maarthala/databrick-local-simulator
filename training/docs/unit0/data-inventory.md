@@ -6,11 +6,11 @@ three places, each with a different job:
 ```mermaid
 flowchart LR
   PG[(Postgres<br/>OLTP source)] -->|ingest| LAKE
-  subgraph LAKE["RustFS — the data lake (demo-bucket)"]
-    RAW[raw history<br/>Parquet files]
-    ICE[warehouse/<br/>catalog table files]
+  subgraph LAKE["RustFS — your bucket (demouser-lake)"]
+    RAW[files/source<br/>CSV · Parquet]
+    ICE[tables/<br/>catalog table files]
   end
-  ICE -. governed by .- POL[(Apache Polaris<br/>iceberg catalog)]
+  ICE -. governed by .- POL[(Apache Polaris<br/>your lakehouse catalog)]
   POL --> ENG[Trino · Spark · Superset]
 ```
 
@@ -41,43 +41,51 @@ JDBC. Example: `SELECT count(*) FROM shopflow.public.orders` → 40000.
 
 ## 2. RustFS — the data lake (object storage)
 
-S3-compatible storage (RustFS — inside the stack it's still reached at `http://minio:9000`). One
-bucket holds the shared course lake:
+S3-compatible storage (RustFS — inside the stack it's still reached at `http://minio:9000`). Two
+kinds of bucket:
 
-- **`demo-bucket`** — the lake. Key paths:
-  - **`shopflow/history/orders/`** — **raw historical orders** as Parquet, partitioned by `dt=`
-    (~11.7k rows). Read directly: `s3a://demo-bucket/shopflow/history/orders`. This is the
-    "years of history" source, alongside live Postgres.
-  - **`warehouse/`** — the **warehouse** where the catalog's table files physically live (Bronze/
-    Silver/Gold Parquet + Iceberg metadata, e.g. `warehouse/gold/daily_sales`). You normally read
-    these *through the catalog*, not by path.
+- **Your bucket, `demouser-lake`** (own account: `<username>-lake`, 100 MB) — laid out like an
+  Azure / Fabric lakehouse:
+  - **`files/source/shopflow/`** — practice files to ingest: `customers.csv`, `orders.csv`,
+    `products.csv` (small and messy) and `sample_orders.csv`; lesson [4.2](../unit4/read-bronze.md)
+    exports the raw order **history** (Parquet, partitioned by `dt=`) here too.
+  - **`files/src/notebooks/`** and **`files/src/dags/`** — Jupyter's `notebooks/` and `dags/`
+    folders, kept in sync (DAGs → Airflow).
+  - **`tables/`** — where your catalogs keep their table files (`tables/demouser_lake/<namespace>/…`).
+    You read these *through the catalog*, not by path.
+- **`demo-bucket`** — the course's **shared** lake (its tables live under `warehouse/`). Instructors
+  only in the console; you read it through the `shared` catalog (next section).
 
-**Reach it:** `spark.read.parquet("s3a://demo-bucket/…")` in a notebook ([3.9](../unit3/upload-register.md)),
-or the **RustFS console** (<http://localhost:9001/rustfs/console/>, sign in with your lab account)
-to browse/upload. In the console you see only **your own bucket, `<username>-lake`** (100 MB, laid out as
-`files/` — `src/notebooks`, `src/dags`, `source` — and `tables/`) — `demo-bucket` is visible to instructors only; reach it from code.
+**Reach it:** `spark.read.csv("s3a://demouser-lake/files/source/…")` in a notebook, **📁 My files**
+on the landing page (browse, preview, upload), or the **RustFS console**
+(<http://localhost:9001/rustfs/console/>, sign in with your lab account — you see only your own
+bucket).
 
-## 3. The `iceberg` catalog — governed lakehouse tables
+## 3. Catalogs — governed lakehouse tables
 
-The **medallion tables** your pipeline builds, registered in the **Apache Polaris** catalog and
-addressed as **`iceberg.<namespace>.<table>`**. The files sit in RustFS (`demo-bucket/warehouse/…`);
-the catalog makes them governed, shared tables.
+Tables are registered in the **Apache Polaris** catalog service. You work with two catalogs:
+
+| Catalog | In a notebook | In Trino / SQLPad / Superset | What it is |
+|---|---|---|---|
+| **Your lakehouse** | `iceberg` | `demouser_lake` | yours — starts with empty `bronze` / `silver` / `gold` plus `bronze.sample_orders`; **you** build the medallion here |
+| **The course lake** | `shared` | `iceberg` | ready-made ShopFlow tables, read-only |
 
 | Namespace | Holds | Example tables |
 |---|---|---|
-| `iceberg.bronze` | raw copy of the source | `customers`, `products`, `orders`, `order_items` |
-| `iceberg.silver` | cleaned, typed, joined | `orders` |
-| `iceberg.gold` | business marts (aggregated) | `daily_sales`, `top_products`, `customer_ltv` |
+| `bronze` | raw copy of the source | `customers`, `products`, `orders`, `order_items` |
+| `silver` | cleaned, typed, joined | `orders` |
+| `gold` | business marts (aggregated) | `daily_sales`, `top_products`, `customer_ltv` |
 
-These appear **after the pipeline runs** (Units 4–5 build them). List what's there any time:
+The course lake has all of these from day one; your lakehouse gets them as you work through
+Units 4–5. List what's there any time:
 
 ```sql
 %%sql
-SHOW NAMESPACES IN iceberg
+SHOW TABLES IN iceberg.bronze
 ```
 ```sql
 %%sql
-SHOW TABLES IN iceberg.gold
+SHOW TABLES IN shared.gold
 ```
 
 **Reach it:** SQL (`%%sql` / Trino), Spark (`spark.table("iceberg.gold.daily_sales")`), Superset
@@ -88,15 +96,16 @@ dashboards, and the Polaris Console — one governed copy, every engine.
 | Where | What | How you read it |
 |---|---|---|
 | **Postgres** (`shopflow`) | live OLTP source — 12 tables | Trino `shopflow.*`, JDBC |
-| **RustFS** `demo-bucket/shopflow/history` | raw history (Parquet) | `s3a://…` in Spark |
-| **RustFS** `demo-bucket/warehouse` | catalog table files | via the catalog (not by path) |
-| **`iceberg` catalog** (Polaris) | Bronze/Silver/Gold tables | `%%sql`, Spark, Trino, Superset |
+| **RustFS** `demouser-lake/files/source` | practice files + raw history you export | `s3a://…` in Spark, My files |
+| **RustFS** `demouser-lake/tables` | your catalog's table files | via the catalog (not by path) |
+| **Your lakehouse** (Polaris) | *your* Bronze/Silver/Gold tables | `iceberg.*` in notebooks, `demouser_lake.*` in Trino |
+| **Course lake** (Polaris) | ready-made ShopFlow tables | `shared.*` in notebooks, `iceberg.*` in Trino |
 
-**The flow:** raw data starts in **Postgres** (live) and **RustFS history** (Parquet) → the pipeline
-ingests and refines it into **Bronze → Silver → Gold** tables in the **`iceberg` catalog** → engines
-read the Gold tables for analytics.
+**The flow:** raw data starts in **Postgres** (live) and **files** in your bucket → your pipeline
+ingests and refines it into **Bronze → Silver → Gold** tables in **your lakehouse** → engines read
+the Gold tables for analytics.
 
 ## You can now…
-- Name the **three** places data lives (Postgres, RustFS lake, iceberg catalog) and what each holds
+- Name the **three** places data lives (Postgres, your RustFS bucket, the catalogs) and what each holds
 - Tell **source** data (Postgres, raw history) from **refined** data (Bronze/Silver/Gold tables)
-- Pick the right access path for each — Trino `shopflow.*`, `s3a://…`, or `iceberg.<ns>.<table>`
+- Pick the right access path for each — Trino `shopflow.*`, `s3a://…`, `iceberg.*` / `shared.*` in notebooks
