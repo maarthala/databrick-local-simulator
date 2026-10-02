@@ -321,6 +321,22 @@
       "groups": [
         "/learners"
       ]
+    },
+    {
+      "username": "learner2",
+      "enabled": true,
+      "email": "learner2@de.lan",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "learner2",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/learners"
+      ]
     }
   ],
   "components": {

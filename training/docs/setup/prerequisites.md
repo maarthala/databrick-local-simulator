@@ -218,7 +218,7 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 
 | Service | Local URL | Login |
 |---|---|---|
-| Landing page | [http://localhost:8000](http://localhost:8000) | **`demouser` / `demouser`** (default — the examples use it), your own (**Register**), or `instructor` / `instructor` |
+| Landing page | [http://localhost:8000](http://localhost:8000) | **`demouser` / `demouser`** (default — the examples use it), `learner2` / `learner2` (a second user, for sharing in 6.1), your own (**Register**), or `instructor` / `instructor` |
 | Keycloak (logins) | http://localhost:8180/admin | admin console: `admin` / `admin` (realm **de-lab**) |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | Jupyter (notebooks) | http://localhost:8008 | your lab account — your **own** Jupyter, and `iceberg` = your own lakehouse |

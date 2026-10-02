@@ -11,7 +11,9 @@ Kubernetes. You land on the **Epireum's Data Engineering Lab** sign-in page:
 
 - **On your own laptop (local stack):** sign in as **`demouser` / `demouser`** — the default lab
   account. **Every example in the course is written for `demouser`** (`demouser_lake`,
-  `demouser-lake`, …), so you can copy and run them as they are.
+  `demouser-lake`, …), so you can copy and run them as they are. A second account,
+  **`learner2` / `learner2`**, is there for the lessons that need *another user* (sharing in
+  [6.1](../unit6/polaris.md)) — sign in with it in a private window.
 - **Want your own account** (or on a shared/class stack, where everyone needs their own)? Click
   **Register** and choose a **username** (3–30 lower-case letters/digits) and a password — no email
   needed. Then, wherever an example says `demouser`, use your username instead (`ravi_lake`,

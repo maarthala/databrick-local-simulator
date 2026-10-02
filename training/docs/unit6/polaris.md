@@ -53,9 +53,15 @@ bundle of **grants** inside one catalog. Change a role once and everyone holding
 **Console:** <http://localhost:8189> (k8s: `http://polaris-console.de.lan`) → **Sign in with
 Epireum lab account**. Open your lakehouse from 🗂️ **My catalogs → Open in Polaris Console ↗**.
 
-## Lab — share your lakehouse with a classmate
-Work in **pairs**: one of you is the **owner** (below: `demouser`), the other the **partner**
-(below: `learner2`). Swap roles afterwards. Each of you uses your own lab account.
+## Lab — share your lakehouse with another user
+Sharing needs **two accounts**: the **owner** of the lakehouse and **another user** to share with.
+
+| | Owner | Other user |
+|---|---|---|
+| **Local stack** | `demouser` / `demouser` | `learner2` / `learner2` — sign in in a **private window** |
+| **Class stack** | your account | a classmate's account (or swap roles) |
+
+Below the owner is `demouser` and the other user `learner2`.
 
 ### 1 · Owner: make something worth sharing
 In a notebook, build one Gold and one Silver table from your sample table:
@@ -72,12 +78,13 @@ SELECT * FROM iceberg.bronze.sample_orders WHERE status <> 'cancelled'
 ```
 
 ### 2 · Owner: share `gold`, read-only
-🗂️ **My catalogs** → `demouser_lake` → on the **`gold`** row click **🤝 Share** → type your
-partner's username → **read** → **Share**. **Current shares** now lists it.
+🗂️ **My catalogs** → `demouser_lake` → on the **`gold`** row click **🤝 Share** → type
+`learner2` → **read** → **Share**. **Current shares** now lists it.
 
-### 3 · Partner: use it
-🗂️ **My catalogs** → **Shared with me** → `demouser_lake` shows exactly what you got
-(`gold` · all tables · read) and the notebook lines to use it. In your notebook:
+### 3 · Other user: use it
+As **learner2** (private window): 🗂️ **My catalogs** → **Shared with me** → `demouser_lake`
+shows exactly what you got (`gold` · all tables · read) and the notebook lines to use it.
+In learner2's notebook (Jupyter, same private window):
 
 ```python
 use_catalog("demouser_lake")                                  # the owner's catalog, with YOUR login
@@ -99,15 +106,15 @@ Open **Open in Polaris Console ↗** on the same page: you see the catalog and i
 **names**, but only `gold` lists tables. Seeing that `silver` exists isn't access to it.
 
 ### 4 · Owner: widen, then revoke
-- Share **one table** with write: on `silver` → `orders_clean` → **🤝 Share** → partner →
-  **write**. The partner can now `INSERT` / `DELETE` in that one table — and still can't read
+- Share **one table** with write: on `silver` → `orders_clean` → **🤝 Share** → `learner2` →
+  **write**. learner2 can now `INSERT` / `DELETE` in that one table — and still can't read
   anything else in `silver`.
-- **Revoke** both shares under **Current shares**. The partner's next query answers
+- **Revoke** both shares under **Current shares**. learner2's next query answers
   *Forbidden* — grants are checked on every request, there's nothing to log out of.
 
 ### 5 · What Share built
 Each share is a **catalog-role** in *your* catalog (e.g. `share_learner2_read_n_gold`),
-bound to the partner's principal-role:
+bound to the other user's principal-role:
 
 | Shared | Grants in the catalog-role |
 |---|---|

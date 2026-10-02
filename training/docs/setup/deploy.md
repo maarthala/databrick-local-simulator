@@ -93,8 +93,8 @@ learning.
 
     !!! warning "`make down` deletes the volumes"
         It runs `docker compose down -v`, so the object store (RustFS), Postgres, the catalog and the
-        **lab accounts** are wiped — registered accounts are gone (`demouser` and `instructor` come back
-        by itself), and each learner's lakehouse and bucket are recreated, empty, on their next
+        **lab accounts** are wiped — registered accounts are gone (`demouser`, `learner2` and `instructor`
+        come back by themselves), and each learner's lakehouse and bucket are recreated, empty, on their next
         sign-in. Use it
         for a clean reset; use `docker compose stop` if you only want to pause and keep your data.
 
