@@ -9,9 +9,19 @@ bucket and your own Jupyter. This page shows what you get and where to find it.
 Open the landing page — [http://localhost:8000](http://localhost:8000) locally, `http://de.lan` on
 Kubernetes. You land on the **Epireum's Data Engineering Lab** sign-in page:
 
-- **New here?** Click **Register** and choose a **username** (3–30 lower-case letters/digits) and a
-  password. That's all — no email needed.
+- **On your own laptop (local stack):** sign in as **`demouser` / `demouser`** — the default lab
+  account. **Every example in the course is written for `demouser`** (`demouser_lake`,
+  `demouser-lake`, …), so you can copy and run them as they are.
+- **Want your own account** (or on a shared/class stack, where everyone needs their own)? Click
+  **Register** and choose a **username** (3–30 lower-case letters/digits) and a password — no email
+  needed. Then, wherever an example says `demouser`, use your username instead (`ravi_lake`,
+  `ravi-lake`, …).
 - **Instructor?** Sign in as `instructor` (instructors are admins in every tool).
+
+!!! note "Shared stack? Don't share `demouser`"
+    On a stack the whole class uses (e.g. Kubernetes), everyone registers their own account —
+    `demouser` would mean one shared lakehouse, bucket and Jupyter for everybody. That's why
+    `demouser` only exists on the local stack.
 
 That one account signs you in to **every** tool — Jupyter, Airflow, Superset, SQLPad, the Polaris
 Console and the RustFS console. When a tool shows a **"Sign in with Epireum lab account"** button,

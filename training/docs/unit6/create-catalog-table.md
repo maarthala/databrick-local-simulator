@@ -23,8 +23,8 @@ writes to object storage.
 ## A · Create a catalog
 
 **As a learner — on 🗂️ My catalogs** (landing page): click **＋ New**, type `learn`,
-**Create**. You get **`<you>_learn`** — e.g. `ravi_learn` — stored in your own bucket at
-`s3://<you>-lake/catalogs/learn`, and you're its owner. Click **Open in Polaris Console ↗**
+**Create**. You get **`demouser_learn`** — e.g. `ravi_learn` — stored in your own bucket at
+`s3://demouser-lake/catalogs/learn`, and you're its owner. Click **Open in Polaris Console ↗**
 to see it in the Console.
 
 !!! note "Why not *Catalogs → Create catalog* in the Console?"
@@ -59,11 +59,11 @@ Grant your admin write access so you can create tables in it: on the catalog →
 A **namespace** (schema) is a folder for tables. A **table** has a schema and holds rows.
 
 !!! note "Make the new catalog visible to Spark"
-    The notebook's `spark` knows **`iceberg`** (your own lakehouse `<you>_lake`) and
+    The notebook's `spark` knows **`iceberg`** (your own lakehouse `demouser_lake`) and
     **`shared`** out of the box. A brand-new catalog needs one line first —
-    `use_catalog("<you>_learn")` — after which `spark.sql("… <you>_learn.demo.sales …")`
+    `use_catalog("demouser_learn")` — after which `spark.sql("… demouser_learn.demo.sales …")`
     works with your login. The steps below use **`iceberg`** so they run as-is; swap in
-    your `<you>_learn` catalog to build there instead.
+    your `demouser_learn` catalog to build there instead.
 
 In a notebook (`spark` is already there):
 
@@ -93,7 +93,7 @@ table with data.
 
 **Watch it land in your bucket** (📁 **My files**, or the RustFS console
 <http://localhost:9001/rustfs/console/>): after `CREATE TABLE` you'll see
-`demo/sales/metadata/00000-….metadata.json` in `<you>-lake`; after `INSERT`, a
+`demo/sales/metadata/00000-….metadata.json` in `demouser-lake`; after `INSERT`, a
 `data/*.parquet` plus manifest/snapshot files appear.
 
 ## C · Query the table

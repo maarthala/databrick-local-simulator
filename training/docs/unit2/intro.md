@@ -91,7 +91,7 @@ use **SQLPad** (or the Trino CLI). Open it at `http://localhost:8003` (local) / 
     SQLPad's left schema sidebar only lists schemas that contain at least one **table** — so a
     freshly created empty schema (e.g. `sandbox` right after `CREATE SCHEMA`) won't show up until
     you create a table in it. After creating tables, click the **refresh ↻** on the sidebar. You
-    can always query a schema by its full name (`<you>_lake.sandbox.…`) even if the sidebar hasn't
+    can always query a schema by its full name (`demouser_lake.sandbox.…`) even if the sidebar hasn't
     caught up — the sidebar is just for browsing.
 
 !!! note "The `http://localhost:8007/ui/` page is *monitoring*, not a query editor"
@@ -130,7 +130,7 @@ Discover what Trino can see — the three-part name is built from these:
 
 ```sql
 -- What data sources are connected?
-SHOW CATALOGS;                      -- expect: shopflow, iceberg, system, your <you>_lake, …
+SHOW CATALOGS;                      -- expect: shopflow, iceberg, system, your demouser_lake, …
 
 -- What schemas live in the ShopFlow source?
 SHOW SCHEMAS FROM shopflow;         -- the business tables are in 'public'
@@ -188,39 +188,38 @@ SELECT * FROM iceberg.gold.daily_sales ORDER BY order_date DESC LIMIT 14;
 ### Make your own space in the lakehouse
 So far you've only **read** data. Before we start *writing* (from [2.5](views.md) onward), use your
 own area to experiment in. You can't create a **catalog** in SQL (that's admin config) — but you
-already **have** one: **`<you>_lake`** (e.g. `ravi_lake`), created when you first signed in. Inside
+already **have** one: **`demouser_lake`** (e.g. `ravi_lake`), created when you first signed in. Inside
 it you can create your own **schemas**, and real tables inside *those* — your personal corner of
 the lakehouse. (`iceberg` is the course's *shared* lake: read it, don't write to it.)
 
-!!! tip "Replace `<you>` with your username"
-    Write steps go to **your own catalog, `<you>_lake`** — e.g. `ravi_lake` (the name is shown at
-    the top of the landing page). Before running, use your editor's **find & replace**
-    (SQLPad: `Ctrl/Cmd + H`) to turn every `<you>` into your username. Writing into your own
-    catalog means nobody else's experiments collide with yours.
+!!! note "Signed in with your own account?"
+    The examples use the default lab account **`demouser`** — its catalog is `demouser_lake`. If you
+    registered your own account, replace `demouser` with your username (SQLPad: find & replace,
+    `Ctrl/Cmd + H`), e.g. `ravi_lake`.
 
 Create a schema and a first table:
 
 ```sql
-CREATE SCHEMA IF NOT EXISTS <you>_lake.my_lab;
+CREATE SCHEMA IF NOT EXISTS demouser_lake.my_lab;
 
-CREATE TABLE <you>_lake.my_lab.first_table (
+CREATE TABLE demouser_lake.my_lab.first_table (
   id     int,
   item   varchar,
   amount double
 );
 
-INSERT INTO <you>_lake.my_lab.first_table VALUES
+INSERT INTO demouser_lake.my_lab.first_table VALUES
   (1, 'keyboard', 49.9),
   (2, 'mouse',    19.5);
 
-SELECT * FROM <you>_lake.my_lab.first_table ORDER BY id;
+SELECT * FROM demouser_lake.my_lab.first_table ORDER BY id;
 ```
 
 **Read it step by step:**
 
-- **`CREATE SCHEMA … <you>_lake.my_lab`** — makes a new schema (a named folder for tables) *inside*
+- **`CREATE SCHEMA … demouser_lake.my_lab`** — makes a new schema (a named folder for tables) *inside*
   your own lakehouse catalog. `IF NOT EXISTS` means "skip if it's already there" — safe to re-run.
-- **`CREATE TABLE <you>_lake.my_lab.first_table (…)`** — defines a real **Iceberg table**: this writes
+- **`CREATE TABLE demouser_lake.my_lab.first_table (…)`** — defines a real **Iceberg table**: this writes
   table metadata to the catalog, and future rows land as **Parquet files on RustFS** (the object
   storage from [Unit 1.2](../unit1/lakehouse.md)).
 - **`INSERT INTO … VALUES …`** — your first **write** to the lakehouse. Each write appends a new
@@ -228,13 +227,13 @@ SELECT * FROM <you>_lake.my_lab.first_table ORDER BY id;
 - **`SELECT * FROM …`** — reads it straight back with the same three-part name.
 
 !!! success "You just built a datalake"
-    That's the whole idea — a lakehouse is **a catalog holding many schemas** (yours: `<you>_lake`;
+    That's the whole idea — a lakehouse is **a catalog holding many schemas** (yours: `demouser_lake`;
     the course's shared one: `iceberg`). In [Unit 4](../unit4/read-bronze.md) you'll build a full **bronze → silver → gold**
     exactly this way (with Spark instead of SQL). Clean up your experiment any time:
 
     ```sql
-    DROP TABLE  <you>_lake.my_lab.first_table;
-    DROP SCHEMA <you>_lake.my_lab;
+    DROP TABLE  demouser_lake.my_lab.first_table;
+    DROP SCHEMA demouser_lake.my_lab;
     ```
 
 !!! note "Why writing works here without a login"

@@ -61,8 +61,9 @@ learning.
     ```bash
     make ps                       # all services should be "running"/"healthy"
     ```
-    Open the landing page at **<http://localhost:8000>**. It asks you to sign in: **Register** your
-    own account (or use `instructor` / `instructor`). Every tool tiles off it. Then run the
+    Open the landing page at **<http://localhost:8000>** and sign in as **`demouser` / `demouser`** —
+    the default lab account every course example is written for (or **Register** your own, or use
+    `instructor` / `instructor`). Every tool tiles off it. Then run the
     [setup checklist](prerequisites.md#verify-your-setup).
 
     ### Fill the shared lake (once)
@@ -92,7 +93,7 @@ learning.
 
     !!! warning "`make down` deletes the volumes"
         It runs `docker compose down -v`, so the object store (RustFS), Postgres, the catalog and the
-        **lab accounts** are wiped — everyone registers again afterwards (`instructor` comes back
+        **lab accounts** are wiped — registered accounts are gone (`demouser` and `instructor` come back
         by itself), and each learner's lakehouse and bucket are recreated, empty, on their next
         sign-in. Use it
         for a clean reset; use `docker compose stop` if you only want to pause and keep your data.

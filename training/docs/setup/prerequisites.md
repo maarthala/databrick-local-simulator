@@ -192,8 +192,8 @@ commands (Docker Compose) or the Ansible steps (Kubernetes).
 Run through this checklist once — if all three pass, you're ready for Unit 1.
 
 1. **Sign in to the landing page** — open [http://localhost:8000](http://localhost:8000). You're sent
-   to the **DE Learning Lab** login page: click **Register** to create your own account (or sign in
-   as `instructor` / `instructor`). After signing in you see the lab's tools in four columns and,
+   to the **DE Learning Lab** login page: sign in as **`demouser` / `demouser`** (the default account
+   the course examples use), **Register** your own, or use `instructor` / `instructor`. After signing in you see the lab's tools in four columns and,
    in the top bar, **"your lakehouse: <name>_lake ✓"** — your own private lakehouse, created on
    first login.
 2. **Single sign-on works** — open the **Governance** tile (Polaris Console). It signs you in with
@@ -218,7 +218,7 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 
 | Service | Local URL | Login |
 |---|---|---|
-| Landing page | [http://localhost:8000](http://localhost:8000) | your **lab account** (**Register** on the login page), or `instructor` / `instructor` |
+| Landing page | [http://localhost:8000](http://localhost:8000) | **`demouser` / `demouser`** (default — the examples use it), your own (**Register**), or `instructor` / `instructor` |
 | Keycloak (logins) | http://localhost:8180/admin | admin console: `admin` / `admin` (realm **de-lab**) |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | Jupyter (notebooks) | http://localhost:8008 | your lab account — your **own** Jupyter, and `iceberg` = your own lakehouse |

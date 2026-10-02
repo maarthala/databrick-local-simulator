@@ -55,7 +55,7 @@ The **`spark`** object (a **`SparkSession`**) is your handle to the cluster — 
 `spark.sql(...)`, every read and write goes through it. It's a **Spark Connect** client: a thin
 local object that ships your code to the remote cluster's Connect server (pre-wired to
 `sc://spark-connect:15002`), and two lakehouse catalogs are ready: **`iceberg`** — *your own*
-lakehouse (`<you>_lake`, empty until you build it in Unit 4) — and **`shared`** — the course's
+lakehouse (`demouser_lake`, empty until you build it in Unit 4) — and **`shared`** — the course's
 shared lake with the ready-made ShopFlow tables (read-only; see [0.3](../setup/workspace.md)).
 
 !!! info "How `spark` gets there"

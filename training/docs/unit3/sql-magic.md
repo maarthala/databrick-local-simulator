@@ -54,7 +54,7 @@ CREATE SCHEMA IF NOT EXISTS iceberg.sandbox
 
 ```sql
 %%sql
-CREATE TABLE IF NOT EXISTS iceberg.sandbox.dim_customer (
+CREATE TABLE IF NOT EXISTS iceberg.sandbox.my_customers (
   customer_id int,
   full_name   string,
   country     string
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS iceberg.sandbox.dim_customer (
 
 ```sql
 %%sql
-INSERT INTO iceberg.sandbox.dim_customer VALUES
+INSERT INTO iceberg.sandbox.my_customers VALUES
   (1, 'Ada Lovelace',      'UK'),
   (2, 'Alan Turing',       'UK'),
   (3, 'Grace Hopper',      'US'),
@@ -87,16 +87,16 @@ SHOW TABLES IN iceberg.sandbox          -- your new table shows up
 ```
 ```sql
 %%sql
-DESCRIBE iceberg.sandbox.dim_customer   -- columns + types
+DESCRIBE iceberg.sandbox.my_customers   -- columns + types
 ```
 ```sql
 %%sql
-SELECT * FROM iceberg.sandbox.dim_customer
+SELECT * FROM iceberg.sandbox.my_customers
 ```
 ```sql
 %%sql
 SELECT country, count(*) AS customers
-FROM iceberg.sandbox.dim_customer
+FROM iceberg.sandbox.my_customers
 GROUP BY country
 ORDER BY customers DESC
 ```
@@ -106,7 +106,7 @@ table is a **real, governed Iceberg table** — visible to Trino, Superset, SQLP
 Console. Tidy up when you're done experimenting:
 ```sql
 %%sql
-DROP TABLE iceberg.sandbox.dim_customer
+DROP TABLE iceberg.sandbox.my_customers
 ```
 
 ### 4 · The same `%%sql`, on the pipeline's tables (after Unit 4)
@@ -120,14 +120,13 @@ ORDER BY order_date DESC
 LIMIT 10
 ```
 
-…and a join across namespaces (Silver):
+…and an aggregate over Silver (`silver.orders` already carries each line's customer country):
 
 ```sql
 %%sql
-SELECT c.country, count(*) AS orders, sum(o.amount) AS revenue
-FROM iceberg.silver.orders o
-JOIN iceberg.silver.customers c ON c.customer_id = o.customer_id
-GROUP BY c.country
+SELECT country, count(DISTINCT order_id) AS orders, sum(line_amount) AS revenue
+FROM iceberg.silver.orders
+GROUP BY country
 ORDER BY revenue DESC
 ```
 
@@ -149,18 +148,18 @@ So explore with `%%sql`; when you need to **use** the result (transform, join in
 back), switch to `spark.sql(...)`:
 
 ```python
-df = spark.sql("SELECT * FROM iceberg.sandbox.dim_customer WHERE country = 'UK'")
+df = spark.sql("SELECT * FROM shared.gold.daily_sales WHERE revenue > 80000")
 df.count()                              # keep working with the DataFrame in Python
 ```
-(After Unit 4 the same pattern captures a Gold table:
+(After Unit 4 the same pattern captures your own Gold table:
 `spark.sql("SELECT * FROM iceberg.gold.daily_sales")`.)
 
 !!! tip "Raw files need a view first"
     `%%sql` works on **catalog tables** with no setup. To `%%sql` a raw file in object storage,
     register it as a temp view once (see [3.9](upload-register.md)):
     ```python
-    import os   # your own files — e.g. the history you export in 4.2
-    spark.read.parquet(f"s3a://{os.environ['LAKE_BUCKET']}/raw/shopflow/history/orders") \
+    # your own files — e.g. the history you export in 4.2
+    spark.read.parquet("s3a://demouser-lake/raw/shopflow/history/orders") \
          .createOrReplaceTempView("orders_hist")
     ```
     ```sql

@@ -59,13 +59,12 @@ wrong; `MERGE` does it in a single, all-or-nothing statement.
 ## Lab
 > Run these in the **Trino CLI** or **SQLPad** (see [2.1](intro.md)) — this lab **writes**
 > (`CREATE`/`INSERT`/`MERGE`), and **Superset SQL Lab is read-only**, so it can't run it. The
-> writes go to **your own** catalog `<you>_lake` (fully qualified), not `shopflow`.
+> writes go to **your own** catalog `demouser_lake` (fully qualified), not `shopflow`.
 
-!!! tip "Replace `<you>` with your username"
-    Write steps go to **your own catalog, `<you>_lake`** — e.g. `ravi_lake` (the name is shown at
-    the top of the landing page). Before running, use your editor's **find & replace**
-    (SQLPad: `Ctrl/Cmd + H`) to turn every `<you>` into your username. Writing into your own
-    catalog means nobody else's experiments collide with yours.
+!!! note "Signed in with your own account?"
+    The examples use the default lab account **`demouser`** — its catalog is `demouser_lake`. If you
+    registered your own account, replace `demouser` with your username (SQLPad: find & replace,
+    `Ctrl/Cmd + H`), e.g. `ravi_lake`.
 
 
 ### 1 · Set up a scratch table
@@ -75,25 +74,25 @@ throwaway **scratch (sandbox) schema** so the real ShopFlow data is never at ris
 sandbox — the source stays untouched):
 
 ```sql
-CREATE SCHEMA IF NOT EXISTS <you>_lake.sandbox;
+CREATE SCHEMA IF NOT EXISTS demouser_lake.sandbox;
 
-DROP TABLE IF EXISTS <you>_lake.sandbox.dim_customer;
-CREATE TABLE <you>_lake.sandbox.dim_customer (
+DROP TABLE IF EXISTS demouser_lake.sandbox.dim_customer;
+CREATE TABLE demouser_lake.sandbox.dim_customer (
   customer_id int,
   full_name   varchar,
   country     varchar,
   updated_at  date
 );
 
-INSERT INTO <you>_lake.sandbox.dim_customer VALUES
+INSERT INTO demouser_lake.sandbox.dim_customer VALUES
   (1, 'Ada Lovelace', 'UK', DATE '2024-01-01'),
   (2, 'Alan Turing',  'UK', DATE '2024-01-01');
 ```
 
 **Read it clause by clause:**
 
-- **`CREATE SCHEMA IF NOT EXISTS <you>_lake.sandbox`** — a **schema** is a folder for tables. This
-  makes an empty `sandbox` schema inside your own `<you>_lake` catalog. **`IF NOT EXISTS`** means "skip
+- **`CREATE SCHEMA IF NOT EXISTS demouser_lake.sandbox`** — a **schema** is a folder for tables. This
+  makes an empty `sandbox` schema inside your own `demouser_lake` catalog. **`IF NOT EXISTS`** means "skip
   it if it's already there" — so re-running the lab never errors out.
 - **`DROP TABLE IF EXISTS …dim_customer`** — delete any old copy of the table first, so you always
   start from a clean, known state. (`IF EXISTS` again avoids an error on the first run.)
@@ -114,7 +113,7 @@ Now the star of the lesson. Imagine a **daily batch** arrives with two rows: one
 a customer we already have, the other is a *brand-new* customer. A single `MERGE` handles both:
 
 ```sql
-MERGE INTO <you>_lake.sandbox.dim_customer AS t
+MERGE INTO demouser_lake.sandbox.dim_customer AS t
 USING (VALUES
          (2, 'Alan M. Turing', 'UK', DATE '2024-06-01'),   -- changed name
          (3, 'Grace Hopper',   'US', DATE '2024-06-01')     -- brand new
@@ -124,13 +123,13 @@ WHEN MATCHED     THEN UPDATE SET full_name = s.full_name, updated_at = s.updated
 WHEN NOT MATCHED THEN INSERT (customer_id, full_name, country, updated_at)
                      VALUES (s.customer_id, s.full_name, s.country, s.updated_at);
 
-SELECT * FROM <you>_lake.sandbox.dim_customer ORDER BY customer_id;
+SELECT * FROM demouser_lake.sandbox.dim_customer ORDER BY customer_id;
 -- id 2 updated, id 3 inserted, id 1 untouched
 ```
 
 **Read it clause by clause:**
 
-- **`MERGE INTO <you>_lake.sandbox.dim_customer AS t`** — the **target** we're changing, nicknamed
+- **`MERGE INTO demouser_lake.sandbox.dim_customer AS t`** — the **target** we're changing, nicknamed
   `t`. (Just like table aliases in [joins](joins-aggregations.md), `AS t` / `AS s` keep the query
   short and let us say which side a column comes from.)
 - **`USING (VALUES (…), (…)) AS s(customer_id, full_name, country, updated_at)`** — the **source**.
@@ -157,7 +156,7 @@ extra `AND` conditions on the `WHEN MATCHED` branch that must *also* be true bef
 fires (`WHEN MATCHED AND …`):
 
 ```sql
-MERGE INTO <you>_lake.sandbox.dim_customer AS t
+MERGE INTO demouser_lake.sandbox.dim_customer AS t
 USING (VALUES (1, 'Ada L.', DATE '2023-12-01')) AS s(customer_id, full_name, updated_at)
 ON t.customer_id = s.customer_id
 WHEN MATCHED AND s.updated_at > t.updated_at
@@ -191,7 +190,7 @@ A classic use is a **GDPR erasure request**: a batch of customer ids that must b
 table entirely.
 
 ```sql
-MERGE INTO <you>_lake.sandbox.dim_customer AS t
+MERGE INTO demouser_lake.sandbox.dim_customer AS t
 USING (VALUES (3)) AS s(customer_id)
 ON t.customer_id = s.customer_id
 WHEN MATCHED THEN DELETE;
@@ -214,9 +213,9 @@ branch, so ids in the delete list that *don't* exist are simply ignored — no e
 applies:
 
 ```sql
-UPDATE <you>_lake.sandbox.dim_customer SET country = 'United Kingdom' WHERE country = 'UK';
-DELETE FROM <you>_lake.sandbox.dim_customer WHERE customer_id = 1;
-SELECT * FROM <you>_lake.sandbox.dim_customer ORDER BY customer_id;
+UPDATE demouser_lake.sandbox.dim_customer SET country = 'United Kingdom' WHERE country = 'UK';
+DELETE FROM demouser_lake.sandbox.dim_customer WHERE customer_id = 1;
+SELECT * FROM demouser_lake.sandbox.dim_customer ORDER BY customer_id;
 ```
 
 **Read it clause by clause:**
@@ -238,7 +237,7 @@ customer 2 in the table.
     failed job or backfill a day without corrupting the table.
 
 ## Challenge
-Create `<you>_lake.sandbox.orders_silver (order_id int, status varchar, updated_at date)` and seed
+Create `demouser_lake.sandbox.orders_silver (order_id int, status varchar, updated_at date)` and seed
 it with two delivered orders. Then MERGE a daily batch that (a) updates order 1's status to
 `returned`, (b) inserts a new order 3, and (c) tries to update order 2 with an **older**
 timestamp (which should be ignored). Verify the final table.
@@ -251,13 +250,13 @@ timestamp (which should be ignored). Verify the final table.
 
 ??? note "Solution"
     ```sql
-    DROP TABLE IF EXISTS <you>_lake.sandbox.orders_silver;
-    CREATE TABLE <you>_lake.sandbox.orders_silver (order_id int, status varchar, updated_at date);
-    INSERT INTO <you>_lake.sandbox.orders_silver VALUES
+    DROP TABLE IF EXISTS demouser_lake.sandbox.orders_silver;
+    CREATE TABLE demouser_lake.sandbox.orders_silver (order_id int, status varchar, updated_at date);
+    INSERT INTO demouser_lake.sandbox.orders_silver VALUES
       (1, 'delivered', DATE '2024-05-01'),
       (2, 'delivered', DATE '2024-05-02');
 
-    MERGE INTO <you>_lake.sandbox.orders_silver AS t
+    MERGE INTO demouser_lake.sandbox.orders_silver AS t
     USING (VALUES
              (1, 'returned',  DATE '2024-05-10'),   -- newer update
              (2, 'cancelled', DATE '2024-04-01'),   -- OLDER → ignore
@@ -269,7 +268,7 @@ timestamp (which should be ignored). Verify the final table.
     WHEN NOT MATCHED
          THEN INSERT (order_id, status, updated_at) VALUES (s.order_id, s.status, s.updated_at);
 
-    SELECT * FROM <you>_lake.sandbox.orders_silver ORDER BY order_id;
+    SELECT * FROM demouser_lake.sandbox.orders_silver ORDER BY order_id;
     -- 1 → returned, 2 → still delivered (older ignored), 3 → inserted
     ```
 

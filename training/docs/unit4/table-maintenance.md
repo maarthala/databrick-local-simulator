@@ -150,13 +150,13 @@ CALL iceberg.system.remove_orphan_files(
 
 ### The same from Trino (and SQLPad)
 Trino runs the same maintenance with `ALTER TABLE … EXECUTE` — in Trino your notebook's `iceberg` is
-`<you>_lake` (replace `<you>` with your username):
+`demouser_lake` (own account? use `<your username>_lake`):
 
 ```sql
-ALTER TABLE <you>_lake.sandbox.orders_maint EXECUTE optimize;
-ALTER TABLE <you>_lake.sandbox.orders_maint EXECUTE expire_snapshots(retention_threshold => '7d');
-ALTER TABLE <you>_lake.sandbox.orders_maint EXECUTE remove_orphan_files(retention_threshold => '7d');
-SELECT count(*) FROM <you>_lake.sandbox."orders_maint$files";
+ALTER TABLE demouser_lake.sandbox.orders_maint EXECUTE optimize;
+ALTER TABLE demouser_lake.sandbox.orders_maint EXECUTE expire_snapshots(retention_threshold => '7d');
+ALTER TABLE demouser_lake.sandbox.orders_maint EXECUTE remove_orphan_files(retention_threshold => '7d');
+SELECT count(*) FROM demouser_lake.sandbox."orders_maint$files";
 ```
 
 Trino **refuses** retention under 7 days by default. That's the same safety idea, enforced by
@@ -167,40 +167,38 @@ Delta tables get the same treatment with shorter commands. Write a small-files D
 lake:
 
 ```python
-import os
-path = f"s3a://{os.environ['LAKE_BUCKET']}/delta/orders_maint"     # in your own bucket
+path = "s3a://demouser-lake/delta/orders_maint"     # in your own bucket
 orders = spark.table("iceberg.silver.orders")
 for hour in range(10):
     orders.where(f"order_id % 10 = {hour}").repartition(4) \
           .write.format("delta").mode("overwrite" if hour == 0 else "append").save(path)
 ```
 
-A Delta table is addressed by its path as `` delta.`<path>` ``. In `%%sql`, `${LAKE_BUCKET}`
-stands for your bucket's name (`%%sql` fills in `${name}` from your notebook variables or the
-environment):
+A Delta table is addressed by its path as `` delta.`<path>` `` (own account? use your bucket
+instead of `demouser-lake`):
 
 ```sql
 %%sql
-DESCRIBE DETAIL delta.`s3a://${LAKE_BUCKET}/delta/orders_maint`
+DESCRIBE DETAIL delta.`s3a://demouser-lake/delta/orders_maint`
 ```
 
 `numFiles` should be about **40**. Compact, then Z-order:
 
 ```sql
 %%sql
-OPTIMIZE delta.`s3a://${LAKE_BUCKET}/delta/orders_maint`
+OPTIMIZE delta.`s3a://demouser-lake/delta/orders_maint`
 ```
 
 ```sql
 %%sql
-OPTIMIZE delta.`s3a://${LAKE_BUCKET}/delta/orders_maint` ZORDER BY (country, category)
+OPTIMIZE delta.`s3a://demouser-lake/delta/orders_maint` ZORDER BY (country, category)
 ```
 
 Every operation is in the history (Delta's version of `.snapshots`):
 
 ```sql
 %%sql
-DESCRIBE HISTORY delta.`s3a://${LAKE_BUCKET}/delta/orders_maint`
+DESCRIBE HISTORY delta.`s3a://demouser-lake/delta/orders_maint`
 ```
 
 ### `VACUUM`
@@ -209,7 +207,7 @@ retention period (**7 days** by default):
 
 ```sql
 %%sql
-VACUUM delta.`s3a://${LAKE_BUCKET}/delta/orders_maint`
+VACUUM delta.`s3a://demouser-lake/delta/orders_maint`
 ```
 
 Our files are only minutes old, so that deletes nothing. Delta also **refuses** a retention under
@@ -222,19 +220,19 @@ spark.conf.set("spark.databricks.delta.retentionDurationCheck.enabled", "false")
 
 ```sql
 %%sql
-VACUUM delta.`s3a://${LAKE_BUCKET}/delta/orders_maint` RETAIN 0 HOURS DRY RUN
+VACUUM delta.`s3a://demouser-lake/delta/orders_maint` RETAIN 0 HOURS DRY RUN
 ```
 
 ```sql
 %%sql
-VACUUM delta.`s3a://${LAKE_BUCKET}/delta/orders_maint` RETAIN 0 HOURS
+VACUUM delta.`s3a://demouser-lake/delta/orders_maint` RETAIN 0 HOURS
 ```
 
 Now try to time-travel to the first version:
 
 ```sql
 %%sql
-SELECT sum(line_amount) FROM delta.`s3a://${LAKE_BUCKET}/delta/orders_maint` VERSION AS OF 0
+SELECT sum(line_amount) FROM delta.`s3a://demouser-lake/delta/orders_maint` VERSION AS OF 0
 ```
 
 It **fails**: its files are gone. That's the trade VACUUM makes: **storage back, history

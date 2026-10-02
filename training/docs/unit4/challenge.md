@@ -109,11 +109,11 @@ building it, confirm the **same** table is readable from Trino (it should be —
     ```
     The window `sum(revenue) OVER (PARTITION BY order_date)` computes each day's total
     alongside the per-category rows — no self-join needed. Your notebook's `iceberg` is your own
-    lakehouse, which Trino calls `<you>_lake` (replace `<you>` with your username) — the identical
+    lakehouse, which Trino calls `demouser_lake` (own account? `<your username>_lake`) — the identical
     table opens there:
     ```sql
     SELECT order_date, category, pct_of_day
-    FROM <you>_lake.gold.category_daily_revenue
+    FROM demouser_lake.gold.category_daily_revenue
     ORDER BY order_date DESC LIMIT 10;
     ```
 

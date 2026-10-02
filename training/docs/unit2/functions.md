@@ -146,7 +146,7 @@ LIMIT 5;
 - It lives **only for this query**, just like a CTE.
 
 !!! info "Why not `CREATE FUNCTION` and keep it?"
-    A **saved** function (`CREATE FUNCTION <you>_lake.my_lab.margin_pct …`) needs a catalog that can
+    A **saved** function (`CREATE FUNCTION demouser_lake.my_lab.margin_pct …`) needs a catalog that can
     store functions. Our lakehouse catalog stores **tables and views**, not functions, so Trino
     answers *"This connector does not support creating functions"*. Open-source Spark 4.1 can't
     save SQL functions either. So on this stack:

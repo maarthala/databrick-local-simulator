@@ -7,7 +7,7 @@ query like a table, from any tool, for as long as it exists.
 
 ```mermaid
 flowchart LR
-  T1["shopflow.public.orders"] --> V["<you>_lake.my_lab.v_order_summary<br/>(stored: just the SELECT)"]
+  T1["shopflow.public.orders"] --> V["demouser_lake.my_lab.v_order_summary<br/>(stored: just the SELECT)"]
   T2["shopflow.public.customers"] --> V
   V --> Q1["your query"]
   V --> Q2["Superset chart"]
@@ -35,25 +35,24 @@ A view stores **no data**, only the query. Every time someone reads it, the engi
 
 ## Lab
 > Run these in **SQLPad**, the **Trino CLI**, or **Superset SQL Lab** (see [2.1](intro.md)).
-> Views are saved in your own lakehouse schema, `<you>_lake.my_lab` from
+> Views are saved in your own lakehouse schema, `demouser_lake.my_lab` from
 > [2.1](intro.md#make-your-own-space-in-the-lakehouse). Create it if you dropped it:
 
-!!! tip "Replace `<you>` with your username"
-    Write steps go to **your own catalog, `<you>_lake`** — e.g. `ravi_lake` (the name is shown at
-    the top of the landing page). Before running, use your editor's **find & replace**
-    (SQLPad: `Ctrl/Cmd + H`) to turn every `<you>` into your username. Writing into your own
-    catalog means nobody else's experiments collide with yours.
+!!! note "Signed in with your own account?"
+    The examples use the default lab account **`demouser`** — its catalog is `demouser_lake`. If you
+    registered your own account, replace `demouser` with your username (SQLPad: find & replace,
+    `Ctrl/Cmd + H`), e.g. `ravi_lake`.
 
 
 ```sql
-CREATE SCHEMA IF NOT EXISTS <you>_lake.my_lab;
+CREATE SCHEMA IF NOT EXISTS demouser_lake.my_lab;
 ```
 
 ### 1 · Create a view
 One row per order, with the customer's country and the order's value, joined and aggregated once:
 
 ```sql
-CREATE OR REPLACE VIEW <you>_lake.my_lab.v_order_summary AS
+CREATE OR REPLACE VIEW demouser_lake.my_lab.v_order_summary AS
 SELECT o.order_id,
        CAST(o.order_ts AS date)          AS order_date,
        o.channel,
@@ -79,7 +78,7 @@ GROUP BY o.order_id, CAST(o.order_ts AS date), o.channel, o.status, c.country;
 SELECT country,
        count(*)                   AS orders,
        round(sum(order_value), 2) AS revenue
-FROM <you>_lake.my_lab.v_order_summary
+FROM demouser_lake.my_lab.v_order_summary
 WHERE status = 'delivered'
 GROUP BY country
 ORDER BY revenue DESC;
@@ -92,15 +91,15 @@ simple table.
 Build a second view on top of the first, holding the "what counts as revenue" rule:
 
 ```sql
-CREATE OR REPLACE VIEW <you>_lake.my_lab.v_delivered_revenue AS
+CREATE OR REPLACE VIEW demouser_lake.my_lab.v_delivered_revenue AS
 SELECT order_date, channel, country, order_value
-FROM <you>_lake.my_lab.v_order_summary
+FROM demouser_lake.my_lab.v_order_summary
 WHERE status = 'delivered';
 ```
 
 ```sql
 SELECT channel, round(sum(order_value), 2) AS revenue
-FROM <you>_lake.my_lab.v_delivered_revenue
+FROM demouser_lake.my_lab.v_delivered_revenue
 GROUP BY channel
 ORDER BY revenue DESC;
 ```
@@ -113,7 +112,7 @@ A view has no stored rows that could go out of date. Prove it: run the same coun
 apart:
 
 ```sql
-SELECT count(*) AS orders, max(order_date) AS latest FROM <you>_lake.my_lab.v_order_summary;
+SELECT count(*) AS orders, max(order_date) AS latest FROM demouser_lake.my_lab.v_order_summary;
 ```
 
 If the ShopFlow app writes new orders in between, the second run already includes them. The
@@ -123,14 +122,14 @@ clicks hit, you'd store the result instead: a Gold table, or a **materialized vi
 
 ### 5 · Find and inspect views
 ```sql
-SHOW TABLES FROM <you>_lake.my_lab;                     -- views are listed alongside tables
-SHOW CREATE VIEW <you>_lake.my_lab.v_order_summary;     -- the saved SQL
-COMMENT ON VIEW <you>_lake.my_lab.v_order_summary IS 'One row per order, with country and value';
+SHOW TABLES FROM demouser_lake.my_lab;                     -- views are listed alongside tables
+SHOW CREATE VIEW demouser_lake.my_lab.v_order_summary;     -- the saved SQL
+COMMENT ON VIEW demouser_lake.my_lab.v_order_summary IS 'One row per order, with country and value';
 ```
 
 ```sql
 SELECT table_name, view_definition
-FROM <you>_lake.information_schema.views
+FROM demouser_lake.information_schema.views
 WHERE table_schema = 'my_lab';
 ```
 
@@ -138,8 +137,8 @@ WHERE table_schema = 'my_lab';
 Dropping a view removes **only the saved query**. The tables underneath are untouched:
 
 ```sql
-DROP VIEW <you>_lake.my_lab.v_delivered_revenue;
-DROP VIEW <you>_lake.my_lab.v_order_summary;
+DROP VIEW demouser_lake.my_lab.v_delivered_revenue;
+DROP VIEW demouser_lake.my_lab.v_order_summary;
 ```
 
 Drop the top view first: `v_delivered_revenue` reads from `v_order_summary`.
@@ -162,7 +161,7 @@ Drop the top view first: `v_delivered_revenue` reads from `v_order_summary`.
 ## Common mistakes
 | Symptom | Cause | Fix |
 |---|---|---|
-| `This connector does not support creating views` | you tried `CREATE VIEW shopflow.…` | create it in your lakehouse schema: `<you>_lake.my_lab.…` |
+| `This connector does not support creating views` | you tried `CREATE VIEW shopflow.…` | create it in your lakehouse schema: `demouser_lake.my_lab.…` |
 | `Cannot read unsupported dialect 'spark'` | the view was created in Spark | re-create it from Trino |
 | A view suddenly errors | a table or column it reads was renamed or dropped | `SHOW CREATE VIEW`, fix, `CREATE OR REPLACE` |
 | Dashboard on a view is slow | the view's joins re-run on every chart refresh | store the result: a Gold table or a [materialized view](../unit4/materialized-views.md) |

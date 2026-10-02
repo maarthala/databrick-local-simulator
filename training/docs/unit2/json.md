@@ -58,13 +58,12 @@ erroring — which is what makes flattening ragged data painless.
 ## Lab
 > Run these in the **Trino CLI** or **SQLPad** (see [2.1](intro.md)) — the write steps need a
 > tool that can write (Superset SQL Lab is read-only). They go to **your own** catalog
-> `<you>_lake` (fully qualified).
+> `demouser_lake` (fully qualified).
 
-!!! tip "Replace `<you>` with your username"
-    Write steps go to **your own catalog, `<you>_lake`** — e.g. `ravi_lake` (the name is shown at
-    the top of the landing page). Before running, use your editor's **find & replace**
-    (SQLPad: `Ctrl/Cmd + H`) to turn every `<you>` into your username. Writing into your own
-    catalog means nobody else's experiments collide with yours.
+!!! note "Signed in with your own account?"
+    The examples use the default lab account **`demouser`** — its catalog is `demouser_lake`. If you
+    registered your own account, replace `demouser` with your username (SQLPad: find & replace,
+    `Ctrl/Cmd + H`), e.g. `ravi_lake`.
 
 
 ### 1 · Parse fields straight out of a JSON string
@@ -104,12 +103,12 @@ landing (Bronze-ish) table. Here we build a tiny one to practise on. Notice the 
 JSON document lives *inside* that one text column — the classic "store it raw first" shape:
 
 ```sql
-CREATE SCHEMA IF NOT EXISTS <you>_lake.sandbox;
+CREATE SCHEMA IF NOT EXISTS demouser_lake.sandbox;
 
-DROP TABLE IF EXISTS <you>_lake.sandbox.raw_events;
-CREATE TABLE <you>_lake.sandbox.raw_events (event_id int, payload varchar);
+DROP TABLE IF EXISTS demouser_lake.sandbox.raw_events;
+CREATE TABLE demouser_lake.sandbox.raw_events (event_id int, payload varchar);
 
-INSERT INTO <you>_lake.sandbox.raw_events VALUES
+INSERT INTO demouser_lake.sandbox.raw_events VALUES
   (1, '{"type":"page_view","customer_id":10,"product_id":42,"channel":"web"}'),
   (2, '{"type":"add_to_cart","customer_id":10,"product_id":42,"qty":2,"channel":"web"}'),
   (3, '{"type":"search","customer_id":null,"term":"keyboard","channel":"app"}');
@@ -117,7 +116,7 @@ INSERT INTO <you>_lake.sandbox.raw_events VALUES
 
 **Read it clause by clause:**
 
-- **`CREATE SCHEMA IF NOT EXISTS <you>_lake.sandbox`** — make a scratch schema (a namespace for
+- **`CREATE SCHEMA IF NOT EXISTS demouser_lake.sandbox`** — make a scratch schema (a namespace for
   tables) in the `iceberg` catalog, but only if it isn't already there.
 - **`DROP TABLE IF EXISTS …`** — delete any previous version so this lab is repeatable; the
   `IF EXISTS` stops it erroring on the first run when there's nothing to drop.
@@ -141,7 +140,7 @@ SELECT event_id,
        TRY_CAST(json_extract_scalar(payload, '$.qty')         AS integer) AS qty,
        json_extract_scalar(payload, '$.channel')                     AS channel,
        json_extract_scalar(payload, '$.term')                        AS search_term
-FROM <you>_lake.sandbox.raw_events
+FROM demouser_lake.sandbox.raw_events
 ORDER BY event_id;
 ```
 
@@ -154,7 +153,7 @@ ORDER BY event_id;
   treatment so downstream maths and joins see real numbers, not strings.
 - **`json_extract_scalar(payload, '$.channel')`** and **`… '$.term'`** — two more leaf pulls, left
   as text.
-- **`FROM <you>_lake.sandbox.raw_events`** — do this for **every row** in the landing table.
+- **`FROM demouser_lake.sandbox.raw_events`** — do this for **every row** in the landing table.
 - **`ORDER BY event_id`** — sort the output by id so the three events come back in order.
 
 **What the flattened result looks like:** three rows, seven tidy columns. Where a field was
@@ -205,7 +204,7 @@ question straight over the raw stream. Here: how many events of each type?
 ```sql
 SELECT json_extract_scalar(payload, '$.type') AS event_type,
        count(*) AS events
-FROM <you>_lake.sandbox.raw_events
+FROM demouser_lake.sandbox.raw_events
 GROUP BY json_extract_scalar(payload, '$.type')
 ORDER BY events DESC;
 ```
@@ -231,7 +230,7 @@ dashboard.
     applied to the event stream.
 
 ## Challenge
-From `<you>_lake.sandbox.raw_events`, produce one row per event with `event_id`, `event_type`,
+From `demouser_lake.sandbox.raw_events`, produce one row per event with `event_id`, `event_type`,
 `customer_id`, and a derived `is_anonymous` flag (`true` when `customer_id` is `NULL`). Then
 count how many events are anonymous vs. known.
 
@@ -249,14 +248,14 @@ count how many events are anonymous vs. known.
            json_extract_scalar(payload, '$.type') AS event_type,
            TRY_CAST(json_extract_scalar(payload, '$.customer_id') AS integer) AS customer_id,
            json_extract_scalar(payload, '$.customer_id') IS NULL AS is_anonymous
-    FROM <you>_lake.sandbox.raw_events
+    FROM demouser_lake.sandbox.raw_events
     ORDER BY event_id;
 
     -- the summary
     SELECT CASE WHEN json_extract_scalar(payload, '$.customer_id') IS NULL
                 THEN 'anonymous' ELSE 'known' END AS who,
            count(*) AS events
-    FROM <you>_lake.sandbox.raw_events
+    FROM demouser_lake.sandbox.raw_events
     GROUP BY 1
     ORDER BY events DESC;
     ```

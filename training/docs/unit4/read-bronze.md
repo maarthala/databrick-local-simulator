@@ -29,10 +29,10 @@ The rule for Bronze: **land, don't transform.** Cleaning happens in Silver (4.3)
     may have changed or gone offline). Fix-it-later is only possible if you kept the original.
 
 ### Writing Iceberg tables — your own catalog
-In your notebook, **`iceberg`** is **your own lakehouse** (`<you>_lake`, e.g. `ravi_lake` — it starts
+In your notebook, **`iceberg`** is **your own lakehouse** (`demouser_lake`, e.g. `ravi_lake` — it starts
 empty, with `bronze` / `silver` / `gold` namespaces). A table you build here as
 `iceberg.bronze.orders` is immediately queryable in Trino / SQLPad / Superset as
-`<you>_lake.bronze.orders`: **one write, two engines, no copying.** The write pattern is a one-liner:
+`demouser_lake.bronze.orders`: **one write, two engines, no copying.** The write pattern is a one-liner:
 
 ```python
 df.writeTo("iceberg.bronze.<table>").using("iceberg").createOrReplace()
@@ -43,7 +43,7 @@ df.writeTo("iceberg.bronze.<table>").using("iceberg").createOrReplace()
       columns) that Spark hasn't computed yet. You build one by *reading* a source (next section).
     - **`.writeTo("iceberg.bronze.<table>")`** — names the **target table** using a **three-part
       name**: `catalog.schema.table`. `iceberg` is the *catalog* (in your notebook: your own
-      lakehouse — Trino calls it `<you>_lake`), `bronze` is the *schema* (a namespace, like a folder for tables), and `<table>` is
+      lakehouse — Trino calls it `demouser_lake`), `bronze` is the *schema* (a namespace, like a folder for tables), and `<table>` is
       the table itself. All three parts together point at exactly one table.
     - **`.using("iceberg")`** — store it in the **Iceberg** table format (open columnar files plus
       a metadata layer that tracks snapshots, schema, and partitions).
@@ -119,14 +119,14 @@ product, one order, one order line-item, respectively — unchanged from Postgre
 ### Prepare & read the Parquet history from object storage
 Our stack ships without the archival files, so **create a small export once — into your own
 bucket** (this simulates ShopFlow's nightly "archive old orders" job, and a partner's CSV
-export), then ingest it like any file source. Your bucket's name is in `LAKE_BUCKET`; the
-files go under `raw/shopflow/` (about 1 MB of your 100 MB):
+export), then ingest it like any file source. The examples use the default lab account's
+bucket, `demouser-lake` (own account? use your bucket, e.g. `ravi-lake`); the files go under
+`raw/shopflow/` (about 1 MB of your 100 MB):
 
 ```python
-import os
 from pyspark.sql import functions as F
 
-RAW = f"s3a://{os.environ['LAKE_BUCKET']}/raw/shopflow"     # e.g. s3a://ravi-lake/raw/shopflow
+RAW = "s3a://demouser-lake/raw/shopflow"     # your bucket
 
 # One-time: write "archived" orders (older than 2024) as date-partitioned Parquet …
 (read_pg("orders")

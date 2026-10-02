@@ -147,8 +147,7 @@ So far data has flowed *out* of the database. **`to_sql`** goes the other way �
 DataFrame and writes it *into* a table, handy for staging a computed result other tools can read:
 
 ```python
-import os
-table = f"country_revenue_{os.environ['LAKE_USER']}"   # your own table, e.g. country_revenue_ravi
+table = "country_revenue_demouser"   # your own table (own account? use your username)
 
 by_country.to_sql(table, pg, if_exists="replace", index=False)
 pd.read_sql(f"SELECT * FROM {table}", pg)
@@ -159,7 +158,7 @@ pd.read_sql(f"SELECT * FROM {table}", pg)
 - **`by_country.to_sql(...)`** — `to_sql` is a *method on the DataFrame*, the mirror image of
   `read_sql`. It creates the table (if needed) and inserts the rows.
 - **`table`** — the target table name to create/write. The ShopFlow database is **shared by the
-  whole class**, so the name ends in your username (`LAKE_USER`) — otherwise every learner would
+  whole class**, so the name ends in your username — otherwise every learner would
   overwrite the same table.
 - **`pg`** — the same engine again; `to_sql` needs to know *where* to write.
 - **`if_exists="replace"`** — what to do if that table already exists. `"replace"` drops and
@@ -199,9 +198,9 @@ daily
   fully-qualified table name (`iceberg.gold.daily_sales`).
 - **What comes back** — again a plain DataFrame (the 14 most recent days of the Gold sales mart),
   indistinguishable from one read out of Postgres.
-- **Your own lakehouse** is a catalog too: `<you>_lake` (e.g. `ravi_lake`). Once you've built
+- **Your own lakehouse** is a catalog too: `demouser_lake` (e.g. `ravi_lake`). Once you've built
   tables in [Unit 4](../unit4/fundamentals.md), the same engine reads them —
-  `pd.read_sql(f"SELECT * FROM {os.environ['LAKE_USER']}_lake.gold.daily_sales", lake)`.
+  `pd.read_sql("SELECT * FROM demouser_lake.gold.daily_sales", lake)`.
 
 !!! tip "Give pandas an *engine*, not a raw connection"
     `pd.read_sql` officially supports a **SQLAlchemy engine** (or a URL string). If you instead pass
