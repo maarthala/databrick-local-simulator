@@ -47,7 +47,7 @@ spark = SparkSession.builder.getOrCreate()
 # RustFS S3 credentials for pandas (s3fs handles s3:// URLs). Inside the stack RustFS is http://minio:9000.
 storage = {"key": "minioadmin", "secret": "minioadmin",
            "client_kwargs": {"endpoint_url": "http://minio:9000"}}
-xlsx = "s3://demo-bucket/uploads/new_customers.xlsx"
+xlsx = "s3://demouser-lake/files/source/new_customers.xlsx"
 ```
 
 **Read it step by step:**
@@ -94,7 +94,7 @@ pd.DataFrame({"customer_id": [9001, 9002, 9003],
 - **`storage_options=storage`** — hand pandas the RustFS creds/endpoint so it can reach the bucket
   (this is where s3fs kicks in).
 
-*Produces:* an Excel file `new_customers.xlsx` sitting in `demo-bucket/uploads/` — the source
+*Produces:* an Excel file `new_customers.xlsx` sitting in your bucket's `files/source/` — the source
 you'll ingest next.
 
 ### Cell C — read the Excel and land it in the lakehouse
@@ -123,7 +123,7 @@ spark.sql("SELECT count(*) FROM iceberg.bronze.customers_excel").show()
 - **`sdf.writeTo("iceberg.bronze.customers_excel").using("iceberg").createOrReplace()`** — the Unit 4
   write pattern: target the three-part name `iceberg.bronze.customers_excel` (`iceberg` catalog →
   `bronze` schema → table), store it as an **Iceberg** table, and **create-or-fully-replace** it.
-  Because it's the shared catalog, Trino can read it immediately.
+  Trino can read it immediately — as `demouser_lake.bronze.customers_excel`.
 - **`spark.sql("SELECT count(*) …").show()`** — confirm the rows actually landed by counting them
   in the new Bronze table.
 
@@ -141,7 +141,7 @@ rows, ready for Silver cleaning later. Grain: one row per customer, exactly as i
       table.
 
 ## Challenge
-Your partner sends a workbook `s3://demo-bucket/uploads/partners.xlsx` with several tabs. You only
+Your partner sends a workbook `s3://demouser-lake/files/source/partners.xlsx` with several tabs. You only
 care about the **`accounts`** sheet, and of its columns you only want **`account_id`** and
 **`region`**. Read *just that sheet*, keep *only those two columns*, and land the result as
 `iceberg.bronze.partner_accounts`.
@@ -152,10 +152,23 @@ care about the **`accounts`** sheet, and of its columns you only want **`account
     "region"]]` — *before* handing it to Spark. Then it's the same `createDataFrame` →
     `writeTo(...).createOrReplace()` you already know.
 
+!!! example "First, create the partner's workbook"
+    There's no real partner, so make the file yourself (run once) — two tabs, `accounts` and
+    `contacts`, saved to your bucket:
+    ```python
+    partners = "s3://demouser-lake/files/source/partners.xlsx"
+    with pd.ExcelWriter(partners, engine="openpyxl", storage_options=storage) as xw:
+        pd.DataFrame({"account_id": [101, 102, 103], "name": ["Acme", "Globex", "Initech"],
+                      "region": ["EU", "US", "APAC"], "tier": ["gold", "silver", "gold"]}
+                     ).to_excel(xw, sheet_name="accounts", index=False)
+        pd.DataFrame({"account_id": [101, 102], "email": ["ops@acme.example", "it@globex.example"]}
+                     ).to_excel(xw, sheet_name="contacts", index=False)
+    ```
+
 ??? note "Solution"
     ```python
     # read only the 'accounts' sheet, then keep only the two columns we need
-    pdf = pd.read_excel("s3://demo-bucket/uploads/partners.xlsx",
+    pdf = pd.read_excel("s3://demouser-lake/files/source/partners.xlsx",
                         sheet_name="accounts",
                         storage_options=storage)
     pdf = pdf[["account_id", "region"]]

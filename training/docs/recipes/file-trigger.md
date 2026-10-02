@@ -28,7 +28,7 @@ flowchart LR
 
 Our stack has no cloud storage, but it *does* have **RustFS** — an S3-compatible object store (see
 the [architecture](../unit0/architecture.md)). A file "arriving" means an object appearing under a
-bucket + key, e.g. `demo-bucket/uploads/new_customers.xlsx`. So our sensor's condition is simply:
+bucket + key — here, your bucket: `demouser-lake/files/source/new_customers.xlsx`. So our sensor's condition is simply:
 *does that object exist in RustFS yet?* We answer it with **boto3**, the AWS SDK for Python, pointed
 at RustFS instead of AWS. (Inside the stack RustFS is still reached at `http://minio:9000` — hence the
 `minio` names in the code.)
@@ -36,9 +36,9 @@ at RustFS instead of AWS. (Inside the stack RustFS is still reached at `http://m
 ## Lab
 
 ### 1 · Drop the DAG in the dags folder
-Just like every DAG in [Unit 5](../unit5/basics.md), this is one Python file in the **dags folder**
-(`code/airflow/dags/` in the compose stack, git-synced on Kubernetes). Author it in JupyterLab's
-file browser (<http://localhost:8008>) as `code/airflow/dags/ingest_on_file_arrival.py`.
+Just like every DAG in [Unit 5](../unit5/basics.md), this is one Python file in your **`dags/`**
+folder. Create it in Jupyter's file browser (<http://localhost:8008>) as
+**`dags/ingest_on_file_arrival.py`**.
 
 Read the whole thing first — it's a two-task pipeline, a sensor that waits then a task that runs —
 and then we'll walk it piece by piece.
@@ -57,11 +57,11 @@ def file_has_landed(bucket, key):
     resp = _minio().list_objects_v2(Bucket=bucket, Prefix=key)
     return resp.get("KeyCount", 0) > 0
 
-with DAG(dag_id="ingest_on_file_arrival",
+with DAG(dag_id="demouser_ingest_on_file_arrival",     # own account? your username instead
          schedule="*/5 * * * *", start_date=pendulum.datetime(2024, 1, 1), catchup=False) as dag:
     wait = PythonSensor(
         task_id="wait_for_file", python_callable=file_has_landed,
-        op_kwargs={"bucket": "demo-bucket", "key": "uploads/new_customers.xlsx"},
+        op_kwargs={"bucket": "demouser-lake", "key": "files/source/new_customers.xlsx"},
         mode="reschedule", poke_interval=30, timeout=600)
     load = BashOperator(
         task_id="load_to_bronze",
@@ -87,14 +87,14 @@ with DAG(dag_id="ingest_on_file_arrival",
   name starts with `key`. The response's **`KeyCount`** is how many matched. **`> 0` means the file
   is there** → return `True` and the sensor is satisfied; `0` means "not yet" → return `False` and it
   pokes again.
-- **`with DAG(dag_id="ingest_on_file_arrival", schedule="*/5 * * * *", …)`** — same DAG definition as
+- **`with DAG(dag_id="demouser_ingest_on_file_arrival", schedule="*/5 * * * *", …)`** — same DAG definition as
   Unit 5. The cron `*/5 * * * *` starts a fresh **DAG run** every 5 minutes; each run's sensor then
   waits (up to its `timeout`) for the file. `start_date` and `catchup=False` behave exactly as in
   [5.1](../unit5/basics.md) — don't backfill history, just go forward.
 - **`wait = PythonSensor(task_id="wait_for_file", python_callable=file_has_landed, …)`** — creates
   the sensor task. `python_callable` is the function to run on each poke; the rest configures *how* it
   waits:
-    - **`op_kwargs={"bucket": "demo-bucket", "key": "uploads/new_customers.xlsx"}`** — the arguments
+    - **`op_kwargs={"bucket": "demouser-lake", "key": "files/source/new_customers.xlsx"}`** — the arguments
       passed into `file_has_landed` on every poke. This is *what* we're waiting for.
     - **`poke_interval=30`** — **how often to check**: poke every 30 seconds.
     - **`timeout=600`** — **when to give up**: if the file hasn't shown up after 600 s (10 min), the
@@ -126,36 +126,35 @@ with DAG(dag_id="ingest_on_file_arrival",
     code. In a real deployment you'd usually configure the connection once and use `S3KeySensor`.
 
 ### 2 · Watch it wait, then make the file arrive
-DAGs are rescanned every ~30 s, so give `ingest_on_file_arrival` a moment to appear in the DAGs list,
+DAGs are rescanned every ~30 s, so give `demouser_ingest_on_file_arrival` a moment to appear in the DAGs list,
 then toggle it **on**. In the Airflow UI (<http://localhost:8001>, sign in with your lab account):
 
-1. Open **Grid** for `ingest_on_file_arrival`. The **wait_for_file** square goes **yellow** — it's
+1. Open **Grid** for `demouser_ingest_on_file_arrival`. The **wait_for_file** square goes **yellow** — it's
    running (in `reschedule` mode it'll flip between running and "up for reschedule" between pokes).
-2. Make the file arrive: in a JupyterLab cell, **upload any small file as
-   `uploads/new_customers.xlsx` in `demo-bucket`** with the same `_minio()` client (learners don't
-   see `demo-bucket` in the RustFS console — instructors can also just drop the file there).
-   That's the "file arriving":
+2. Make the file arrive: open **📁 My files** (landing page) → `files/source/` → **Upload** any
+   small file named **`new_customers.xlsx`** (the Excel from the [Excel recipe](excel.md) is
+   perfect). Or from a notebook cell, with the same `_minio()` client:
    ```python
    import boto3
    s3 = boto3.client("s3", endpoint_url="http://minio:9000",
                      aws_access_key_id="minioadmin", aws_secret_access_key="minioadmin")
-   s3.put_object(Bucket="demo-bucket", Key="uploads/new_customers.xlsx", Body=b"test")
+   s3.put_object(Bucket="demouser-lake", Key="files/source/new_customers.xlsx", Body=b"test")
    ```
 3. On the sensor's **next poke** (within 30 s), `file_has_landed` returns `True`, **wait_for_file**
    turns **green**, and **load_to_bronze** fires — you'll see its echo in the **Logs**.
 
-Everything happens in the **browser**: author in JupyterLab, drop the file from a notebook cell,
+Everything happens in the **browser**: author in JupyterLab, drop the file in My files,
 watch it flip green in the Airflow UI. No container shell needed.
 
 !!! tip "Test the poke function directly"
     The poke is just a Python function, so you can sanity-check it in a JupyterLab cell before wiring
-    the DAG: call `file_has_landed("demo-bucket", "uploads/new_customers.xlsx")` and confirm it
+    the DAG: call `file_has_landed("demouser-lake", "files/source/new_customers.xlsx")` and confirm it
     returns `False` before you upload and `True` after. Testing the condition in isolation is much
     faster than triggering whole DAG runs.
 
 ## Challenge
 Right now the sensor waits for **one exact key**. Change it to watch a **prefix (a folder)** instead
-— fire when *any* object lands under `uploads/` — and pass the **actual key that was detected** to
+— fire when *any* object lands under `files/source/incoming/` — and pass the **actual key that was detected** to
 `load_to_bronze` so the downstream task knows *which* file to load. You'll need two changes: make the
 poke return the found key (not just `True`) via **XCom**, and have the sensor's condition succeed on
 any match under the prefix.
@@ -169,16 +168,16 @@ any match under the prefix.
 ??? note "Solution sketch"
     ```python
     def first_file_under(prefix):
-        resp = _minio().list_objects_v2(Bucket="demo-bucket", Prefix=prefix)
+        resp = _minio().list_objects_v2(Bucket="demouser-lake", Prefix=prefix)
         contents = resp.get("Contents", [])
         return contents[0]["Key"] if contents else False   # truthy key = met + value
 
-    with DAG(dag_id="ingest_on_file_arrival",
+    with DAG(dag_id="demouser_ingest_on_file_arrival",
              schedule="*/5 * * * *", start_date=pendulum.datetime(2024, 1, 1),
              catchup=False) as dag:
         wait = PythonSensor(
             task_id="wait_for_file", python_callable=first_file_under,
-            op_kwargs={"prefix": "uploads/"},
+            op_kwargs={"prefix": "files/source/incoming/"},
             mode="reschedule", poke_interval=30, timeout=600)
         load = BashOperator(
             task_id="load_to_bronze",
@@ -188,7 +187,7 @@ any match under the prefix.
 
     **Read it step by step:**
 
-    - **`Prefix="uploads/"`** — listing by the folder prefix matches *any* object under `uploads/`,
+    - **`Prefix="files/source/incoming/"`** — listing by the folder prefix matches *any* object under `files/source/incoming/`,
       not one exact name.
     - **`return contents[0]["Key"] if contents else False`** — if anything matched, return its **key
       string** (truthy → sensor succeeds *and* the value lands in XCom); if nothing matched, return

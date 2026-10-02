@@ -14,7 +14,7 @@ This recipe publishes one small Gold-style report to two sinks:
 flowchart LR
   G["🥇 iceberg.gold.*<br/>country_report"] --> RE[Spark write]
   RE -->|CSV| S3[(RustFS<br/>exports/country_report/)]
-  RE -->|JDBC| PG[(Postgres<br/>public.country_report)]
+  RE -->|JDBC| PG[(Postgres<br/>public.country_report_demouser)]
   S3 --> BU[📥 Business users<br/>download the CSV]
   PG --> APP[🖥️ Operational app<br/>reads the table]
 ```
@@ -63,7 +63,7 @@ can grab it from the bucket (or a link) and open it in Excel — no lakehouse ac
 
 ```python
 (report.coalesce(1).write.mode("overwrite").option("header", True)
-       .csv("s3a://demo-bucket/exports/country_report/"))
+       .csv("s3a://demouser-lake/files/exports/country_report/"))
 ```
 
 **Read it step by step:**
@@ -78,11 +78,11 @@ can grab it from the bucket (or a link) and open it in Excel — no lakehouse ac
   would *add* another file alongside the old ones — see the Challenge.
 - **`.option("header", True)`** — write the column names (`country,revenue`) as the first line, so
   the CSV is self-describing when someone opens it.
-- **`.csv("s3a://demo-bucket/exports/country_report/")`** — the *action*: write **CSV** files to
+- **`.csv("s3a://demouser-lake/files/exports/country_report/")`** — the *action*: write **CSV** files to
   that path. `s3a://` is Spark's connector for S3-compatible object storage (here, RustFS — inside the stack it's still reached at `http://minio:9000`). Note the
   path is a **folder** — Spark writes the single part-file *inside* it.
 
-*Produces:* one CSV file under `s3a://demo-bucket/exports/country_report/`, with a header row and
+*Produces:* one CSV file under `s3a://demouser-lake/files/exports/country_report/`, with a header row and
 one line per country — ready to hand to anyone.
 
 !!! note "Why a folder, not a file"
@@ -99,7 +99,7 @@ Postgres table that an operational application reads directly — no BI tool, no
 ```python
 (report.write.format("jdbc")
        .option("url", "jdbc:postgresql://postgres:5432/shopflow")
-       .option("dbtable", "public.country_report")
+       .option("dbtable", "public.country_report_demouser")
        .option("user", "postgres").option("password", "postgres")
        .mode("overwrite").save())
 ```
@@ -111,15 +111,17 @@ Postgres table that an operational application reads directly — no BI tool, no
   `format("jdbc")`, same connection options — you're just going *out* instead of *in*.
 - **`.option("url", "jdbc:postgresql://postgres:5432/shopflow")`** — the connection string: the
   `shopflow` database on host `postgres`, port `5432`. The identical URL you *read* from in Unit 4.
-- **`.option("dbtable", "public.country_report")`** — the **target table** to write. Spark creates
-  it if it doesn't exist. `public` is the Postgres schema; `country_report` the new table.
+- **`.option("dbtable", "public.country_report_demouser")`** — the **target table** to write. Spark
+  creates it if it doesn't exist. `public` is the Postgres schema; the table name ends in your
+  username because the ShopFlow database is **shared by the whole class** (own account? use your
+  username).
 - **`.option("user"/"password", …)`** — credentials for the write.
 - **`.mode("overwrite")`** — **replace** the table's contents each run (Spark drops & recreates it).
   Use `"append"` instead to *add* today's rows to whatever's already there — the Challenge does this.
 - **`.save()`** — the *action* that runs the write.
 
-*Produces:* a Postgres table `public.country_report` with three rows. Any app connected to that
-database can now `SELECT * FROM country_report` and see the Gold number — the lakehouse result
+*Produces:* a Postgres table `public.country_report_demouser` with three rows. Any app connected to
+that database can now `SELECT * FROM country_report_demouser` and see the Gold number — the lakehouse result
 delivered into an operational system.
 
 Verify from Python (a JDBC read-back, straight out of Unit 4.2):
@@ -127,7 +129,7 @@ Verify from Python (a JDBC read-back, straight out of Unit 4.2):
 ```python
 (spark.read.format("jdbc")
     .option("url", "jdbc:postgresql://postgres:5432/shopflow")
-    .option("dbtable", "public.country_report")
+    .option("dbtable", "public.country_report_demouser")
     .option("user", "postgres").option("password", "postgres")
     .load().show())
 ```
@@ -141,7 +143,7 @@ If three rows come back, the round-trip works: Gold → Postgres → read-back.
 
     ```python
     report.toPandas().to_excel(
-        "s3://demo-bucket/exports/report.xlsx", index=False,
+        "s3://demouser-lake/files/exports/report.xlsx", index=False,
         storage_options={"key": "minioadmin", "secret": "minioadmin",
                          "client_kwargs": {"endpoint_url": "http://minio:9000"}})
     ```
@@ -152,8 +154,8 @@ If three rows come back, the round-trip works: Gold → Postgres → read-back.
 
 ## Challenge
 The report is published fresh each run today (`overwrite`). Make it a **daily history** instead:
-stamp each run with its date and **append** to Postgres, so `country_report` accumulates one batch
-per day. As a stretch, also write the CSV **partitioned by country** so each country gets its own
+stamp each run with its date and **append** to a history table in Postgres,
+`country_report_history_demouser`, so it accumulates one batch per day. As a stretch, also write the CSV **partitioned by country** so each country gets its own
 folder of exports.
 
 !!! tip "The idea: append, don't overwrite"
@@ -169,24 +171,26 @@ folder of exports.
     # stamp each run with today's date
     dated = report.withColumn("run_date", F.current_date())
 
-    # (1) append daily history into Postgres instead of overwriting
+    # (1) append daily history into its own Postgres table instead of overwriting
     (dated.write.format("jdbc")
         .option("url", "jdbc:postgresql://postgres:5432/shopflow")
-        .option("dbtable", "public.country_report")
+        .option("dbtable", "public.country_report_history_demouser")
         .option("user", "postgres").option("password", "postgres")
         .mode("append").save())
 
     # (2) write CSV partitioned by country — one folder per country
     (report.write.mode("overwrite").option("header", True)
         .partitionBy("country")
-        .csv("s3a://demo-bucket/exports/country_report_by_country/"))
+        .csv("s3a://demouser-lake/files/exports/country_report_by_country/"))
     ```
     **Read it step by step:**
 
     - **`.withColumn("run_date", F.current_date())`** — add a `run_date` column set to today's date,
       so each daily batch is distinguishable once they pile up in the same table.
-    - **`.mode("append")`** — *add* the new rows to `public.country_report` instead of replacing it.
-      Run it three days running and you get three dated batches — a growing history.
+    - **`.mode("append")`** — *add* the new rows instead of replacing them. Run it three days running
+      and you get three dated batches — a growing history. It's a **separate table** because append
+      can't add the new `run_date` column to the 2-column `country_report_demouser` from Cell C — a
+      history table has its own shape.
     - **`.partitionBy("country")`** — split the CSV output into one folder per country
       (`country=US/`, `country=UK/`, `country=DE/`). A consumer who only wants one country reads
       just that folder. Note there's no `coalesce(1)` here — partitioning *is* the split you want.
