@@ -1,7 +1,8 @@
 # 6.2 Create users & assign access (in the Console)
 
-In 6.1 you *saw* the persona matrix. Here you'll *build* it by clicking — create a
-user, give it a role, grant that role access — entirely in the **Polaris Console**.
+In 6.1 you shared your own tables through **My catalogs**. Here you'll build the same
+chain by hand, as the Polaris admin — create a user, give it a role, grant that role
+access — entirely in the **Polaris Console**.
 No command line: Polaris manages its own users (*principals*). (Your lab account is one
 of them too — signing in to the Console with it maps you to your own principal.)
 

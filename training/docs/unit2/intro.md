@@ -236,11 +236,11 @@ SELECT * FROM demouser_lake.my_lab.first_table ORDER BY id;
     DROP SCHEMA demouser_lake.my_lab;
     ```
 
-!!! note "Why writing works here without a login"
-    On this learning stack, Trino/Spark write to `iceberg` **freely** — the engines aren't wired to
-    per-user enforcement, so you can experiment without permission errors. On a
-    *governed* platform an admin would `GRANT` you `CREATE` on a schema first — the access model you'll
-    meet in [Unit 6](../unit6/polaris.md).
+!!! note "Why writing just works"
+    `demouser_lake` is **yours** — you're its owner, so you can create and change anything in it
+    without asking. Anywhere else you need a grant: the course's shared lake is read-only for you,
+    and another learner's lakehouse is closed until they share it. Ownership, grants and sharing
+    are [Unit 6](../unit6/polaris.md).
 
 ## Challenge
 Using only the `orders` table: list the **5 most recent cancelled orders placed on the

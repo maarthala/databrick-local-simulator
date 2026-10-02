@@ -140,6 +140,7 @@
         var c = state.data.shared.filter(function (x) { return x.name === name; })[0];
         var card = el('div', 'card'); card.appendChild(el('h2', null, '🤝 ' + name));
         card.appendChild(el('div', 'sub', 'Shared with you by ' + name.split('_')[0] + '.'));
+        card.appendChild(polarisLink(name));
         m.appendChild(card);
         var acc = el('div', 'card'); acc.appendChild(el('h3', null, 'What you can access'));
         var t = el('table'); t.innerHTML = '<tr><th>Namespace</th><th>Table</th><th>Access</th></tr>';

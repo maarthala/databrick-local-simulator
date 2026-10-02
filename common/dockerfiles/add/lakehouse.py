@@ -508,7 +508,7 @@ def _share_role(grantee, access, namespace, table=None):
 
 def _describe_share(cat, role, t):
     grants = _get(f"{_M}/catalogs/{cat}/catalog-roles/{role}/grants", t).get("grants", [])
-    g = grants[0] if grants else {}
+    g = next((x for x in grants if x.get("namespace")), {})      # skip the catalog-level browse grants
     privs = {x["privilege"] for x in grants}
     return {"role": role, "namespace": ".".join(g.get("namespace", [])), "table": g.get("tableName"),
             "access": "write" if "TABLE_WRITE_DATA" in privs else "read"}
@@ -535,6 +535,11 @@ def share(name, cat, grantee, access, namespace, table=None):
         if table:
             g["tableName"] = table
         _ok(_call("PUT", f"{_M}/catalogs/{cat}/catalog-roles/{role}/grants", {"grant": g}, t)[0], f"grant {priv}")
+    # browse: open the catalog in the Polaris Console + see its namespace names (tables in
+    # namespaces that aren't shared stay hidden)
+    for priv in ("CATALOG_READ_PROPERTIES", "NAMESPACE_LIST"):
+        _ok(_call("PUT", f"{_M}/catalogs/{cat}/catalog-roles/{role}/grants",
+                  {"grant": {"type": "catalog", "privilege": priv}}, t)[0], f"grant {priv}")
     _ok(_call("PUT", f"{_M}/principal-roles/{grantee}/catalog-roles/{cat}", {"catalogRole": {"name": role}}, t)[0],
         "assign share")
     return {"role": role, "grantee": grantee, "access": access, "namespace": namespace, "table": table}

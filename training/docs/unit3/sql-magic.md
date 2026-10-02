@@ -73,10 +73,10 @@ INSERT INTO iceberg.sandbox.my_customers VALUES
   (4, 'Katherine Johnson', 'US')
 ```
 
-!!! warning "On k8s the lakehouse is governed"
-    Creating a schema or table needs the right **Polaris grant** (`CREATE_NAMESPACE` /
-    `TABLE_CREATE`). If you get a **403 / not-authorized** (rather than a SQL error), that's RBAC,
-    not your SQL — see [Unit 6](../unit6/polaris.md). Locally you have full access.
+!!! warning "403 / Forbidden is governance, not your SQL"
+    In `iceberg` (your own lakehouse) you can create anything. In `shared` (read-only) or in a
+    catalog another learner shared with you, writing needs a **Polaris grant** — a **403 /
+    Forbidden** there is RBAC, not a SQL mistake. See [Unit 6](../unit6/polaris.md).
 
 ### 3 · Explore & query your data
 `sandbox` now has a table — discover and query it exactly as you would any catalog table:

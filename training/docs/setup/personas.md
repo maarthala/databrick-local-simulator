@@ -43,8 +43,8 @@ flowchart TB
 
 This is the **medallion access policy** — least privilege by layer. An analyst can't see half-cleaned
 Silver or raw Bronze; an engineer can build Silver but can't rummage in raw Bronze; only the lead
-sees everything. You'll see and build these exact grants in
-[Unit 6 — Data governance](../unit6/polaris.md).
+sees everything. You'll build these exact grants as the Polaris admin in
+[6.2](../unit6/polaris-admin.md) and [6.4](../unit6/grant-and-query.md).
 
 ## How to "become" a persona
 
