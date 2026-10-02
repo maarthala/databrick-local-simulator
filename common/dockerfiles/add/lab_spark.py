@@ -68,6 +68,25 @@ def _jobs_credential(name):
     return cred
 
 
+def _jobs_storage_key(name):
+    """(key, secret) of the learner's own-bucket storage user <user>-jobs (kept in the Airflow
+    Variable lab_jobs_s3_<name>; minted again if it stopped working)."""
+    import urllib.error
+    from airflow.sdk import Variable
+    var = f"lab_jobs_s3_{name}"
+    saved = Variable.get(var, default=None)
+    if saved:
+        key, secret = saved.split(":", 1)
+        try:
+            lh._s3_as(key, secret, "GET", lh.bucket_name(name), query={"list-type": "2", "max-keys": "1"}).close()
+            return key, secret
+        except urllib.error.HTTPError:
+            pass
+    key, secret = lh.storage_key(name, "jobs")
+    Variable.set(var, f"{key}:{secret}")
+    return key, secret
+
+
 def lab_spark(user=None):
     """Spark Connect session: iceberg = <user>_lake (as <user>_jobs), shared = the course lake."""
     from pyspark.sql import SparkSession
@@ -84,6 +103,10 @@ def lab_spark(user=None):
             spark.conf.set(f"spark.sql.catalog.{cat}" + k[len(base):], v)
         spark.conf.set(f"spark.sql.catalog.{cat}.warehouse", warehouse)
         spark.conf.set(f"spark.sql.catalog.{cat}.credential", cred)
+    # raw files (s3a://…): the cluster has no storage keys — use the learner's own (jobs) key
+    key, secret = _jobs_storage_key(name)
+    spark.conf.set("fs.s3a.access.key", key)
+    spark.conf.set("fs.s3a.secret.key", secret)
     print(f"lab_spark: you are {name} · iceberg = {name}_lake · shared = {lh.SHARED}")
     return spark
 

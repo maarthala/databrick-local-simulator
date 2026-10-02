@@ -11,13 +11,19 @@ _LAKE = {k: v for k, v in {
     "spark.sql.catalog.iceberg.warehouse": _os_env.get("LAKE_WAREHOUSE"),
     "spark.sql.catalog.iceberg.credential": _os_env.get("LAKE_CREDENTIAL"),
 }.items() if v}
+# Raw files (s3a://…): the cluster holds no storage keys — the session brings its own. Under
+# JupyterHub that's the learner's own-bucket key; elsewhere whatever key this server was given.
+_S3 = {k: v for k, v in {
+    "fs.s3a.access.key": _os_env.get("LAKE_S3_KEY") or _os_env.get("AWS_ACCESS_KEY_ID"),
+    "fs.s3a.secret.key": _os_env.get("LAKE_S3_SECRET") or _os_env.get("AWS_SECRET_ACCESS_KEY"),
+}.items() if v}
 
 try:
     from pyspark.sql import SparkSession
 
     spark = SparkSession.builder.getOrCreate()
     # point `iceberg` at the learner's own lakehouse BEFORE the catalog is first used
-    for _k, _v in _LAKE.items():
+    for _k, _v in {**_LAKE, **_S3}.items():
         spark.conf.set(_k, _v)
     print(f"✓ `spark` ready via Spark Connect (Spark {spark.version})")
     if _LAKE:
@@ -101,8 +107,8 @@ def _mv_run(name, query):
             "storage": f"{_MV_STORAGE}/{catalog}/{ns}/{view}",
             "libraries": [{"glob": {"include": "transformations/**"}}],
         }
-        if _LAKE:   # the pipeline runs in its own session — give it the learner's lakehouse too
-            spec["configuration"] = dict(_LAKE)
+        if _LAKE or _S3:   # the pipeline runs in its own session — give it the learner's lakehouse + key
+            spec["configuration"] = {**_LAKE, **_S3}
         with open(f"{work}/spark-pipeline.yml", "w") as f:
             _json.dump(spec, f)
         with open(f"{work}/transformations/{view}.sql", "w") as f:

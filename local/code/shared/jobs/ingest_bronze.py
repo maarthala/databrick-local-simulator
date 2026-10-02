@@ -6,6 +6,7 @@ Run by Airflow (Unit 5) or by hand:
     ingest_bronze.py --catalog iceberg
 """
 import argparse
+import os
 from pyspark.sql import SparkSession
 
 
@@ -26,6 +27,12 @@ def main():
     cat = args.catalog
 
     spark = SparkSession.builder.appName("shopflow_ingest_bronze").getOrCreate()
+
+    # the cluster holds no Polaris login: this platform job uses the one Airflow gives it
+
+    if os.environ.get("POLARIS_CREDENTIAL"):
+
+        spark.conf.set(f"spark.sql.catalog.{cat}.credential", os.environ["POLARIS_CREDENTIAL"])
     spark.sql(f"CREATE SCHEMA IF NOT EXISTS {cat}.bronze")
     for t in ["customers", "products", "orders", "order_items"]:
         read_pg(spark, t).writeTo(f"{cat}.bronze.{t}").using("iceberg").createOrReplace()

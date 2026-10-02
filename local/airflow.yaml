@@ -32,6 +32,9 @@ x-airflow-common:
     AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST: >-
       [{"name": "dags-folder", "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle", "kwargs": {}},
        {"name": "learners", "classpath": "learner_dags.LearnerDagsBundle", "kwargs": {"refresh_interval": 30}}]
+    # Polaris login for the platform's own Spark jobs (shopflow_medallion → the shared lake);
+    # the Spark cluster itself holds none.
+    POLARIS_CREDENTIAL: root:s3cr3t
     AIRFLOW_CONN_LEARNER_S3: >-
       {"conn_type": "aws", "login": "admin", "password": "admin123",
        "extra": {"endpoint_url": "http://storage:9000", "region_name": "us-east-1",

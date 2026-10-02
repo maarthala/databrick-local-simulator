@@ -39,6 +39,10 @@ SQLPAD_ADMIN = os.environ.get("SQLPAD_ADMIN", "admin@de.local:admin1234")
 NAMESPACES = ("bronze", "silver", "gold")
 TRINO = os.environ.get("TRINO_URL", "http://trino:8080")
 TRINO_LOGIN = os.environ.get("TRINO_POLARIS_LOGIN", "trino_lab:trino-lab-secret")   # Trino → learner catalogs
+# Credential vending: Polaris hands engines short-lived keys scoped to one table, minted by the
+# object store's STS (AssumeRole + a session policy for the table's path). The role ARN is a
+# label — RustFS takes any; on AWS it's the IAM role Polaris assumes.
+VEND_ROLE = os.environ.get("STORAGE_VENDING_ROLE", "arn:aws:iam::000000000000:role/lab-vending")
 # Bucket layout (like a Fabric / Azure lakehouse): files/ = files you work with, tables/ = catalog
 # storage. files/src/{notebooks,dags} mirror Jupyter's notebooks/ + dags/ (dags → Airflow);
 # files/source/ = raw files to ingest; tables/<catalog>/… = Iceberg (and Delta) table data.
@@ -69,9 +73,17 @@ def _admin(method, op, query=None, body=b""):
         return r.status
 
 
-def _signed(method, path, query=None, body=b"", headers=None, stream=None, length=None):
+def _s3_as(key, secret, method, bucket, k="", query=None):
+    """One S3 call signed with another key (e.g. to check a learner's own key still works)."""
+    path = "/" + bucket + ("/" + urllib.parse.quote(k, safe="/~") if k else "")
+    return _signed(method, path, query, access=(key, secret))
+
+
+def _signed(method, path, query=None, body=b"", headers=None, stream=None, length=None, access=None):
     """Sign with AWS SigV4 (stdlib only) and send. `stream` + `length` send a file-like
-    body unsigned (UNSIGNED-PAYLOAD) without buffering it. Returns the open response."""
+    body unsigned (UNSIGNED-PAYLOAD) without buffering it. `access` = (key, secret) to sign
+    as someone else (default: the platform key). Returns the open response."""
+    key_id, key_secret = access or (S3_KEY, S3_SECRET)
     host = urllib.parse.urlparse(S3_ENDPOINT).netloc
     now = datetime.datetime.now(datetime.timezone.utc)
     amz_date, day = now.strftime("%Y%m%dT%H%M%SZ"), now.strftime("%Y%m%d")
@@ -84,12 +96,12 @@ def _signed(method, path, query=None, body=b"", headers=None, stream=None, lengt
     canonical = "\n".join([method, path, qs, *(f"{k}:{hdrs[k]}" for k in sorted(hdrs)), "", signed, payload])
     scope = f"{day}/{S3_REGION}/s3/aws4_request"
     to_sign = "\n".join(["AWS4-HMAC-SHA256", amz_date, scope, hashlib.sha256(canonical.encode()).hexdigest()])
-    k = f"AWS4{S3_SECRET}".encode()
+    k = f"AWS4{key_secret}".encode()
     for part in (day, S3_REGION, "s3", "aws4_request"):
         k = hmac.new(k, part.encode(), hashlib.sha256).digest()
     sig = hmac.new(k, to_sign.encode(), hashlib.sha256).hexdigest()
     out = {k: v for k, v in hdrs.items() if k != "host"}
-    out["Authorization"] = (f"AWS4-HMAC-SHA256 Credential={S3_KEY}/{scope}, "
+    out["Authorization"] = (f"AWS4-HMAC-SHA256 Credential={key_id}/{scope}, "
                             f"SignedHeaders={signed}, Signature={sig}")
     data = stream if stream is not None else (body if method in ("PUT", "POST") else None)
     if stream is not None:
@@ -141,13 +153,14 @@ def put_storage_policy(name, admin=False):
     return _admin("PUT", "add-canned-policy", {"name": storage_user(name)}, json.dumps(doc).encode())
 
 
-def storage_key(name):
-    """(access key, secret) for the learner's own bucket: RustFS user <user>-files with the
-    learner's storage policy, given a new random secret on every call. (RustFS's admin API
-    wants the MinIO-style encrypted payload for users, so this goes through `mc`.)"""
+def storage_key(name, purpose="files"):
+    """(access key, secret) for the learner's own bucket: storage user <user>-<purpose> with the
+    learner's storage policy, given a new random secret on every call — one user per purpose
+    (files = their Jupyter, jobs = their Airflow tasks) so renewing one never breaks the other.
+    (RustFS's admin API wants the MinIO-style encrypted payload for users, so this uses `mc`.)"""
     import subprocess
     user = storage_user(name)
-    key, secret = f"{user}-files", secrets.token_urlsafe(24)
+    key, secret = f"{user}-{purpose}", secrets.token_urlsafe(24)
     u = urllib.parse.urlparse(S3_ENDPOINT)
     env = dict(os.environ, MC_HOST_lab=f"{u.scheme}://{S3_KEY}:{S3_SECRET}@{u.netloc}")
     def mc(*args, ok=()):
@@ -360,9 +373,9 @@ def provision(name, manager=False):
     _ok(_call("POST", f"{m}/catalogs", {"catalog": {
         "name": cat, "type": "INTERNAL",
         "properties": {"default-base-location": loc, "polaris.config.drop-with-purge.enabled": "true"},
-        "storageConfigInfo": {"storageType": "S3", "allowedLocations": [loc], "endpoint": S3_ENDPOINT,
-                              "pathStyleAccess": True, "region": "us-east-1"}}}, t)[0], "create catalog")
+        "storageConfigInfo": storage_config([loc])}}, t)[0], "create catalog")
     _move_into_bucket(cat, loc, t)
+    enable_vending(cat, t)
     for ns in NAMESPACES:
         _ok(_call("POST", f"/api/catalog/v1/{cat}/namespaces", {"namespace": [ns]}, t)[0], f"namespace {ns}")
         _relocate_namespace(cat, ns, f"{loc}/{ns}", t)
@@ -377,6 +390,7 @@ def provision(name, manager=False):
         "attach owner")
     # read-only on the shared lake (skipped if it hasn't been seeded yet)
     if _call("GET", f"{m}/catalogs/{SHARED}", token=t)[0] == 200:
+        enable_vending(SHARED, t)
         _ok(_call("POST", f"{m}/catalogs/{SHARED}/catalog-roles", {"catalogRole": {"name": "learner_reader"}}, t)[0],
             "reader role")
         for ns in NAMESPACES:
@@ -387,6 +401,34 @@ def provision(name, manager=False):
                   {"catalogRole": {"name": "learner_reader"}}, t)[0], "attach reader")
     trino_catalog(cat, t)
     sample_table(cat)
+
+
+def storage_config(locations):
+    """Polaris S3 storage config with credential vending (no KMS — RustFS has none)."""
+    return {"storageType": "S3", "allowedLocations": list(locations), "endpoint": S3_ENDPOINT,
+            "stsEndpoint": S3_ENDPOINT, "roleArn": VEND_ROLE, "kmsUnavailable": True,
+            "pathStyleAccess": True, "region": S3_REGION}
+
+
+def enable_vending(cat, t):
+    """Catalogs created before vending: add the STS endpoint / no-KMS flag (idempotent, never
+    fails provisioning). Polaris can't ADD a roleArn to an existing catalog — such catalogs are
+    recreated once with migrate-vending (k8s/…/migrate_vending.py); until then they're logged."""
+    st, c = _call("GET", f"/api/management/v1/catalogs/{cat}", token=t)
+    if st != 200:
+        return
+    storage = c["storageConfigInfo"]
+    want = storage_config(storage.get("allowedLocations", []))
+    fields = ("stsEndpoint", "kmsUnavailable", "endpoint")
+    if any(storage.get(k) != want[k] for k in fields):
+        storage.update({k: want[k] for k in fields})
+        st = _call("PUT", f"/api/management/v1/catalogs/{cat}", {
+            "currentEntityVersion": c["entityVersion"], "properties": c["properties"],
+            "storageConfigInfo": storage}, t)[0]
+        if st != 200:
+            print(f"[lakehouse] vending settings on {cat}: HTTP {st}", flush=True)
+    if not storage.get("roleArn"):
+        print(f"[lakehouse] {cat} has no vending role yet — run the vending migration", flush=True)
 
 
 def _move_into_bucket(cat, loc, t):
@@ -474,8 +516,7 @@ def create_catalog(name, short):
     st, _ = _call("POST", f"{_M}/catalogs", {"catalog": {
         "name": cat, "type": "INTERNAL",
         "properties": {"default-base-location": loc, "polaris.config.drop-with-purge.enabled": "true"},
-        "storageConfigInfo": {"storageType": "S3", "allowedLocations": [loc], "endpoint": S3_ENDPOINT,
-                              "pathStyleAccess": True, "region": "us-east-1"}}}, t)
+        "storageConfigInfo": storage_config([loc])}}, t)
     if st == 409:
         raise ValueError(f"{cat} already exists")
     _ok(st, "create catalog")

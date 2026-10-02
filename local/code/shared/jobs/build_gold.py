@@ -3,6 +3,7 @@
 --mart daily_sales | top_products | customer_ltv | all  (default: all)
 """
 import argparse
+import os
 from pyspark.sql import SparkSession, functions as F
 
 
@@ -45,6 +46,12 @@ def main():
     cat = args.catalog
 
     spark = SparkSession.builder.appName("shopflow_build_gold").getOrCreate()
+
+    # the cluster holds no Polaris login: this platform job uses the one Airflow gives it
+
+    if os.environ.get("POLARIS_CREDENTIAL"):
+
+        spark.conf.set(f"spark.sql.catalog.{cat}.credential", os.environ["POLARIS_CREDENTIAL"])
     spark.sql(f"CREATE SCHEMA IF NOT EXISTS {cat}.gold")
     S = f"{cat}.silver.orders"
 

@@ -7,10 +7,9 @@ x-spark-common:
       dockerfile: Dockerfile.spark
     environment:
       - SPARK_CONF_DIR=/opt/spark/conf/
-      # Region for the AWS SDK v2 used by Iceberg's S3FileIO (object storage).
+      # Region for the AWS SDK v2 used by Iceberg's S3FileIO. No storage keys on the cluster:
+      # sessions bring their own (learner key / keys vended by Polaris per table).
       - AWS_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=admin
-      - AWS_SECRET_ACCESS_KEY=admin123
     volumes:
       - ./code:/code
       - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
@@ -58,8 +57,6 @@ services:
     environment:                  # (replaces the common list — keep its entries)
       - SPARK_CONF_DIR=/opt/spark/conf/
       - AWS_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=admin
-      - AWS_SECRET_ACCESS_KEY=admin123
       - SPARK_NO_DAEMONIZE=1
     entrypoint: ["/bin/bash", "-c", "exec /opt/spark/sbin/start-connect-server.sh --master spark://spark-master:7077 --driver-memory 2g --conf spark.sql.catalogImplementation=in-memory --conf spark.connect.grpc.binding.port=15002 --conf spark.cores.max=2 --conf spark.executor.cores=1"]
 

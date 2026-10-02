@@ -1,5 +1,6 @@
 """ShopFlow Silver — clean + join Bronze into one order-line table (Iceberg)."""
 import argparse
+import os
 from pyspark.sql import SparkSession, functions as F
 
 
@@ -12,6 +13,12 @@ def main():
     cat = args.catalog
 
     spark = SparkSession.builder.appName("shopflow_build_silver").getOrCreate()
+
+    # the cluster holds no Polaris login: this platform job uses the one Airflow gives it
+
+    if os.environ.get("POLARIS_CREDENTIAL"):
+
+        spark.conf.set(f"spark.sql.catalog.{cat}.credential", os.environ["POLARIS_CREDENTIAL"])
     spark.sql(f"CREATE SCHEMA IF NOT EXISTS {cat}.silver")
 
     o = (spark.table(f"{cat}.bronze.orders")

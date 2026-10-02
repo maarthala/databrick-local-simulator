@@ -31,17 +31,8 @@
 
   <property>
     <name>hive.metastore.warehouse.dir</name>
-    <value>s3a://demo-bucket/warehouse/</value>
+    <value>file:///tmp/spark-warehouse</value>
   </property>
-
-  <property>
-  <name>fs.s3a.access.key</name>
-  <value>admin</value>
-</property>
-<property>
-  <name>fs.s3a.secret.key</name>
-  <value>admin123</value>
-</property>
 <property>
   <name>fs.s3a.endpoint</name>
   <value>http://storage:9000</value>

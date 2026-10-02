@@ -23,6 +23,9 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_REGION=us-east-1
       - AWS_S3_ENDPOINT=http://storage:9000
+      # admin/test notebook (not a learner): `iceberg` = the shared lake, signed in as the admin
+      - LAKE_WAREHOUSE=polaris_lake
+      - LAKE_CREDENTIAL=root:s3cr3t
       # --- Auto-push on save (same repo/token as k8s) ---
       # All configured via local/.env (copy from .env.example; .env is gitignored,
       # so the token never lands in git). The entrypoint clones GIT_REPO_URL into
