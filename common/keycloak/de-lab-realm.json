@@ -98,16 +98,15 @@
       ]
     },
     {
-      "clientId": "rustfs",
-      "name": "RustFS console \u2014 SSO, own bucket only",
+      "clientId": "storage",
+      "name": "Storage console \u2014 SSO, own bucket only",
       "publicClient": false,
-      "secret": "rustfs-secret",
+      "secret": "storage-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "redirectUris": [
         "http://localhost:9001/*",
-        "http://rustfs.de.lan/*",
-        "http://minio.de.lan/*"
+        "http://storage.de.lan/*"
       ],
       "webOrigins": [
         "+"

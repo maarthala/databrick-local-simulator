@@ -1,7 +1,7 @@
 # Databrick Local Simulator
 
 A hands-on Data Engineering learning environment — a **governed lakehouse**
-(MinIO, Apache Polaris governed Iceberg catalog, Spark, Trino, Superset, Airflow,
+(RustFS object storage, Apache Polaris governed Iceberg catalog, Spark, Trino, Superset, Airflow,
 Jupyter) that you can run two ways with the **same stack**:
 
 ## 📚 Training course

@@ -9,10 +9,10 @@ services:
       - "8185:8181"   # catalog + management REST API (host :8185)
       - "8186:8182"   # health / metrics
     environment:
-      # MinIO static credentials (no STS — enabled by ALLOW_INSECURE_STORAGE_TYPES).
+      # Object-storage static credentials (no STS — enabled by ALLOW_INSECURE_STORAGE_TYPES).
       AWS_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: admin123
       # realm + bootstrap root principal (client-id=root, client-secret=s3cr3t).
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
       polaris.realm-context.realms: POLARIS

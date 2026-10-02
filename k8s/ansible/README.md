@@ -76,7 +76,7 @@ and the Polaris seed settings (`polaris_seed_script`, `polaris_local_port`).
   `sudo systemctl restart snap.microk8s.daemon-containerd`.)
 - Copying multi-GB tarballs uses the `copy` module (works, but slow). For speed,
   install `ansible.posix` and switch the load role to `synchronize` (rsync).
-- Public images (postgres, redis, minio, trino, apache/polaris) are pulled by the kubelet
+- Public images (postgres, redis, rustfs, trino, apache/polaris) are pulled by the kubelet
   — only the custom images are built + imported here.
 - Personas log in with client id = secret = name (`analyst`/`analyst`, …); admin is
   `root`/`s3cr3t`. The **demo/medallion tables** are built by the course pipeline, not the

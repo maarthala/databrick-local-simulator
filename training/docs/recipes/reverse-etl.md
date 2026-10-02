@@ -79,7 +79,7 @@ can grab it from the bucket (or a link) and open it in Excel — no lakehouse ac
 - **`.option("header", True)`** — write the column names (`country,revenue`) as the first line, so
   the CSV is self-describing when someone opens it.
 - **`.csv("s3a://demouser-lake/files/exports/country_report/")`** — the *action*: write **CSV** files to
-  that path. `s3a://` is Spark's connector for S3-compatible object storage (here, RustFS — inside the stack it's still reached at `http://minio:9000`). Note the
+  that path. `s3a://` is Spark's connector for S3-compatible object storage (here, RustFS — inside the stack it's reached at `http://storage:9000`). Note the
   path is a **folder** — Spark writes the single part-file *inside* it.
 
 *Produces:* one CSV file under `s3a://demouser-lake/files/exports/country_report/`, with a header row and
@@ -144,8 +144,8 @@ If three rows come back, the round-trip works: Gold → Postgres → read-back.
     ```python
     report.toPandas().to_excel(
         "s3://demouser-lake/files/exports/report.xlsx", index=False,
-        storage_options={"key": "minioadmin", "secret": "minioadmin",
-                         "client_kwargs": {"endpoint_url": "http://minio:9000"}})
+        storage_options={"key": "admin", "secret": "admin123",
+                         "client_kwargs": {"endpoint_url": "http://storage:9000"}})
     ```
 
     **`report.toPandas()`** collects the small result into a pandas DataFrame; **`.to_excel(...)`**

@@ -30,7 +30,7 @@ through pandas on the driver is perfectly fine — you're not streaming a billio
     as a governed lakehouse table other engines can query.
 
 ### Reaching object storage from pandas
-Spark uses `s3a://…` to reach RustFS (the S3-compatible object store — inside the stack it's still reached at `http://minio:9000`). pandas uses a different door: the **s3fs** library, which
+Spark uses `s3a://…` to reach RustFS (the S3-compatible object store — inside the stack it's reached at `http://storage:9000`). pandas uses a different door: the **s3fs** library, which
 teaches pandas to open `s3://…` URLs. You pass it the RustFS credentials and endpoint through a
 `storage_options` dict, and pandas hands that straight to s3fs. Same bucket, same object — just a
 different client on the driver side.
@@ -44,9 +44,9 @@ import pandas as pd
 from pyspark.sql import SparkSession
 spark = SparkSession.builder.getOrCreate()
 
-# RustFS S3 credentials for pandas (s3fs handles s3:// URLs). Inside the stack RustFS is http://minio:9000.
-storage = {"key": "minioadmin", "secret": "minioadmin",
-           "client_kwargs": {"endpoint_url": "http://minio:9000"}}
+# RustFS S3 credentials for pandas (s3fs handles s3:// URLs). Inside the stack RustFS is http://storage:9000.
+storage = {"key": "admin", "secret": "admin123",
+           "client_kwargs": {"endpoint_url": "http://storage:9000"}}
 xlsx = "s3://demouser-lake/files/source/new_customers.xlsx"
 ```
 
@@ -59,7 +59,7 @@ xlsx = "s3://demouser-lake/files/source/new_customers.xlsx"
   to it, exactly as in [4.1](../unit4/fundamentals.md).
 - **`storage = {…}`** — the credentials + endpoint pandas needs to reach RustFS. **`key`** /
   **`secret`** are the RustFS access keys; **`client_kwargs.endpoint_url`** points at RustFS's
-  in-stack address, `http://minio:9000` (not AWS's real S3). This dict is what makes `s3://…`
+  in-stack address, `http://storage:9000` (not AWS's real S3). This dict is what makes `s3://…`
   URLs resolvable from the driver.
 - **`xlsx = "s3://…"`** — the object-storage path to the spreadsheet, as an `s3://` URL (the door
   **s3fs** opens — Spark's own reads use `s3a://` instead).

@@ -44,7 +44,7 @@ load_images: >-
 # ---------------------------------------------------------------------------
 deploy_waves:
   - name: "commodity"
-    templates: [postgres.yaml, redis.yaml, minio.yaml]
+    templates: [postgres.yaml, redis.yaml, storage.yaml]
   - name: "catalog"
     templates: [polaris.yaml, adventureworks.yaml, keycloak.yaml]   # Polaris server + console + bootstrap Job; AdventureWorks one-shot loader Job (needs Postgres, idempotent); Keycloak (front door — before the apps wave's oauth2-proxy)
   - name: "compute"

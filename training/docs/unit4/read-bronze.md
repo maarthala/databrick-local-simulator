@@ -159,7 +159,7 @@ print("history rows:", hist.count())
 - **`.write.mode("overwrite").partitionBy("dt").parquet(...)`** — write the DataFrame out as
   **Parquet** files, `overwrite` any prior export, and **`partitionBy("dt")`** split them into one
   folder *per date* (`dt=2023-11-30/…`). The path uses `s3a://` — Spark's connector for
-  S3-compatible object storage (here, RustFS — inside the stack it's still reached at `http://minio:9000`).
+  S3-compatible object storage (here, RustFS — inside the stack it's reached at `http://storage:9000`).
   Open **📁 My files → files/source/shopflow/** afterwards: one folder per date, plus the CSV.
 - **`.coalesce(1)…csv(…)`** — the same idea for the customer list: one CSV file with a header
   row (`coalesce(1)` = write a single file instead of one per partition).
@@ -334,7 +334,7 @@ from Postgres and appends them.
     - **Azure Data Factory** — the **Copy activity** does the ingestion; a **Self-hosted
       Integration Runtime** reaches an on-prem Postgres, like your JDBC read here.
 
-    Only the object-store path changes (`abfss://` / `s3://` instead of `s3a://minio`).
+    Only the object-store path changes (`abfss://` / `s3://` instead of `s3a://`).
 
 ## Key terms, at a glance
 | Term | Plain meaning |

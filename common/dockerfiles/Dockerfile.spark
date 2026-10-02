@@ -6,7 +6,7 @@ RUN apt-get update && \
     apt-get install -y rsync zip && \
     apt-get clean
 
-# postgres JDBC, AWS SDK v2 bundle + hadoop-aws (for s3a:// to MinIO),
+# postgres JDBC, AWS SDK v2 bundle + hadoop-aws (for s3a:// to the object store),
 # JAXB (Hive metastore client on Java 11+), and Apache Iceberg (REST catalog).
 COPY ./tmp/postgresql-42.6.0.jar /opt/spark/jars/
 COPY ./tmp/bundle-2.29.52.jar /opt/spark/jars/

@@ -116,7 +116,7 @@ spec:
             # Learners' DAGs: one bundle syncs every <user>-lake/dags/ (learner_dags.py); dag
             # ids must start with <user>_ (airflow_local_settings.py). Both in /opt/airflow/lab.
             - name: AIRFLOW_CONN_LEARNER_S3
-              value: '{"conn_type": "aws", "login": "{{ .Values.minio.rootUser }}", "password": "{{ .Values.minio.rootPassword }}", "extra": {"endpoint_url": "http://minio:9000", "region_name": "us-east-1", "config_kwargs": {"s3": {"addressing_style": "path"}}}}'
+              value: '{"conn_type": "aws", "login": "{{ .Values.storage.rootUser }}", "password": "{{ .Values.storage.rootPassword }}", "extra": {"endpoint_url": "http://storage:9000", "region_name": "us-east-1", "config_kwargs": {"s3": {"addressing_style": "path"}}}}'
 
             - { name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN, value: "postgresql+psycopg2://airflow:airflow@postgres:5432/airflow" }
             - { name: AIRFLOW__CORE__FERNET_KEY, value: "{{ .Values.airflow.fernetKey }}" }
@@ -146,8 +146,8 @@ spec:
             # Spark Connect endpoint so @task code can SparkSession.builder.getOrCreate()
             - { name: SPARK_REMOTE, value: "sc://spark-connect:15002" }
             - { name: AWS_REGION, value: "us-east-1" }
-            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
-            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.storage.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.storage.rootPassword }}" }
           ports:
             - { name: http, containerPort: 8080 }
           readinessProbe:

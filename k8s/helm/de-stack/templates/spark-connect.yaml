@@ -2,7 +2,7 @@
 {{- $img := include "de-stack.image" (dict "root" $ "repo" .Values.spark.repo "tag" .Values.spark.tag) }}
 # Spark Connect server — the Spark "engine" that thin clients (Jupyter) drive over
 # gRPC (sc://spark-connect:15002). Reuses the spark image (already jar-fixed) and its
-# spark-defaults (Iceberg REST catalog -> MinIO), so notebooks get the full lakehouse
+# spark-defaults (Iceberg REST catalog -> object storage), so notebooks get the full lakehouse
 # without any Spark installed locally. Runs as a client-mode driver on the standalone
 # cluster (spark://spark-master:7077), so notebook jobs execute on spark-worker and
 # show up in the Spark master UI. driver.host is pinned to the pod IP (a bare pod has
@@ -40,8 +40,8 @@ spec:
             - name: POD_IP
               valueFrom: { fieldRef: { fieldPath: status.podIP } }
             - { name: AWS_REGION, value: "us-east-1" }
-            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
-            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.storage.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.storage.rootPassword }}" }
           ports:
             - { name: grpc, containerPort: 15002 }
             - { name: ui, containerPort: 4040 }

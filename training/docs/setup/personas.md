@@ -71,7 +71,7 @@ accounts** for running the platform. Don't confuse them with the personas above:
 | `root` / `s3cr3t` | Polaris (Console or API) | Catalog **admin** — creates catalogs, users, roles & grants |
 | your lab account | every tool (single sign-on) | you — your own Jupyter, lakehouse and bucket; instructors are admins |
 | `admin` / `admin` | Keycloak admin console | manages lab accounts (realm `de-lab`) |
-| `minioadmin` / `minioadmin` | RustFS (object store) | Object-store root — used by the platform's own jobs |
+| `admin` / `admin123` | RustFS (object store) | Object-store root — used by the platform's own jobs |
 
 The personas (`analyst`/`engineer`/`lead`) are the ones that carry a **data-access role**; the table
 above is just how you open each tool.

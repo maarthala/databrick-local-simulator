@@ -1,7 +1,7 @@
 # =============================================================================
 # de-stack — values
 # Service names intentionally match the compose service names so the embedded
-# config files resolve (minio, hive-metastore, trino, iceberg-rest, ...).
+# config files resolve (storage, hive-metastore, trino, iceberg-rest, ...).
 # =============================================================================
 global:
   # Registry holding our custom images (push with helm/de-stack/push-images.sh).
@@ -57,21 +57,21 @@ redis:
   enabled: true
   image: redis:8.10.1
 
-minio:
+storage:
   enabled: true
-  # Object storage = RustFS (S3-compatible, Apache-2.0) — replaced the archived MinIO.
-  # Service name stays `minio` (and keys minioadmin) so every client is unchanged.
-  # Console (Keycloak SSO, each learner sees only their own bucket) at minio.<baseHost>.
+  # Object storage — service `storage` (http://storage:9000), implementation RustFS
+  # (S3-compatible, Apache-2.0). Console (Keycloak SSO, each learner sees only their own
+  # bucket) at storage.<baseHost>.
   image: rustfs/rustfs:1.0.0
   mcImage: ghcr.io/maarthala/de-stack/mc:RELEASE.2025-08-13T08-35-41Z   # admin client (works with RustFS)
   storage: 20Gi
-  rootUser: minioadmin
-  rootPassword: minioadmin
+  rootUser: admin
+  rootPassword: admin123
   learnerQuotaMB: 100        # each learner's bucket <user>-lake (hard limit)
 
 # ------------------------------------------------------------------ lakehouse
 # Apache Polaris — Iceberg-native governed catalog (the live governance solution).
-# Persistence in Postgres (db polarisdb), MinIO storage with static creds. Console
+# Persistence in Postgres (db polarisdb), object storage with static creds. Console
 # UI is a local build. Images are imported to the node (kubelet pulls corrupt
 # containerd snapshots on this LXC):
 #   docker save apache/polaris:latest | ssh sysadmin@<node> microk8s images import /dev/stdin

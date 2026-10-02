@@ -9,8 +9,8 @@ terraform {
 
 provider "aws" {
   region                      = "us-east-1"
-  access_key                  = "minioadmin"
-  secret_key                  = "minioadmin"
+  access_key                  = "admin"
+  secret_key                  = "admin123"
   s3_force_path_style         = true
   skip_credentials_validation = true
   skip_metadata_api_check     = true

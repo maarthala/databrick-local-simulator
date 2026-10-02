@@ -29,9 +29,9 @@ POLARIS = os.environ.get("POLARIS_URL", "http://polaris:8181")
 ADMIN = os.environ.get("POLARIS_ADMIN", "root:s3cr3t")
 REALM = os.environ.get("POLARIS_REALM", "POLARIS")
 SHARED = os.environ.get("SHARED_CATALOG", "polaris_lake")
-S3_ENDPOINT = os.environ.get("LAKE_S3_ENDPOINT", "http://minio:9000")
-S3_KEY = os.environ.get("AWS_ACCESS_KEY_ID", "minioadmin")
-S3_SECRET = os.environ.get("AWS_SECRET_ACCESS_KEY", "minioadmin")
+S3_ENDPOINT = os.environ.get("LAKE_S3_ENDPOINT", "http://storage:9000")
+S3_KEY = os.environ.get("AWS_ACCESS_KEY_ID", "admin")
+S3_SECRET = os.environ.get("AWS_SECRET_ACCESS_KEY", "admin123")
 S3_REGION = os.environ.get("AWS_REGION", "us-east-1")
 QUOTA_MB = int(os.environ.get("LEARNER_QUOTA_MB", "100"))      # per-learner bucket, hard limit
 SQLPAD = os.environ.get("SQLPAD_URL", "http://sqlpad:3000")
@@ -64,7 +64,7 @@ def _s3(method, bucket, key="", query=None, body=b"", headers=None, stream=None,
 
 
 def _admin(method, op, query=None, body=b""):
-    """Object-store admin API (RustFS speaks MinIO's /minio/admin/v3/…), same SigV4 signing."""
+    """Object-store admin API (RustFS speaks the MinIO-compatible /minio/admin/v3/… API), same SigV4 signing."""
     with _signed(method, f"/minio/admin/v3/{op}", query, body, {"content-type": "application/json"}) as r:
         return r.status
 
@@ -144,7 +144,7 @@ def put_storage_policy(name, admin=False):
 def storage_key(name):
     """(access key, secret) for the learner's own bucket: RustFS user <user>-files with the
     learner's storage policy, given a new random secret on every call. (RustFS's admin API
-    wants MinIO's encrypted payload for users, so this goes through `mc`.)"""
+    wants the MinIO-style encrypted payload for users, so this goes through `mc`.)"""
     import subprocess
     user = storage_user(name)
     key, secret = f"{user}-files", secrets.token_urlsafe(24)

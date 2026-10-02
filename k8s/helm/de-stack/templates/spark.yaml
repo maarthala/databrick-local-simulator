@@ -33,8 +33,8 @@ spec:
             - name: POD_IP
               valueFrom: { fieldRef: { fieldPath: status.podIP } }
             - { name: AWS_REGION, value: "us-east-1" }
-            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
-            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.storage.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.storage.rootPassword }}" }
           ports:
             - { name: cluster, containerPort: 7077 }
             - { name: ui, containerPort: 8080 }
@@ -73,8 +73,8 @@ spec:
             - name: POD_IP
               valueFrom: { fieldRef: { fieldPath: status.podIP } }
             - { name: AWS_REGION, value: "us-east-1" }
-            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
-            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.storage.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.storage.rootPassword }}" }
           volumeMounts:
             - { name: spark-conf, mountPath: /opt/spark/conf/spark-defaults.conf, subPath: spark-defaults.conf }
             - { name: hive-site, mountPath: /opt/spark/conf/hive-site.xml, subPath: hive-site.xml }

@@ -33,7 +33,7 @@ def fs():
     if _fs is None:
         _fs = s3fs.S3FileSystem(
             key=os.environ["LAKE_S3_KEY"], secret=os.environ["LAKE_S3_SECRET"],
-            client_kwargs={"endpoint_url": os.environ.get("AWS_S3_ENDPOINT", "http://minio:9000")},
+            client_kwargs={"endpoint_url": os.environ.get("AWS_S3_ENDPOINT", "http://storage:9000")},
             use_listings_cache=False)
     return _fs
 

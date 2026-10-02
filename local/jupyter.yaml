@@ -18,11 +18,11 @@ services:
     environment:
       - JUPYTER_ENABLE_LAB=yes
       - JUPYTER_TOKEN=123456
-      - AWS_ACCESS_KEY_ID=minioadmin
-      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=admin123
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_REGION=us-east-1
-      - AWS_S3_ENDPOINT=http://minio:9000
+      - AWS_S3_ENDPOINT=http://storage:9000
       # --- Auto-push on save (same repo/token as k8s) ---
       # All configured via local/.env (copy from .env.example; .env is gitignored,
       # so the token never lands in git). The entrypoint clones GIT_REPO_URL into

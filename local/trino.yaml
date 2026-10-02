@@ -1,0 +1,19 @@
+services:
+  # Trino — SQL over the lakehouse (Iceberg REST catalogs in Polaris, data in object storage).
+  trino:
+    image: trinodb/trino:483
+    restart: always
+    container_name: trino
+    ports:
+      - "8007:8080"
+    volumes:
+      - ./configs/trino:/etc/trino
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - storage
+    networks:
+      - sparknet

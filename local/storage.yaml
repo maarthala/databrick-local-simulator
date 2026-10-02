@@ -1,14 +1,13 @@
 
 services:
-  # S3-compatible object storage (replaces LocalStack). Console UI at :9001.
-  # Object storage: RustFS (S3-compatible, Apache-2.0, maintained) replaced the archived
-  # MinIO. Service + network name stay `minio` (and keys minioadmin) so every client —
-  # Spark s3a, Iceberg/Polaris, Trino, Airflow, home-api — is unchanged.
+  # Object storage — S3-compatible, reached by every client as http://storage:9000 with the
+  # root keys admin / admin123. The implementation is RustFS (Apache-2.0); the generic service
+  # name means it can be swapped for another S3 store (or AWS S3) without touching clients.
   # Console: http://localhost:9001/rustfs/console/ — "Login with Epireum lab account"
-  # (Keycloak, client `rustfs`; the username is the `policy` claim → each learner's own
+  # (Keycloak, client `storage`; the username is the `policy` claim → each learner's own
   # policy = only <username>-lake, created by home-api/JupyterHub with a hard quota).
-  minio:
-    container_name: rustfs
+  storage:
+    container_name: storage
     image: rustfs/rustfs:1.0.0
     restart: always
     environment:
@@ -16,16 +15,16 @@ services:
       RUSTFS_ADDRESS: 0.0.0.0:9000
       RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
       RUSTFS_CONSOLE_ENABLE: "true"
-      RUSTFS_ACCESS_KEY: minioadmin
-      RUSTFS_SECRET_KEY: minioadmin
+      RUSTFS_ACCESS_KEY: admin
+      RUSTFS_SECRET_KEY: admin123
       # SSO for the console. RustFS refuses outbound calls to private hosts unless allowed;
       # discovery goes to the internal Keycloak, tokens carry the PUBLIC issuer.
       RUSTFS_OUTBOUND_ALLOW_ORIGINS: http://keycloak:8080
       RUSTFS_IDENTITY_OPENID_ENABLE: "on"
       RUSTFS_IDENTITY_OPENID_CONFIG_URL: http://keycloak:8080/realms/de-lab/.well-known/openid-configuration
       RUSTFS_IDENTITY_OPENID_ISSUER: http://localhost:8180/realms/de-lab
-      RUSTFS_IDENTITY_OPENID_CLIENT_ID: rustfs
-      RUSTFS_IDENTITY_OPENID_CLIENT_SECRET: rustfs-secret
+      RUSTFS_IDENTITY_OPENID_CLIENT_ID: storage
+      RUSTFS_IDENTITY_OPENID_CLIENT_SECRET: storage-secret
       RUSTFS_IDENTITY_OPENID_CLAIM_NAME: policy
       RUSTFS_IDENTITY_OPENID_SCOPES: openid,profile
       RUSTFS_IDENTITY_OPENID_DISPLAY_NAME: Epireum lab account
@@ -37,7 +36,7 @@ services:
       - "9002:9000"   # S3 API  (9000 is taken by ClickHouse on the host)
       - "9001:9001"   # Web console (/rustfs/console/)
     volumes:
-      - rustfs-data:/data
+      - storage-data:/data
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health"]
       interval: 10s
@@ -45,43 +44,21 @@ services:
       retries: 10
     networks:
       sparknet:
-        aliases: [rustfs]
+        aliases: [storage]
 
-  # One-shot: waits for MinIO, then creates the demo buckets and uploads the
-  minio-init:
-    container_name: minio-init
-    image: ghcr.io/maarthala/de-stack/mc:RELEASE.2025-08-13T08-35-41Z   # mirror, see minio above
+  # One-shot: waits for the object store, then creates the shared demo bucket.
+  storage-init:
+    container_name: storage-init
+    image: ghcr.io/maarthala/de-stack/mc:RELEASE.2025-08-13T08-35-41Z   # S3 admin client (mc)
     depends_on:
-      - minio
+      - storage
     entrypoint: ["/bin/sh", "/init_scripts/setup.sh"]
     volumes:
       - ./code:/code
-      - ./init_scripts/minio:/init_scripts
+      - ./init_scripts/storage:/init_scripts
     restart: "no"
     networks:
       - sparknet
 
-  # Apache Iceberg REST catalog. Spark and Trino both talk to it over HTTP (:8181).
-  # Catalog metadata is persisted in a SQLite file on a volume; table data lives
-  # in MinIO (s3://demo-bucket/iceberg/). Runs as root so it can write /persist.
-  trino:
-    image: trinodb/trino:483
-    restart: always
-    container_name: trino
-    ports:
-      - "8007:8080"
-    volumes:
-      - ./configs/trino:/etc/trino
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    depends_on:
-      - minio
-    networks:
-      - sparknet
-
 volumes:
-  minio-data:        # old MinIO data (kept; no longer mounted)
-  rustfs-data:
+  storage-data:

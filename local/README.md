@@ -4,7 +4,7 @@ The **governed lakehouse** on a single machine with Docker Compose — the same 
 as [`../k8s/README.md`](../k8s/README.md), just on localhost instead of a cluster.
 
 ## What runs
-MinIO · **Apache Polaris** (governed Iceberg catalog) + web **Console** · Spark
+RustFS object storage · **Apache Polaris** (governed Iceberg catalog) + web **Console** · Spark
 (master + worker + Connect) · Trino · Superset · Airflow · Jupyter · Postgres · Redis ·
 an nginx landing page. Postgres also hosts the **AdventureWorks** OLTP sample DB
 (see below).
@@ -15,7 +15,7 @@ an nginx landing page. Postgres also hosts the **AdventureWorks** OLTP sample DB
   (`make polaris-seed`). macOS: `xcode-select --install`; Debian/Ubuntu/WSL:
   `sudo apt-get install -y git make curl unzip ruby python3`.
 - The custom images (spark, jupyter, superset, airflow, home) are **built by
-  `make up`**; the rest (polaris, trino, minio, postgres, redis) are stock and pulled.
+  `make up`**; the rest (polaris, trino, rustfs, postgres, redis) are stock and pulled.
 
 ## Run
 ```bash
@@ -40,7 +40,7 @@ gate the Pages CI uses) before you push.
 | Landing page | http://localhost:8000 | your **lab account** — Register, or `instructor` / `instructor`; one login for every tool below |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | Keycloak (accounts) | http://localhost:8180/admin | admin / admin (realm `de-lab`) |
-| RustFS console (S3) | http://localhost:9001/rustfs/console/ | lab account (own bucket) · root minioadmin / minioadmin |
+| RustFS console (S3) | http://localhost:9001/rustfs/console/ | lab account (own bucket) · root admin / admin123 |
 | Polaris Console | http://localhost:8189 | lab account · `/login?local=1`: personas analyst/engineer/lead (id = secret = name), admin root/s3cr3t |
 | Polaris API | http://localhost:8185 | OAuth2 client credentials (realm `POLARIS`) |
 | Trino | http://localhost:8007/ui/ | any username, no password |
@@ -132,5 +132,5 @@ straight to the stack (both ports are published to your host):
 | Lakehouse (OLAP) | Trino | `localhost` | `8007` | catalog `iceberg` (or `shopflow`) | any user, no password |
 
 ## Notes
-- Governance (Polaris per-persona RBAC + MinIO credential vending) is validated in
+- Governance (Polaris per-persona RBAC + storage credential vending) is validated in
   compose and works the same as on k8s.

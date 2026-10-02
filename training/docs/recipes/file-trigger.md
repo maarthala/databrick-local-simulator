@@ -30,8 +30,7 @@ Our stack has no cloud storage, but it *does* have **RustFS** — an S3-compatib
 the [architecture](../unit0/architecture.md)). A file "arriving" means an object appearing under a
 bucket + key — here, your bucket: `demouser-lake/files/source/new_customers.xlsx`. So our sensor's condition is simply:
 *does that object exist in RustFS yet?* We answer it with **boto3**, the AWS SDK for Python, pointed
-at RustFS instead of AWS. (Inside the stack RustFS is still reached at `http://minio:9000` — hence the
-`minio` names in the code.)
+at RustFS instead of AWS. (Inside the stack RustFS is reached at `http://storage:9000`.)
 
 ## Lab
 
@@ -49,12 +48,12 @@ from airflow.sensors.python import PythonSensor
 from airflow.providers.standard.operators.bash import BashOperator
 import boto3, pendulum
 
-def _minio():
-    return boto3.client("s3", endpoint_url="http://minio:9000",
-                        aws_access_key_id="minioadmin", aws_secret_access_key="minioadmin")
+def _storage():
+    return boto3.client("s3", endpoint_url="http://storage:9000",
+                        aws_access_key_id="admin", aws_secret_access_key="admin123")
 
 def file_has_landed(bucket, key):
-    resp = _minio().list_objects_v2(Bucket=bucket, Prefix=key)
+    resp = _storage().list_objects_v2(Bucket=bucket, Prefix=key)
     return resp.get("KeyCount", 0) > 0
 
 with DAG(dag_id="demouser_ingest_on_file_arrival",     # own account? your username instead
@@ -76,12 +75,12 @@ with DAG(dag_id="demouser_ingest_on_file_arrival",     # own account? your usern
   **`True` = condition met (stop waiting)**, `False` = not yet, poke again later.
 - **`import boto3`** — the AWS SDK for Python. It speaks the S3 API, and RustFS *is* S3-compatible, so
   the same client that talks to AWS talks to our local RustFS.
-- **`def _minio(): return boto3.client("s3", endpoint_url="http://minio:9000", …)`** — builds an S3
+- **`def _storage(): return boto3.client("s3", endpoint_url="http://storage:9000", …)`** — builds an S3
   client, but pointed at RustFS. Three things make it RustFS instead of AWS:
-    - **`endpoint_url="http://minio:9000"`** — talk to the `minio` service on the stack's network
+    - **`endpoint_url="http://storage:9000"`** — talk to the `storage` service on the stack's network
       (port 9000 is RustFS's S3 API), not to `s3.amazonaws.com`.
-    - **`aws_access_key_id` / `aws_secret_access_key`** — RustFS's dev credentials (`minioadmin` /
-      `minioadmin`). Real AWS would use IAM keys; the lab stack uses these for local use.
+    - **`aws_access_key_id` / `aws_secret_access_key`** — RustFS's dev credentials (`admin` /
+      `admin123`). Real AWS would use IAM keys; the lab stack uses these for local use.
 - **`def file_has_landed(bucket, key): …`** — **this is the poke function** — the condition the
   sensor checks each time. `list_objects_v2(Bucket=…, Prefix=key)` asks RustFS to list objects whose
   name starts with `key`. The response's **`KeyCount`** is how many matched. **`> 0` means the file
@@ -133,11 +132,11 @@ then toggle it **on**. In the Airflow UI (<http://localhost:8001>, sign in with 
    running (in `reschedule` mode it'll flip between running and "up for reschedule" between pokes).
 2. Make the file arrive: open **📁 My files** (landing page) → `files/source/` → **Upload** any
    small file named **`new_customers.xlsx`** (the Excel from the [Excel recipe](excel.md) is
-   perfect). Or from a notebook cell, with the same `_minio()` client:
+   perfect). Or from a notebook cell, with the same `_storage()` client:
    ```python
    import boto3
-   s3 = boto3.client("s3", endpoint_url="http://minio:9000",
-                     aws_access_key_id="minioadmin", aws_secret_access_key="minioadmin")
+   s3 = boto3.client("s3", endpoint_url="http://storage:9000",
+                     aws_access_key_id="admin", aws_secret_access_key="admin123")
    s3.put_object(Bucket="demouser-lake", Key="files/source/new_customers.xlsx", Body=b"test")
    ```
 3. On the sensor's **next poke** (within 30 s), `file_has_landed` returns `True`, **wait_for_file**
@@ -168,7 +167,7 @@ any match under the prefix.
 ??? note "Solution sketch"
     ```python
     def first_file_under(prefix):
-        resp = _minio().list_objects_v2(Bucket="demouser-lake", Prefix=prefix)
+        resp = _storage().list_objects_v2(Bucket="demouser-lake", Prefix=prefix)
         contents = resp.get("Contents", [])
         return contents[0]["Key"] if contents else False   # truthy key = met + value
 
@@ -223,7 +222,7 @@ any match under the prefix.
 | **`timeout`** | Give up (fail the sensor) after this many seconds of waiting |
 | **`mode="reschedule"`** | Release the worker slot between pokes (vs `poke` = hold it) — scales |
 | **boto3** | AWS SDK for Python; talks S3, so it talks to S3-compatible **RustFS** |
-| **`endpoint_url`** | Point the S3 client at RustFS (`http://minio:9000`) instead of AWS |
+| **`endpoint_url`** | Point the S3 client at RustFS (`http://storage:9000`) instead of AWS |
 | **`list_objects_v2` / `KeyCount`** | List objects by prefix / how many matched (`>0` = present) |
 | **`S3KeySensor`** | Provider-native "wait for an object" sensor; needs an AWS/S3 connection |
 | **XCom** | How tasks pass small values between each other (e.g. the detected key) |

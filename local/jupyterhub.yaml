@@ -24,11 +24,11 @@ services:
       SINGLEUSER_IMAGE: local-jupyter:latest
       DOCKER_NETWORK: local_sparknet
       SPARK_REMOTE: sc://spark-connect:15002
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: admin123
       AWS_DEFAULT_REGION: us-east-1
       AWS_REGION: us-east-1
-      AWS_S3_ENDPOINT: http://minio:9000
+      AWS_S3_ENDPOINT: http://storage:9000
       GIT_AUTOPUSH: ${GIT_AUTOPUSH:-1}
       GIT_REPO_URL: ${GIT_REPO_URL:-https://github.com/dev-epireum-com/de-lab.git}
       GIT_BRANCH: ${GIT_BRANCH:-main}

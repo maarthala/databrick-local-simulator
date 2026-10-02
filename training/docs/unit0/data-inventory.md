@@ -41,7 +41,7 @@ JDBC. Example: `SELECT count(*) FROM shopflow.public.orders` → 40000.
 
 ## 2. RustFS — the data lake (object storage)
 
-S3-compatible storage (RustFS — inside the stack it's still reached at `http://minio:9000`). Two
+S3-compatible storage (RustFS — inside the stack it's reached at `http://storage:9000`). Two
 kinds of bucket:
 
 - **Your bucket, `demouser-lake`** (own account: `<username>-lake`, 100 MB) — laid out like an

@@ -228,7 +228,7 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 | Superset (BI) | http://localhost:8004 | lab account (instructors = Admin) |
 | Airflow | http://localhost:8001 (or the `AIRFLOW_HOST_PORT` you set) | lab account (instructors = Admin) |
 | Polaris Console (governance) | http://localhost:8189 | lab account · Client ID/Secret form at `/login?local=1` (admin `root` / `s3cr3t`, [personas](personas.md)) |
-| RustFS console (S3) | http://localhost:9001/rustfs/console/ | lab account — you see **your own bucket** `<name>-lake` · root `minioadmin` / `minioadmin` |
+| RustFS console (S3) | http://localhost:9001/rustfs/console/ | lab account — you see **your own bucket** `<name>-lake` · root `admin` / `admin123` |
 | My files · My catalogs | links at the top of the landing page | your bucket's files; create catalogs & share them ([details](workspace.md)) |
 
 ## You can now…

@@ -68,7 +68,7 @@ with **Polaris** as the single catalog that every engine consults before touchin
 ### Storage — where state lives
 | Service | What it is | Holds |
 |---|---|---|
-| **RustFS** | S3-compatible object store — the lakehouse (in-stack name still `minio:9000`) | shared Iceberg tables + raw history (`demo-bucket/…`), and each learner's bucket `<user>-lake` (their lakehouse, notebooks, DAGs; 100 MB) |
+| **RustFS** | S3-compatible object store — the lakehouse (in-stack name `storage:9000`) | shared Iceberg tables + raw history (`demo-bucket/…`), and each learner's bucket `<user>-lake` (their lakehouse, notebooks, DAGs; 100 MB) |
 | **Postgres** | One relational DB serving several roles | the **`shopflow`** source OLTP data; **metastores** for Polaris (`polarisdb`), Keycloak, Airflow, Superset |
 | **Redis** | In-memory store | **Superset's** cache & async query results (Airflow uses LocalExecutor — no broker needed) |
 
@@ -121,10 +121,10 @@ single sign-on, register on the home portal) for every tool; see [0.3](../setup/
 | SQLPad | http://localhost:8003 | `sqlpad.de.lan` | lab account |
 | Jupyter (JupyterHub) | http://localhost:8008 | `jupyter.de.lan` | your lab account (own Jupyter + own lakehouse) |
 | Airflow | http://localhost:8001 | `airflow.de.lan` | lab account (DAGs also from your bucket's `files/src/dags/`) |
-| RustFS console (object store) | http://localhost:9001/rustfs/console/ | `minio.de.lan/rustfs/console/` | lab account (your own bucket) · root `minioadmin` / `minioadmin` |
+| RustFS console (object store) | http://localhost:9001/rustfs/console/ | `storage.de.lan/rustfs/console/` | lab account (your own bucket) · root `admin` / `admin123` |
 | Spark master UI | http://localhost:8002 | `spark.de.lan` | — |
 
-Internal wiring uses service names on a shared network: `polaris:8181`, `minio:9000`,
+Internal wiring uses service names on a shared network: `polaris:8181`, `storage:9000`,
 `postgres:5432`, `spark://spark-master:7077`, `sc://spark-connect:15002`.
 
 ## Persistence

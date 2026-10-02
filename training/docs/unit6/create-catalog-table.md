@@ -39,14 +39,14 @@ to see it in the Console.
 - **Name:** `learn`
 - **Storage type:** `S3`
 - **Default base location:** `s3://demo-bucket/learn`
-- **Endpoint:** `http://minio:9000` (RustFS — S3-compatible; inside the stack it's still reached at `minio`)
+- **Endpoint:** `http://storage:9000` (RustFS — S3-compatible; the in-stack name is `storage`)
 - **Region:** `us-east-1`
 - **Path-style access:** **ON** ← required for RustFS
 - **Create**
 
 !!! warning "Path-style access is mandatory for RustFS"
-    RustFS is addressed as `minio:9000/bucket` (path-style). The default S3 style is
-    `bucket.minio:9000` (virtual-host), which doesn't resolve in this stack — table I/O then
+    RustFS is addressed as `storage:9000/bucket` (path-style). The default S3 style is
+    `bucket.storage:9000` (virtual-host), which doesn't resolve in this stack — table I/O then
     fails with an `UnknownHost` error. So **turn Path-style access ON**. (On real AWS S3
     you'd leave it off.)
 

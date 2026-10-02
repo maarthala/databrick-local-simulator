@@ -24,7 +24,7 @@ Open the **RustFS console** at <http://localhost:9001/rustfs/console/> (sign in 
 
 The object is now at **`s3a://demouser-lake/files/source/uploads/customers.csv`**. (**📁 My files** on the
 landing page uploads to the same place. Any S3 client works too — RustFS is S3-compatible, reached
-inside the stack at `http://minio:9000` — but the console needs no tooling.)
+inside the stack at `http://storage:9000` — but the console needs no tooling.)
 
 The examples use the default lab account's bucket, **`demouser-lake`** — signed in with your own
 account? Use your bucket instead (shown at the top of the landing page, e.g. `ravi-lake`).

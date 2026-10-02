@@ -21,7 +21,7 @@ data:
     quarkus.datasource.jdbc.url=jdbc:postgresql://postgres:5432/polarisdb
     quarkus.datasource.username=polaris
     quarkus.datasource.password=polaris
-    # storage (MinIO, static creds — no STS)
+    # object storage (static creds — no STS)
     polaris.features."ALLOW_INSECURE_STORAGE_TYPES"=true
     polaris.features."ALLOW_NAMESPACE_CUSTOM_LOCATION"=true
     polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"=["FILE","S3"]
@@ -93,8 +93,8 @@ spec:
             - { name: mgmt, containerPort: 8182 }
           env:
             - { name: AWS_REGION, value: "us-east-1" }
-            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
-            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.storage.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.storage.rootPassword }}" }
             # lenient env source (unmapped keys ignored) — declares the JDBC dialect
             - { name: POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE, value: postgresql }
           volumeMounts:

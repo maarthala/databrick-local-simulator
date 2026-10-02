@@ -1,37 +1,36 @@
-{{- if .Values.minio.enabled }}
-# Object storage: RustFS (S3-compatible, Apache-2.0) — replaced the archived MinIO.
-# Service name stays `minio` (and keys minioadmin), so Spark / Polaris / Trino / Airflow /
-# home-api are unchanged. Console at minio.<baseHost>/rustfs/console/ — "Login with
-# Epireum lab account" (Keycloak client `rustfs`; the username is the `policy` claim →
-# each learner's own policy = only <user>-lake, created by home-api / JupyterHub).
-# New PVC (rustfs-data): RustFS has its own on-disk format. The old minio-data PVC is
-# left in place (unused) — delete it once you no longer need the old data.
+{{- if .Values.storage.enabled }}
+# Object storage — S3-compatible, reached by every client as http://storage:9000 (root keys
+# from .Values.storage). The implementation is RustFS (Apache-2.0); the generic name means it
+# can be swapped for another S3 store without touching clients. Console at
+# storage.<baseHost>/rustfs/console/ — "Login with Epireum lab account" (Keycloak client
+# `storage`; the username is the `policy` claim → each learner's own policy = only
+# <user>-lake, created by home-api / JupyterHub).
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: rustfs-data
+  name: storage-data
   labels: {{- include "de-stack.labels" . | nindent 4 }}
 spec:
   accessModes: ["ReadWriteOnce"]
   storageClassName: {{ .Values.global.storageClass }}
   resources:
     requests:
-      storage: {{ .Values.minio.storage }}
+      storage: {{ .Values.storage.storage }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: minio
+  name: storage
   labels: {{- include "de-stack.labels" . | nindent 4 }}
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
-    matchLabels: {{- include "de-stack.selector" (dict "app" "minio") | nindent 6 }}
+    matchLabels: {{- include "de-stack.selector" (dict "app" "storage") | nindent 6 }}
   template:
     metadata:
-      labels: {{- include "de-stack.selector" (dict "app" "minio") | nindent 8 }}
+      labels: {{- include "de-stack.selector" (dict "app" "storage") | nindent 8 }}
     spec:
       enableServiceLinks: false
       securityContext:
@@ -39,23 +38,23 @@ spec:
       initContainers:
         # hostpath volumes come up root-owned — hand /data to the rustfs user
         - name: data-perms
-          image: {{ .Values.minio.image }}
+          image: {{ .Values.storage.image }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           securityContext: { runAsUser: 0 }
           command: ["sh", "-c", "chown -R 10001:10001 /data"]
           volumeMounts:
             - { name: data, mountPath: /data }
       containers:
-        - name: rustfs
-          image: {{ .Values.minio.image }}
+        - name: storage
+          image: {{ .Values.storage.image }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           env:
             - { name: RUSTFS_VOLUMES, value: /data }
             - { name: RUSTFS_ADDRESS, value: "0.0.0.0:9000" }
             - { name: RUSTFS_CONSOLE_ADDRESS, value: "0.0.0.0:9001" }
             - { name: RUSTFS_CONSOLE_ENABLE, value: "true" }
-            - { name: RUSTFS_ACCESS_KEY, value: {{ .Values.minio.rootUser | quote }} }
-            - { name: RUSTFS_SECRET_KEY, value: {{ .Values.minio.rootPassword | quote }} }
+            - { name: RUSTFS_ACCESS_KEY, value: {{ .Values.storage.rootUser | quote }} }
+            - { name: RUSTFS_SECRET_KEY, value: {{ .Values.storage.rootPassword | quote }} }
             # Quotas fail closed until the usage scanner has counted a bucket (a new
             # learner's bucket refuses uploads until then). Lab data is tiny: scan every 10s.
             - { name: RUSTFS_SCANNER_CYCLE, value: "10" }
@@ -66,12 +65,12 @@ spec:
             - { name: RUSTFS_IDENTITY_OPENID_ENABLE, value: "on" }
             - { name: RUSTFS_IDENTITY_OPENID_CONFIG_URL, value: "http://keycloak:8080/realms/de-lab/.well-known/openid-configuration" }
             - { name: RUSTFS_IDENTITY_OPENID_ISSUER, value: "http://auth.{{ .Values.ingress.baseHost }}/realms/de-lab" }
-            - { name: RUSTFS_IDENTITY_OPENID_CLIENT_ID, value: rustfs }
-            - { name: RUSTFS_IDENTITY_OPENID_CLIENT_SECRET, value: rustfs-secret }
+            - { name: RUSTFS_IDENTITY_OPENID_CLIENT_ID, value: storage }
+            - { name: RUSTFS_IDENTITY_OPENID_CLIENT_SECRET, value: storage-secret }
             - { name: RUSTFS_IDENTITY_OPENID_CLAIM_NAME, value: policy }
             - { name: RUSTFS_IDENTITY_OPENID_SCOPES, value: "openid,profile" }
             - { name: RUSTFS_IDENTITY_OPENID_DISPLAY_NAME, value: "Epireum lab account" }
-            - { name: RUSTFS_BROWSER_REDIRECT_URL, value: "http://minio.{{ .Values.ingress.baseHost }}" }
+            - { name: RUSTFS_BROWSER_REDIRECT_URL, value: "http://storage.{{ .Values.ingress.baseHost }}" }
             {{- end }}
           ports:
             - { name: api, containerPort: 9000 }
@@ -83,15 +82,15 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
       volumes:
-        - { name: data, persistentVolumeClaim: { claimName: rustfs-data } }
+        - { name: data, persistentVolumeClaim: { claimName: storage-data } }
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: minio
+  name: storage
   labels: {{- include "de-stack.labels" . | nindent 4 }}
 spec:
-  selector: {{- include "de-stack.selector" (dict "app" "minio") | nindent 4 }}
+  selector: {{- include "de-stack.selector" (dict "app" "storage") | nindent 4 }}
   ports:
     - { name: api, port: 9000, targetPort: 9000 }
     - { name: console, port: 9001, targetPort: 9001 }
@@ -100,27 +99,27 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: minio-console
+  name: storage-console
   labels: {{- include "de-stack.labels" . | nindent 4 }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-    - host: minio.{{ .Values.ingress.baseHost }}
+    - host: storage.{{ .Values.ingress.baseHost }}
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: minio
+                name: storage
                 port: { number: 9001 }
 {{- end }}
 ---
-# Seed buckets + prefixes (parity with the compose minio-init job).
+# Seed the shared bucket (parity with the compose storage-init job).
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: minio-init
+  name: storage-init
   labels: {{- include "de-stack.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": post-install,post-upgrade
@@ -130,18 +129,18 @@ spec:
   backoffLimit: 10
   template:
     metadata:
-      labels: {{- include "de-stack.selector" (dict "app" "minio-init") | nindent 8 }}
+      labels: {{- include "de-stack.selector" (dict "app" "storage-init") | nindent 8 }}
     spec:
       restartPolicy: OnFailure
       containers:
         - name: mc
-          image: {{ .Values.minio.mcImage }}
+          image: {{ .Values.storage.mcImage }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           command: ["/bin/sh", "-c"]
           args:
             - |
-              until mc alias set m http://minio:9000 {{ .Values.minio.rootUser }} {{ .Values.minio.rootPassword }} >/dev/null 2>&1; do
-                echo "waiting for minio..."; sleep 3;
+              until mc alias set m http://storage:9000 {{ .Values.storage.rootUser }} {{ .Values.storage.rootPassword }} >/dev/null 2>&1; do
+                echo "waiting for object storage..."; sleep 3;
               done
               mc mb --ignore-existing m/demo-bucket
               # learners' buckets <user>-lake (+ quota + own-bucket policy) are created by

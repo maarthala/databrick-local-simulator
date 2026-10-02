@@ -136,7 +136,7 @@ learning.
     Open the landing page at **`http://de.lan`**. Learners **register / sign in** there (Keycloak at
     `http://auth.de.lan`, realm `de-lab`); each gets their own lakehouse, bucket and Jupyter on first
     login. All UIs live at `http(s)://<name>.de.lan` (jupyter, trino, superset, sqlpad, airflow,
-    spark, minio — the RustFS console, polaris-console) — the landing page links them.
+    spark, storage — the RustFS console, polaris-console) — the landing page links them.
 
     **Fill the shared lake once:** in Airflow (`http://airflow.de.lan`, as `instructor`) switch
     **`shopflow_medallion`** on and trigger it — Bronze → Silver → Gold in under a minute. (Same

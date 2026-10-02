@@ -15,7 +15,7 @@ data:
    | replace "http://localhost:8007" (printf "http://trino.%s" .Values.ingress.baseHost)
    | replace "http://localhost:8008" (printf "http://jupyter.%s" .Values.ingress.baseHost)
    | replace "http://localhost:8189" (printf "http://polaris-console.%s" .Values.ingress.baseHost)
-   | replace "http://localhost:9001" (printf "http://minio.%s" .Values.ingress.baseHost)
+   | replace "http://localhost:9001" (printf "http://storage.%s" .Values.ingress.baseHost)
    | indent 4 }}
   files.html: |
 {{ .Files.Get "files/home/files.html" | indent 4 }}
@@ -119,7 +119,7 @@ spec:
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           env:
             - { name: POLARIS_URL, value: "http://polaris:8181" }
-            - { name: LEARNER_QUOTA_MB, value: {{ .Values.minio.learnerQuotaMB | quote }} }   # each learner's bucket <user>-lake
+            - { name: LEARNER_QUOTA_MB, value: {{ .Values.storage.learnerQuotaMB | quote }} }   # each learner's bucket <user>-lake
           ports:
             - { name: http, containerPort: 8000 }
           readinessProbe:

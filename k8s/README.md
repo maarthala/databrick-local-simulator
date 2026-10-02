@@ -16,7 +16,7 @@ Namespace `de-stack` on the cluster:
 
 | Layer | Services |
 |---|---|
-| Storage | **RustFS** (S3; service name `minio`) — shared `demo-bucket` + one bucket per learner |
+| Storage | **RustFS** (S3; service `storage`) — shared `demo-bucket` + one bucket per learner |
 | Catalog / governance | **Apache Polaris** (governed Iceberg REST catalog + per-persona RBAC) + web **Console** |
 | Compute | **Spark** (master + worker), **Spark Connect**, **Trino** |
 | Orchestration / apps | **Airflow**, **JupyterHub** (one Jupyter pod per learner), **Superset**, **SQLPad** |
@@ -70,7 +70,7 @@ All UIs are at `https?://<name>.de.lan`. Default credentials (change for anythin
 | Landing page | `http://de.lan` | **lab account** (Register, or `instructor`/`instructor`) — one login for every tool |
 | Keycloak (accounts) | `http://auth.de.lan/admin` | `admin` / `admin` (realm `de-lab`) |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
-| RustFS console | `http://minio.de.lan/rustfs/console/` | lab account (own bucket) · root `minioadmin` / `minioadmin` |
+| RustFS console | `http://storage.de.lan/rustfs/console/` | lab account (own bucket) · root `admin` / `admin123` |
 | Polaris Console | `http://polaris-console.de.lan` | lab account · `/login?local=1`: personas `analyst`/`engineer`/`lead` (id = secret = name), admin `root`/`s3cr3t` |
 | Polaris API | `http://polaris.de.lan` | OAuth2 client credentials (realm `POLARIS`) |
 | Trino (monitor UI) | `http://trino.de.lan/ui/` | any username, no password |

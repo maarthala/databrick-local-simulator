@@ -17,6 +17,6 @@ services:
       - trino
       - jupyter
       - spark-master
-      - minio
+      - storage
     networks:
       - sparknet

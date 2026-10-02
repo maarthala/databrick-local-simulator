@@ -81,7 +81,7 @@ spec:
             # encrypts the stored Keycloak tokens (auth_state) — lets the Hub follow the login
             - { name: JUPYTERHUB_CRYPT_KEY, value: {{ .Values.jupyter.cryptKey | quote }} }
             - { name: POLARIS_URL, value: "http://polaris:8181" }
-            - { name: LEARNER_QUOTA_MB, value: {{ .Values.minio.learnerQuotaMB | quote }} }
+            - { name: LEARNER_QUOTA_MB, value: {{ .Values.storage.learnerQuotaMB | quote }} }
             - { name: SINGLEUSER_IMAGE, value: {{ include "de-stack.image" (dict "root" $ "repo" .Values.jupyter.repo "tag" .Values.jupyter.tag) | quote }} }
             - { name: SINGLEUSER_PULL_POLICY, value: {{ .Values.global.imagePullPolicy }} }
             - { name: SINGLEUSER_MEM, value: {{ .Values.jupyter.userMemory | quote }} }
@@ -89,11 +89,11 @@ spec:
             - { name: SINGLEUSER_STORAGE_CLASS, value: {{ .Values.global.storageClass }} }
             # passed on to every learner pod
             - { name: SPARK_REMOTE, value: "sc://spark-connect:15002" }
-            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.minio.rootUser }}" }
-            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.minio.rootPassword }}" }
+            - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.storage.rootUser }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.storage.rootPassword }}" }
             - { name: AWS_DEFAULT_REGION, value: "us-east-1" }
             - { name: AWS_REGION, value: "us-east-1" }
-            - { name: AWS_S3_ENDPOINT, value: "http://minio:9000" }
+            - { name: AWS_S3_ENDPOINT, value: "http://storage:9000" }
           ports:
             - { name: proxy, containerPort: 8000 }
             - { name: hub, containerPort: 8081 }
