@@ -33,15 +33,11 @@
     input[type=text]{font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:7px 10px; outline:none}
     input[type=text]:focus{border-color:var(--accent)}
 
-    /* ---- header ---- */
-    header{display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 20px;
-           border-bottom:1px solid var(--line); background:rgba(11,16,32,.6); backdrop-filter:blur(6px)}
-    .brand{display:flex; align-items:center; gap:14px}
-    .brand a.back{color:var(--muted); font-size:.92rem} .brand a.back:hover{color:var(--ink)}
-    .brand h1{margin:0; font-size:1.25rem; font-weight:800}
-    .brand h1 .dot{color:var(--accent)}
-    .brand h1 .bucket{color:var(--accent2)}
-    #who{color:var(--muted); font-size:.9rem}
+    /* ---- page title (under the shared lab header, lab-header.js) ---- */
+    .pagebar{padding:10px 28px; border-bottom:1px solid var(--line); background:rgba(20,27,46,.45)}
+    .pagebar h1{margin:0; font-size:1.1rem; font-weight:800}
+    .pagebar h1 .dot{color:var(--accent)}
+    .pagebar h1 .bucket{color:var(--accent2)}
 
     /* ---- two-pane app ---- */
     .app{flex:1; display:grid; grid-template-columns:270px 1fr; min-height:0}
@@ -101,13 +97,9 @@
   </style>
 </head>
 <body>
-  <header>
-    <div class="brand">
-      <a class="back" href="/">← Lab home</a>
-      <h1>My files <span class="dot">·</span> <span class="bucket" id="bucket">…</span></h1>
-    </div>
-    <span id="who"></span>
-  </header>
+  <header id="lab-top"></header>
+  <script src="/lab-header.js"></script>
+  <div class="pagebar"><h1>📁 My files <span class="dot">·</span> <span class="bucket" id="bucket">…</span></h1></div>
 
   <div class="app">
     <aside>
@@ -135,7 +127,7 @@
         </table>
         <div class="drop">Drop files to upload into this folder</div>
       </div>
-      <div class="hint">Only you can see this bucket (limit <span id="quota">20</span> MB). Use a file from Spark with its path — click ⧉ to copy it, e.g. <code id="example">s3a://…/uploads/orders.csv</code></div>
+      <div class="hint">Only you can see this bucket (limit <span id="quota">100</span> MB). Use a file from Spark with its path — click ⧉ to copy it, e.g. <code id="example">s3a://…/files/source/orders.csv</code></div>
     </main>
   </div>
 
@@ -256,7 +248,7 @@
         var d = r.body;
         if (!state.bucket) {                     // first load: build the tree root
           state.bucket = d.bucket; $('bucket').textContent = d.bucket;
-          $('example').textContent = 's3a://' + d.bucket + '/uploads/orders.csv';
+          $('example').textContent = 's3a://' + d.bucket + '/files/source/orders.csv';
           $('tree').appendChild(treeNode('', d.bucket));
         }
         if (nodes[state.prefix]) fill(state.prefix, d.folders);
@@ -371,8 +363,7 @@
     list.addEventListener('dragleave', function (e) { if (e.target === list.querySelector('.drop')) list.classList.remove('dragging'); });
     list.addEventListener('drop', function (e) { e.preventDefault(); list.classList.remove('dragging'); if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
 
-    fetch('/api/me', {credentials: 'same-origin'}).then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (me) { if (me) { $('who').textContent = 'Signed in as ' + me.user; if (me.quota_mb) $('quota').textContent = me.quota_mb; } });
+    document.addEventListener('lab:me', function (e) { if (e.detail.quota_mb) $('quota').textContent = e.detail.quota_mb; });
     load().then(refresh);
   </script>
 </body>
