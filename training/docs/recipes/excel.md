@@ -40,12 +40,13 @@ Run this in a **Jupyter notebook** (it talks to the cluster over **Spark Connect
 
 ### Cell A — connect + config
 ```python
+import os
 import pandas as pd
 from pyspark.sql import SparkSession
 spark = SparkSession.builder.getOrCreate()
 
-# RustFS S3 credentials for pandas (s3fs handles s3:// URLs). Inside the stack RustFS is http://storage:9000.
-storage = {"key": "admin", "secret": "admin123",
+# Your own storage key (set for you in Jupyter) + the in-stack S3 endpoint, for pandas (s3fs).
+storage = {"key": os.environ["AWS_ACCESS_KEY_ID"], "secret": os.environ["AWS_SECRET_ACCESS_KEY"],
            "client_kwargs": {"endpoint_url": "http://storage:9000"}}
 xlsx = "s3://demouser-lake/files/source/new_customers.xlsx"
 ```
@@ -57,8 +58,10 @@ xlsx = "s3://demouser-lake/files/source/new_customers.xlsx"
 - **`SparkSession.builder.getOrCreate()`** — grab (or create) your handle to the Spark cluster.
   Over Spark Connect this attaches to the running cluster; the object named `spark` is how you talk
   to it, exactly as in [4.1](../unit4/fundamentals.md).
-- **`storage = {…}`** — the credentials + endpoint pandas needs to reach RustFS. **`key`** /
-  **`secret`** are the RustFS access keys; **`client_kwargs.endpoint_url`** points at RustFS's
+- **`storage = {…}`** — the credentials + endpoint pandas needs to reach object storage. **`key`** /
+  **`secret`** are **your own** storage key — Jupyter sets them for you as `AWS_ACCESS_KEY_ID` /
+  `AWS_SECRET_ACCESS_KEY`, and they open only your bucket (never paste keys into code);
+  **`client_kwargs.endpoint_url`** points at the store's
   in-stack address, `http://storage:9000` (not AWS's real S3). This dict is what makes `s3://…`
   URLs resolvable from the driver.
 - **`xlsx = "s3://…"`** — the object-storage path to the spreadsheet, as an `s3://` URL (the door

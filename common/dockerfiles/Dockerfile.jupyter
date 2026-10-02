@@ -13,6 +13,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends git ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
+# boto3: the AWS SDK the recipes use from notebooks (S3 API; pip matches it to s3fs's botocore).
 # pyyaml: required by the Spark Declarative Pipelines CLI (`%%sql` materialized views).
 # jupyterhub: the single-user server, so JupyterHub can run this image once per learner
 # (same version as the Hub — Zero-to-JupyterHub 4.4.2 ships 5.5.2).
@@ -32,6 +33,7 @@ RUN pip install --no-cache-dir \
       trino \
       openpyxl \
       s3fs \
+      boto3 \
       jupyter-fs
 
 # Non-root notebook user (uid 1000, "jovyan" to match convention).

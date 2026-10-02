@@ -142,14 +142,16 @@ If three rows come back, the round-trip works: Gold → Postgres → read-back.
     [Excel ingest recipe](excel.md):
 
     ```python
+    import os
     report.toPandas().to_excel(
         "s3://demouser-lake/files/exports/report.xlsx", index=False,
-        storage_options={"key": "admin", "secret": "admin123",
+        storage_options={"key": os.environ["AWS_ACCESS_KEY_ID"],          # your own key
+                         "secret": os.environ["AWS_SECRET_ACCESS_KEY"],
                          "client_kwargs": {"endpoint_url": "http://storage:9000"}})
     ```
 
     **`report.toPandas()`** collects the small result into a pandas DataFrame; **`.to_excel(...)`**
-    writes a formatted `.xlsx`; **`storage_options={...}`** hands pandas the RustFS credentials and
+    writes a formatted `.xlsx`; **`storage_options={...}`** hands pandas your own storage key and
     endpoint so it can write straight to object storage. `index=False` drops pandas' row numbers.
 
 ## Challenge

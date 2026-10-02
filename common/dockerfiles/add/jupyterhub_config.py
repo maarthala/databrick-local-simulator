@@ -83,8 +83,9 @@ else:
     c.DockerSpawner.volumes = {"jupyterhub-user-{username}": "/home/jovyan/work"}  # …work isn't
     c.DockerSpawner.name_template = "jupyter-{username}"
 
-# env every learner server gets (Spark Connect, object store, notebook auto-push)
-PASS = ["SPARK_REMOTE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION",
+# env every learner server gets (Spark Connect, object store, notebook auto-push). NOT the
+# Hub's own AWS keys (the storage root): each learner gets their own-bucket key in pre_spawn.
+PASS = ["SPARK_REMOTE", "AWS_DEFAULT_REGION",
         "AWS_REGION", "AWS_S3_ENDPOINT", "GIT_AUTOPUSH", "GIT_REPO_URL", "GIT_BRANCH",
         "GIT_USERNAME", "GIT_TOKEN"]
 c.Spawner.environment = {k: env[k] for k in PASS if env.get(k)}
@@ -95,7 +96,7 @@ async def pre_spawn(spawner):
     name = lake_name(spawner.user.name)
     provision(name, manager=any(g.name == "managers" for g in spawner.user.groups))
     secret = reset_secret(name)
-    s3_key, s3_secret = storage_key(name)      # own-bucket-only key for the "my bucket" drive
+    s3_key, s3_secret = storage_key(name)      # own-bucket-only key: drive, sync, pandas/boto3
     spawner.environment.update({
         "LAKE_USER": name,
         "LAKE_WAREHOUSE": f"{name}_lake",
@@ -103,6 +104,9 @@ async def pre_spawn(spawner):
         "LAKE_BUCKET": bucket_name(name),
         "LAKE_S3_KEY": s3_key,
         "LAKE_S3_SECRET": s3_secret,
+        # the standard names too, so pandas / s3fs / boto3 use the learner's key by default
+        "AWS_ACCESS_KEY_ID": s3_key,
+        "AWS_SECRET_ACCESS_KEY": s3_secret,
         # %%sql materialized-view pipeline files go to the learner's own bucket too
         "MV_PIPELINE_STORAGE": f"s3a://{bucket_name(name)}/pipelines/mv",
         "GIT_AUTHOR_NAME": spawner.user.name,

@@ -49,8 +49,8 @@ from airflow.providers.standard.operators.bash import BashOperator
 import boto3, pendulum
 
 def _storage():
-    return boto3.client("s3", endpoint_url="http://storage:9000",
-                        aws_access_key_id="admin", aws_secret_access_key="admin123")
+    # keys come from the environment (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY) — never in code
+    return boto3.client("s3", endpoint_url="http://storage:9000")
 
 def file_has_landed(bucket, key):
     resp = _storage().list_objects_v2(Bucket=bucket, Prefix=key)
@@ -75,12 +75,13 @@ with DAG(dag_id="demouser_ingest_on_file_arrival",     # own account? your usern
   **`True` = condition met (stop waiting)**, `False` = not yet, poke again later.
 - **`import boto3`** — the AWS SDK for Python. It speaks the S3 API, and RustFS *is* S3-compatible, so
   the same client that talks to AWS talks to our local RustFS.
-- **`def _storage(): return boto3.client("s3", endpoint_url="http://storage:9000", …)`** — builds an S3
-  client, but pointed at RustFS. Three things make it RustFS instead of AWS:
+- **`def _storage(): return boto3.client("s3", endpoint_url="http://storage:9000")`** — builds an S3
+  client, but pointed at the lab's object store instead of AWS:
     - **`endpoint_url="http://storage:9000"`** — talk to the `storage` service on the stack's network
       (port 9000 is RustFS's S3 API), not to `s3.amazonaws.com`.
-    - **`aws_access_key_id` / `aws_secret_access_key`** — RustFS's dev credentials (`admin` /
-      `admin123`). Real AWS would use IAM keys; the lab stack uses these for local use.
+    - **No keys in the code** — boto3 reads them from the environment (`AWS_ACCESS_KEY_ID` /
+      `AWS_SECRET_ACCESS_KEY`), exactly as on AWS. In Jupyter that's **your own** key (only your
+      bucket); in Airflow it's the platform's job key. Never paste keys into a DAG or notebook.
 - **`def file_has_landed(bucket, key): …`** — **this is the poke function** — the condition the
   sensor checks each time. `list_objects_v2(Bucket=…, Prefix=key)` asks RustFS to list objects whose
   name starts with `key`. The response's **`KeyCount`** is how many matched. **`> 0` means the file
@@ -135,8 +136,7 @@ then toggle it **on**. In the Airflow UI (<http://localhost:8001>, sign in with 
    perfect). Or from a notebook cell, with the same `_storage()` client:
    ```python
    import boto3
-   s3 = boto3.client("s3", endpoint_url="http://storage:9000",
-                     aws_access_key_id="admin", aws_secret_access_key="admin123")
+   s3 = boto3.client("s3", endpoint_url="http://storage:9000")   # your own key, from the environment
    s3.put_object(Bucket="demouser-lake", Key="files/source/new_customers.xlsx", Body=b"test")
    ```
 3. On the sensor's **next poke** (within 30 s), `file_has_landed` returns `True`, **wait_for_file**
