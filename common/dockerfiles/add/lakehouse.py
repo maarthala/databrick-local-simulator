@@ -192,8 +192,10 @@ def make_folders(bucket):
 # Starter files every learner gets, copied from <this dir>/seed/ to the same path in their bucket:
 #   seed/files/source/shopflow/*.csv        practice data
 #   seed/files/src/notebooks/*.ipynb        starter notebooks (Jupyter's notebooks/ folder)
-# Copied once — a learner's own edits or deletions are left alone. In notebooks, __BUCKET__ /
-# __LAKE__ become the learner's bucket / lakehouse, so their code shows real names.
+#   seed/files/src/dags/*.py                starter DAGs (Jupyter's dags/ folder → Airflow)
+# Copied once — a learner's own edits or deletions are left alone. In notebooks and DAGs,
+# __BUCKET__ / __LAKE__ / __USER__ become the learner's bucket / lakehouse / name, so their code
+# shows real names (a DAG's dag_id must start with <user>_).
 SEED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed")
 
 
@@ -212,9 +214,10 @@ def seed_files(bucket):
             except urllib.error.HTTPError:
                 pass
             body = open(path, "rb").read()
-            if n.endswith(".ipynb"):
-                body = body.replace(b"__BUCKET__", bucket.encode()).replace(b"__LAKE__", lake.encode())
-            ctype = {"csv": "text/csv", "ipynb": "application/x-ipynb+json"}.get(n.rsplit(".", 1)[-1],
+            if n.endswith((".ipynb", ".py")):
+                body = (body.replace(b"__BUCKET__", bucket.encode()).replace(b"__LAKE__", lake.encode())
+                        .replace(b"__USER__", lake[:-len("_lake")].encode()))
+            ctype = {"csv": "text/csv", "ipynb": "application/x-ipynb+json", "py": "text/x-python"}.get(n.rsplit(".", 1)[-1],
                                                                                "application/octet-stream")
             try:
                 put_object(bucket, key, io.BytesIO(body), len(body), ctype)

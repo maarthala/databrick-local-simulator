@@ -86,3 +86,41 @@ def lab_spark(user=None):
         spark.conf.set(f"spark.sql.catalog.{cat}.credential", cred)
     print(f"lab_spark: you are {name} · iceberg = {name}_lake · shared = {lh.SHARED}")
     return spark
+
+
+def run_notebook(notebook, user=None):
+    """Run one of the learner's notebooks (files/src/notebooks/<notebook> in their bucket) from a
+    DAG task, the way Jupyter would: `spark` = lab_spark() (signed in as them) and `%%sql`.
+    Cells run top to bottom; the task fails on the first cell that fails.
+
+        @task
+        def load():
+            from lab_spark import run_notebook
+            run_notebook("load_sample_orders.ipynb")
+    """
+    import json
+    from IPython.core.interactiveshell import InteractiveShell
+
+    who = user or _current_user()
+    key = f"{lh.SRC}notebooks/{notebook}"
+    with lh.get_object(lh.bucket_name(lh.lake_name(who)), key) as r:
+        nb = json.loads(r.read())
+    spark = lab_spark(who)
+    shell = InteractiveShell.instance()
+    shell.user_ns["spark"] = spark
+
+    def sql(line, cell):                              # same %%sql as in the notebooks
+        return spark.sql(cell).limit(1000).toPandas()
+    shell.register_magic_function(sql, magic_kind="cell", magic_name="sql")
+
+    cells = [c for c in nb.get("cells", []) if c.get("cell_type") == "code"]
+    print(f"run_notebook: {key} — {len(cells)} code cells")
+    for i, c in enumerate(cells, 1):
+        src = "".join(c.get("source", []))
+        result = shell.run_cell(src)
+        err = result.error_in_exec or result.error_before_exec
+        if err:
+            raise RuntimeError(f"{notebook}: cell {i} failed: {err}")
+        if result.result is not None:
+            print(result.result)
+        print(f"run_notebook: cell {i}/{len(cells)} ok")
