@@ -53,7 +53,7 @@ kinds of bucket:
     folders, kept in sync (DAGs → Airflow).
   - **`tables/`** — where your catalogs keep their table files (`tables/demouser_lake/<namespace>/…`).
     You read these *through the catalog*, not by path.
-- **`demo-bucket`** — the course's **shared** lake (its tables live under `warehouse/`). Instructors
+- **`demo-bucket`** — the course's **shared** lake (its tables live under `warehouse/`). Managers
   only in the console; you read it through the `shared` catalog (next section).
 
 **Reach it:** `spark.read.csv("s3a://demouser-lake/files/source/…")` in a notebook, **📁 My files**

@@ -63,7 +63,7 @@ learning.
     ```
     Open the landing page at **<http://localhost:8000>** and sign in as **`demouser` / `demouser`** —
     the default lab account every course example is written for (or **Register** your own, or use
-    `instructor` / `instructor`). Every tool tiles off it. Then run the
+    `manager` / `manager`). Every tool tiles off it. Then run the
     [setup checklist](prerequisites.md#verify-your-setup).
 
     ### Fill the shared lake (once)
@@ -72,7 +72,7 @@ learning.
     in a notebook, `iceberg.gold.daily_sales` in Trino / SQLPad / Superset — are built by an
     Airflow pipeline. Run it once:
 
-    1. Open **Airflow** (landing page → Orchestration), signed in as `instructor`.
+    1. Open **Airflow** (landing page → Orchestration), signed in as `manager`.
     2. Find **`shopflow_medallion`**, switch it **on** (new DAGs start paused) and press
        **▶ Trigger**.
     3. After about **2–3 minutes** all three tasks are green: Bronze → Silver → Gold.
@@ -93,7 +93,7 @@ learning.
 
     !!! warning "`make down` deletes the volumes"
         It runs `docker compose down -v`, so the object store (RustFS), Postgres, the catalog and the
-        **lab accounts** are wiped — registered accounts are gone (`demouser`, `learner2` and `instructor`
+        **lab accounts** are wiped — registered accounts are gone (`demouser`, `learner2` and `manager`
         come back by themselves), and each learner's lakehouse and bucket are recreated, empty, on their next
         sign-in. Use it
         for a clean reset; use `docker compose stop` if you only want to pause and keep your data.
@@ -138,7 +138,7 @@ learning.
     login. All UIs live at `http(s)://<name>.de.lan` (jupyter, trino, superset, sqlpad, airflow,
     spark, storage — the RustFS console, polaris-console) — the landing page links them.
 
-    **Fill the shared lake once:** in Airflow (`http://airflow.de.lan`, as `instructor`) switch
+    **Fill the shared lake once:** in Airflow (`http://airflow.de.lan`, as `manager`) switch
     **`shopflow_medallion`** on and trigger it — Bronze → Silver → Gold in under a minute. (Same
     DAG as locally; on k8s it runs the jobs through Spark Connect.)
 

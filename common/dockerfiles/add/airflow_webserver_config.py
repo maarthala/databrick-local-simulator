@@ -2,7 +2,7 @@
 
 On when KEYCLOAK_ENABLED=1, otherwise Airflow's normal database login. Users are created
 on first sign-in; Keycloak groups map to Airflow roles and are re-synced every login
-(instructors → Admin, learners → User). Learners have no email, so the username is the
+(managers → Admin, learners → User). Learners have no email, so the username is the
 identity (placeholder <user>@de.lan for FAB's unique-email column).
 
 Endpoints come from Keycloak's discovery document fetched on the INTERNAL address:
@@ -26,7 +26,7 @@ if os.environ.get("KEYCLOAK_ENABLED") == "1":
     AUTH_TYPE = AUTH_OAUTH
     AUTH_USER_REGISTRATION = True
     AUTH_USER_REGISTRATION_ROLE = "User"
-    AUTH_ROLES_MAPPING = {"instructors": ["Admin"], "learners": ["User"]}
+    AUTH_ROLES_MAPPING = {"managers": ["Admin"], "learners": ["User"]}
     AUTH_ROLES_SYNC_AT_LOGIN = True
     OAUTH_PROVIDERS = [{
         "name": "keycloak",

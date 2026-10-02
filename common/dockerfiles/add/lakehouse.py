@@ -3,7 +3,7 @@ and the JupyterHub spawn hook (every server start).
 
 provision(name)     the learner's own bucket <name>-lake on the object store (RustFS) with a
                     hard quota and a storage policy named after them (their bucket only —
-                    instructors: everything), and catalog <name>_lake stored in it
+                    managers: everything), and catalog <name>_lake stored in it
                     (bronze/silver/gold), principal <name>, principal-role <name> owning the
                     catalog, read-only on the shared lake. Idempotent (also moves an older
                     catalog's default location into the learner's bucket).
@@ -117,7 +117,7 @@ def storage_user(name):
 
 def put_storage_policy(name, admin=False):
     """Policy named after the learner (Keycloak sends the username as the `policy` claim on
-    the object-store console login): their own bucket only — or everything for instructors.
+    the object-store console login): their own bucket only — or everything for managers.
     (RustFS doesn't expand ${jwt:…} in resource names, so it's one policy per learner.)"""
     bucket = bucket_name(name)
     doc = {"Version": "2012-10-17", "Statement": [
@@ -328,7 +328,7 @@ def _admin_token():
 def invite_sqlpad(name, admin=False):
     """Pre-create the learner in SQLPad (user id = Keycloak username). SQLPad's OIDC login
     only auto-creates users whose EMAIL domain is allowed — our learners have no email —
-    but it signs in any user that already exists. Instructors are SQLPad admins."""
+    but it signs in any user that already exists. Managers are SQLPad admins."""
     user, role = storage_user(name), "admin" if admin else "editor"
     auth = "Basic " + __import__("base64").b64encode(SQLPAD_ADMIN.encode()).decode()
     def req(method, path, body=None):
@@ -344,7 +344,7 @@ def invite_sqlpad(name, admin=False):
         req("PUT", f"/api/users/{users[user]['id']}", {"role": role})
 
 
-def provision(name, instructor=False):
+def provision(name, manager=False):
     """Create (or confirm) the learner's bucket, storage policy, lakehouse + Polaris identity,
     and their SQLPad account."""
     bucket = bucket_name(name)
@@ -352,8 +352,8 @@ def provision(name, instructor=False):
     set_quota(bucket)
     make_folders(bucket)
     seed_files(bucket)
-    put_storage_policy(name, admin=instructor)
-    invite_sqlpad(name, admin=instructor)
+    put_storage_policy(name, admin=manager)
+    invite_sqlpad(name, admin=manager)
     t = _admin_token()
     m, cat = "/api/management/v1", f"{name}_lake"
     loc = f"s3://{bucket}/tables/{cat}"

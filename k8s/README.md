@@ -67,7 +67,7 @@ All UIs are at `https?://<name>.de.lan`. Default credentials (change for anythin
 
 | Service | URL | Login |
 |---|---|---|
-| Landing page | `http://de.lan` | **lab account** (Register, or `instructor`/`instructor`) — one login for every tool |
+| Landing page | `http://de.lan` | **lab account** (Register, or `manager`/`manager`) — one login for every tool |
 | Keycloak (accounts) | `http://auth.de.lan/admin` | `admin` / `admin` (realm `de-lab`) |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | RustFS console | `http://storage.de.lan/rustfs/console/` | lab account (own bucket) · root `admin` / `admin123` |

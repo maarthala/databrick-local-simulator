@@ -18,7 +18,7 @@ echo "Object storage is ready."
 mc mb --ignore-existing local/demo-bucket
 
 # Learner access: home-api / JupyterHub create, per learner, the bucket <user>-lake with a
-# hard quota and a storage policy named after the user (only that bucket; instructors:
+# hard quota and a storage policy named after the user (only that bucket; managers:
 # everything) — RustFS doesn't expand ${jwt:…} in resources, so there's no shared policy.
 
 echo "Buckets after setup:"

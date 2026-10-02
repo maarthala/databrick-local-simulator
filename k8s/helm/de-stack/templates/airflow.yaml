@@ -104,7 +104,7 @@ spec:
             - { name: AIRFLOW__CORE__EXECUTOR, value: "LocalExecutor" }
 {{- if .Values.keycloak.enabled }}
             # UI login with the lab account (Keycloak client airflow) — FAB auth manager +
-            # webserver_config.py baked into the image (instructors → Admin, learners → User).
+            # webserver_config.py baked into the image (managers → Admin, learners → User).
             - { name: AIRFLOW__CORE__AUTH_MANAGER, value: "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager" }
             - { name: KEYCLOAK_ENABLED, value: "1" }
 {{- else }}

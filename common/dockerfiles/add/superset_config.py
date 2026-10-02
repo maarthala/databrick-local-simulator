@@ -24,7 +24,7 @@ TALISMAN_ENABLED = False
 
 # ---- Sign in with the lab account (Keycloak realm de-lab, client `superset`) ----------
 # On when KEYCLOAK_ENABLED=1. Users are created on first sign-in; Keycloak groups map to
-# Superset roles (instructors → Admin, learners → Alpha) and are re-synced every login.
+# Superset roles (managers → Admin, learners → Alpha) and are re-synced every login.
 # Endpoints come from Keycloak's discovery document fetched on the INTERNAL address:
 # Keycloak returns the browser-facing authorize URL and internal token/keys URLs, and
 # tokens carry the public issuer — no hosts-file tricks.
@@ -37,7 +37,7 @@ if os.environ.get("KEYCLOAK_ENABLED") == "1":
     AUTH_TYPE = AUTH_OAUTH
     AUTH_USER_REGISTRATION = True
     AUTH_USER_REGISTRATION_ROLE = "Alpha"
-    AUTH_ROLES_MAPPING = {"instructors": ["Admin"], "learners": ["Alpha"]}
+    AUTH_ROLES_MAPPING = {"managers": ["Admin"], "learners": ["Alpha"]}
     AUTH_ROLES_SYNC_AT_LOGIN = True
     OAUTH_PROVIDERS = [{
         "name": "keycloak",

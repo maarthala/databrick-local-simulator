@@ -32,7 +32,7 @@ to see it in the Console.
     *403*. (For the same reason the Console's **Catalogs** list shows `0` for learners:
     listing *all* catalogs is admin-only. Open yours from My catalogs.)
 
-**As the admin — in the Console** (instructors, or your own laptop stack): open
+**As the admin — in the Console** (the platform manager, or your own laptop stack): open
 <http://localhost:8189/login?local=1> (k8s: `http://polaris-console.de.lan/login?local=1` — the
 `?local=1` shows the **Client ID / Secret** form instead of signing you in with your lab account), sign in as `root` / `s3cr3t`, then **Catalogs → Create catalog**:
 

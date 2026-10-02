@@ -15,7 +15,7 @@
       "name": "learners"
     },
     {
-      "name": "instructors",
+      "name": "managers",
       "realmRoles": [
         "admin"
       ]
@@ -290,19 +290,19 @@
   ],
   "users": [
     {
-      "username": "instructor",
+      "username": "manager",
       "enabled": true,
-      "email": "instructor@de.lan",
+      "email": "manager@de.lan",
       "emailVerified": true,
       "credentials": [
         {
           "type": "password",
-          "value": "instructor",
+          "value": "manager",
           "temporary": false
         }
       ],
       "groups": [
-        "/instructors"
+        "/managers"
       ]
     },
     {
@@ -357,7 +357,7 @@
     "realm": [
       {
         "name": "admin",
-        "description": "Lab instructors \u2014 admin in SQLPad / tools that read a `roles` claim"
+        "description": "Lab managers \u2014 admin in SQLPad / tools that read a `roles` claim"
       }
     ]
   }

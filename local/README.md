@@ -37,7 +37,7 @@ gate the Pages CI uses) before you push.
 ## Access
 | Service | URL | Login |
 |---|---|---|
-| Landing page | http://localhost:8000 | your **lab account** — Register, or `instructor` / `instructor`; one login for every tool below |
+| Landing page | http://localhost:8000 | your **lab account** — Register, or `manager` / `manager`; one login for every tool below |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | Keycloak (accounts) | http://localhost:8180/admin | admin / admin (realm `de-lab`) |
 | RustFS console (S3) | http://localhost:9001/rustfs/console/ | lab account (own bucket) · root admin / admin123 |

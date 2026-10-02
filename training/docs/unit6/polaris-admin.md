@@ -24,8 +24,8 @@ Open the **Polaris Console** admin login — <http://localhost:8189/login?local=
 **`root` / `s3cr3t`** (the admin).
 
 !!! info "An admin lesson"
-    Creating principals and roles needs the Polaris **admin** (`root`), so in a class this
-    is instructor-led (or done on your own laptop stack). With your lab account you can't
+    Creating principals and roles needs the Polaris **admin** (`root`), so in a company this
+    is the platform team's job (or done on your own laptop stack). With your lab account you can't
     create users — but you *can* share your own tables with other learners on
     **🗂️ My catalogs** ([0.3](../setup/workspace.md)), which builds exactly this
     user → role → grant chain for you.

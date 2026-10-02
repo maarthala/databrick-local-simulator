@@ -24,8 +24,8 @@ services:
     ports:
       - "8180:8080"
     volumes:
-      # realm de-lab: registration on, groups learners (default) / instructors,
-      # client de-lab-home, user instructor/instructor. Imported only if absent.
+      # realm de-lab: registration on, groups learners (default) / managers,
+      # client de-lab-home, user manager/manager. Imported only if absent.
       - ../common/keycloak/de-lab-realm.json:/opt/keycloak/data/import/de-lab-realm.json:ro
       # login/register pages styled like the landing page (realm loginTheme=de-lab)
       - ../common/keycloak/themes/de-lab:/opt/keycloak/themes/de-lab:ro

@@ -83,7 +83,7 @@ with **Polaris** as the single catalog that every engine consults before touchin
 ### Accounts & your workspace
 | Service | What it is |
 |---|---|
-| **Keycloak** | The **lab accounts** (realm `de-lab`): registration, sign-in and single sign-on for every tool. Groups `learners` / `instructors` decide the role inside each tool. |
+| **Keycloak** | The **lab accounts** (realm `de-lab`): registration, sign-in and single sign-on for every tool. Groups `learners` / `managers` decide the role inside each tool. |
 | **oauth2-proxy** | Puts the home portal behind the lab-account login. |
 | **home-api** | The home portal's backend: on your first sign-in it creates **your** lakehouse, bucket and SQLPad user; serves **My files** and **My catalogs**. |
 | **JupyterHub** | Starts **one Jupyter per learner** (its own container / pod and work volume) with `iceberg` = that learner's lakehouse; mirrors `notebooks/` and `dags/` to `files/src/` in their bucket. |

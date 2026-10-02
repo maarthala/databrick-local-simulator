@@ -77,14 +77,14 @@ class Handler(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         return u.path, {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
 
-    def _instructor(self):
+    def _manager(self):
         groups = (self.headers.get("X-Forwarded-Groups") or "").split(",")
-        return "instructors" in groups
+        return "managers" in groups
 
     def _ensure(self, name):
         with _lock:
             if name not in _ready:
-                provision(name, instructor=self._instructor())
+                provision(name, manager=self._manager())
                 _ready.add(name)
 
     @staticmethod

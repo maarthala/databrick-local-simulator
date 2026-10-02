@@ -193,7 +193,7 @@ Run through this checklist once — if all three pass, you're ready for Unit 1.
 
 1. **Sign in to the landing page** — open [http://localhost:8000](http://localhost:8000). You're sent
    to the **DE Learning Lab** login page: sign in as **`demouser` / `demouser`** (the default account
-   the course examples use), **Register** your own, or use `instructor` / `instructor`. After signing in you see the lab's tools in four columns and,
+   the course examples use), **Register** your own, or use `manager` / `manager`. After signing in you see the lab's tools in four columns and,
    in the top bar, **"your lakehouse: <name>_lake ✓"** — your own private lakehouse, created on
    first login.
 2. **Single sign-on works** — open the **Governance** tile (Polaris Console). It signs you in with
@@ -218,15 +218,15 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 
 | Service | Local URL | Login |
 |---|---|---|
-| Landing page | [http://localhost:8000](http://localhost:8000) | **`demouser` / `demouser`** (default — the examples use it), `learner2` / `learner2` (a second user, for sharing in 6.1), your own (**Register**), or `instructor` / `instructor` |
+| Landing page | [http://localhost:8000](http://localhost:8000) | **`demouser` / `demouser`** (default — the examples use it), `learner2` / `learner2` (a second user, for sharing in 6.1), your own (**Register**), or `manager` / `manager` |
 | Keycloak (logins) | http://localhost:8180/admin | admin console: `admin` / `admin` (realm **de-lab**) |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | Jupyter (notebooks) | http://localhost:8008 | your lab account — your **own** Jupyter, and `iceberg` = your own lakehouse |
 | Spark master UI | http://localhost:8002 | — |
 | Trino | http://localhost:8007/ui/ (CLI: `:8007`) | any username, no password |
 | SQLPad (SQL workbench) | http://localhost:8003 | lab account (**Sign in with Epireum lab account**) |
-| Superset (BI) | http://localhost:8004 | lab account (instructors = Admin) |
-| Airflow | http://localhost:8001 (or the `AIRFLOW_HOST_PORT` you set) | lab account (instructors = Admin) |
+| Superset (BI) | http://localhost:8004 | lab account (managers = Admin) |
+| Airflow | http://localhost:8001 (or the `AIRFLOW_HOST_PORT` you set) | lab account (managers = Admin) |
 | Polaris Console (governance) | http://localhost:8189 | lab account · Client ID/Secret form at `/login?local=1` (admin `root` / `s3cr3t`, [personas](personas.md)) |
 | RustFS console (S3) | http://localhost:9001/rustfs/console/ | lab account — you see **your own bucket** `<name>-lake` · root `admin` / `admin123` |
 | My files · My catalogs | links at the top of the landing page | your bucket's files; create catalogs & share them ([details](workspace.md)) |

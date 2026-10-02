@@ -33,7 +33,7 @@ c.GenericOAuthenticator.login_service = "Epireum's Data Engineering Lab"
 c.GenericOAuthenticator.allow_all = True                        # everyone in the realm
 c.GenericOAuthenticator.manage_groups = True                     # Keycloak groups → Hub groups
 c.GenericOAuthenticator.auth_state_groups_key = "oauth_user.groups"
-c.GenericOAuthenticator.admin_groups = {"instructors"}          # Hub admin page
+c.GenericOAuthenticator.admin_groups = {"managers"}          # Hub admin page
 c.Authenticator.auto_login = True                               # straight to Keycloak (SSO → silent)
 # Follow the Keycloak session: keep the tokens and re-check them every minute. After a
 # logout / switching user on the home page, the old token is rejected → the Hub signs
@@ -93,7 +93,7 @@ c.Spawner.environment = {k: env[k] for k in PASS if env.get(k)}
 async def pre_spawn(spawner):
     """Learner's own lakehouse + a fresh Polaris secret, handed only to their server."""
     name = lake_name(spawner.user.name)
-    provision(name, instructor=any(g.name == "instructors" for g in spawner.user.groups))
+    provision(name, manager=any(g.name == "managers" for g in spawner.user.groups))
     secret = reset_secret(name)
     s3_key, s3_secret = storage_key(name)      # own-bucket-only key for the "my bucket" drive
     spawner.environment.update({

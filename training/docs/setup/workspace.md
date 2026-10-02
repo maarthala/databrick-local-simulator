@@ -18,7 +18,7 @@ Kubernetes. You land on the **Epireum's Data Engineering Lab** sign-in page:
   **Register** and choose a **username** (3–30 lower-case letters/digits) and a password — no email
   needed. Then, wherever an example says `demouser`, use your username instead (`ravi_lake`,
   `ravi-lake`, …).
-- **Instructor?** Sign in as `instructor` (instructors are admins in every tool).
+- **Managing the team?** Sign in as `manager` (managers are admins in every tool).
 
 !!! note "Shared stack? Don't share `demouser`"
     On a stack the whole class uses (e.g. Kubernetes), everyone registers their own account —
@@ -104,7 +104,7 @@ folders stays in your Jupyter workspace only.
 
 **📁 My files** (landing page) is a file manager for your bucket — browse, upload, download, new
 folder, delete. The **RustFS console** (Storage tile) shows the same bucket. (Its bucket
-**Settings** page is for instructors — learners get *Access Denied* there; everything about
+**Settings** page is for managers — learners get *Access Denied* there; everything about
 your files works in the browser view and My files.)
 
 !!! warning "100 MB per learner"
