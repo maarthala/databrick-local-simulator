@@ -83,15 +83,20 @@ class _LabS3(s3fs.S3FileSystem):
 
 fsspec.register_implementation("s3", _LabS3, clobber=True)
 c.ServerApp.contents_manager_class = "jupyterfs.metamanager.MetaManager"
+# Under JupyterHub the drive is the learner's OWN bucket (<user>-lake: files/ + tables/), with
+# their own-bucket-only key from the Hub — never the root keys, so learners can't touch the
+# shared lake or anyone else's bucket. The standalone Jupyter (no learner) browses demo-bucket.
+_BUCKET = os.environ.get("LAKE_BUCKET")
+_OWN = bool(_BUCKET and os.environ.get("LAKE_S3_KEY"))
 c.JupyterFs.resources = [
     {
-        "name": "lake (storage)",
-        "url": "s3://demo-bucket",
+        "name": f"my bucket ({_BUCKET})" if _OWN else "lake (storage)",
+        "url": f"s3://{_BUCKET}" if _OWN else "s3://demo-bucket",
         "type": "fsspec",
         "auth": "none",
         "kwargs": {
-            "key": os.environ.get("AWS_ACCESS_KEY_ID", "admin"),
-            "secret": os.environ.get("AWS_SECRET_ACCESS_KEY", "admin123"),
+            "key": os.environ["LAKE_S3_KEY"] if _OWN else os.environ.get("AWS_ACCESS_KEY_ID", "admin"),
+            "secret": os.environ["LAKE_S3_SECRET"] if _OWN else os.environ.get("AWS_SECRET_ACCESS_KEY", "admin123"),
             "client_kwargs": {
                 "endpoint_url": os.environ.get("AWS_S3_ENDPOINT", "http://storage:9000"),
             },
