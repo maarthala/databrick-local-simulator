@@ -88,11 +88,18 @@ services:
       # otherwise breaks the newer flow (pkce_verification_failed → 500)
       OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST: "true"
       OAUTH2_PROXY_COOKIE_CSRF_EXPIRE: 15m
+      # Session kept server-side in Redis: the browser holds only a short session id. A cookie
+      # with the tokens inside grew past 8 KB — and browsers send localhost cookies to EVERY
+      # port, so it broke other tools too ("400 Request Header Or Cookie Too Large").
+      OAUTH2_PROXY_SESSION_STORE_TYPE: redis
+      OAUTH2_PROXY_REDIS_CONNECTION_URL: redis://redis:6379/1
       # where "Log out" lands after oauth2-proxy clears its cookie (Keycloak ends the SSO session)
       OAUTH2_PROXY_WHITELIST_DOMAINS: localhost:8180
     depends_on:
       keycloak:
         condition: service_healthy
+      redis:
+        condition: service_healthy   # session store
     restart: unless-stopped
     networks:
       - sparknet
