@@ -149,13 +149,14 @@ CALL iceberg.system.remove_orphan_files(
     (`prefix_listing => true` lists the files through Iceberg itself; it's required on our stack.)
 
 ### The same from Trino (and SQLPad)
-Trino runs the same maintenance with `ALTER TABLE … EXECUTE`:
+Trino runs the same maintenance with `ALTER TABLE … EXECUTE` — in Trino your notebook's `iceberg` is
+`<you>_lake` (replace `<you>` with your username):
 
 ```sql
-ALTER TABLE iceberg.sandbox.orders_maint EXECUTE optimize;
-ALTER TABLE iceberg.sandbox.orders_maint EXECUTE expire_snapshots(retention_threshold => '7d');
-ALTER TABLE iceberg.sandbox.orders_maint EXECUTE remove_orphan_files(retention_threshold => '7d');
-SELECT count(*) FROM iceberg.sandbox."orders_maint$files";
+ALTER TABLE <you>_lake.sandbox.orders_maint EXECUTE optimize;
+ALTER TABLE <you>_lake.sandbox.orders_maint EXECUTE expire_snapshots(retention_threshold => '7d');
+ALTER TABLE <you>_lake.sandbox.orders_maint EXECUTE remove_orphan_files(retention_threshold => '7d');
+SELECT count(*) FROM <you>_lake.sandbox."orders_maint$files";
 ```
 
 Trino **refuses** retention under 7 days by default. That's the same safety idea, enforced by

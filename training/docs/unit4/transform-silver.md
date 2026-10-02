@@ -233,7 +233,7 @@ incoming = (
     .withColumn("unit_price", (F.col("unit_price") * 1.10).cast("decimal(12,2)"))
     .withColumn("line_amount", (F.col("quantity") * F.col("unit_price")).cast("decimal(12,2)"))
 )
-incoming.createOrReplaceTempView("incoming_orders")
+incoming.localCheckpoint().createOrReplaceTempView("incoming_orders")
 
 spark.sql("""
 MERGE INTO iceberg.silver.orders AS t
@@ -250,9 +250,13 @@ WHEN NOT MATCHED THEN INSERT *
   existing lines and bump their price 10% to *simulate* a correction coming from the source. The
   second `withColumn` recomputes `line_amount` so the derived column stays consistent — the same
   fix-and-derive pattern as the main build.
-- **`incoming.createOrReplaceTempView("incoming_orders")`** — register the small batch as a named
-  temporary view so we can name it inside SQL. A temp view is a query-able alias that lives only in
-  this Spark session; nothing is written to disk.
+- **`incoming.localCheckpoint().createOrReplaceTempView("incoming_orders")`** — register the small
+  batch as a named temporary view so we can name it inside SQL. A temp view is a query-able alias that
+  lives only in this Spark session; nothing is written to disk. **`.localCheckpoint()`** first takes a
+  snapshot of the batch's rows: the batch is computed from `iceberg.silver.orders` itself, and Spark
+  4.1 can't plan a `MERGE` whose source still points back at tables (*"No plan for
+  TableReference…"*) — a snapshot also guarantees the source can't change while the merge rewrites
+  the very table it was read from.
 - **`MERGE INTO iceberg.silver.orders AS t USING incoming_orders AS s`** — **`MERGE`** (the upsert
   from [2.8](../unit2/merge.md)) compares a **target** table `t` against a **source** batch `s` and
   applies inserts/updates in *one* transaction.

@@ -28,10 +28,11 @@ The rule for Bronze: **land, don't transform.** Cleaning happens in Silver (4.3)
     wrong, you can always **reprocess from Bronze** without going back to the live source (which
     may have changed or gone offline). Fix-it-later is only possible if you kept the original.
 
-### Writing Iceberg tables — one shared catalog
-You write Bronze into the **`iceberg`** catalog — the *same* catalog Trino reads in Unit 2. So a
-table you build here as `iceberg.bronze.orders` is immediately queryable in Trino as
-`iceberg.bronze.orders`: **one write, two engines, no copying.** The write pattern is a one-liner:
+### Writing Iceberg tables — your own catalog
+In your notebook, **`iceberg`** is **your own lakehouse** (`<you>_lake`, e.g. `ravi_lake` — it starts
+empty, with `bronze` / `silver` / `gold` namespaces). A table you build here as
+`iceberg.bronze.orders` is immediately queryable in Trino / SQLPad / Superset as
+`<you>_lake.bronze.orders`: **one write, two engines, no copying.** The write pattern is a one-liner:
 
 ```python
 df.writeTo("iceberg.bronze.<table>").using("iceberg").createOrReplace()
@@ -41,8 +42,8 @@ df.writeTo("iceberg.bronze.<table>").using("iceberg").createOrReplace()
     - **`df`** — a Spark **DataFrame**: a table-shaped, lazily-evaluated dataset (rows and typed
       columns) that Spark hasn't computed yet. You build one by *reading* a source (next section).
     - **`.writeTo("iceberg.bronze.<table>")`** — names the **target table** using a **three-part
-      name**: `catalog.schema.table`. `iceberg` is the *catalog* (the shared metastore Trino also
-      reads), `bronze` is the *schema* (a namespace, like a folder for tables), and `<table>` is
+      name**: `catalog.schema.table`. `iceberg` is the *catalog* (in your notebook: your own
+      lakehouse — Trino calls it `<you>_lake`), `bronze` is the *schema* (a namespace, like a folder for tables), and `<table>` is
       the table itself. All three parts together point at exactly one table.
     - **`.using("iceberg")`** — store it in the **Iceberg** table format (open columnar files plus
       a metadata layer that tracks snapshots, schema, and partitions).

@@ -57,6 +57,8 @@ An MV does **not** update on its own. Prove it: add a fake order to Silver, then
 ```sql
 %%sql
 INSERT INTO iceberg.silver.orders
+  (order_id, order_date, customer_id, customer_name, country, channel,
+   product_id, product_name, category, quantity, unit_price, line_amount, status)
 SELECT 999999001, DATE '2099-01-15', 1, 'Test Customer', 'Atlantis', 'web',
        1, 'Test Product', 'Test', 1, 100.00, 100.00, 'delivered'
 ```

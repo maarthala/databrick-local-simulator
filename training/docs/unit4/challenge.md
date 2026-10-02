@@ -108,11 +108,12 @@ building it, confirm the **same** table is readable from Trino (it should be —
     """).show()
     ```
     The window `sum(revenue) OVER (PARTITION BY order_date)` computes each day's total
-    alongside the per-category rows — no self-join needed. Because it's the shared `iceberg`
-    catalog, the identical table opens in Trino:
+    alongside the per-category rows — no self-join needed. Your notebook's `iceberg` is your own
+    lakehouse, which Trino calls `<you>_lake` (replace `<you>` with your username) — the identical
+    table opens there:
     ```sql
     SELECT order_date, category, pct_of_day
-    FROM iceberg.gold.category_daily_revenue
+    FROM <you>_lake.gold.category_daily_revenue
     ORDER BY order_date DESC LIMIT 10;
     ```
 
