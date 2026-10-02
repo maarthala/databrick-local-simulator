@@ -28,7 +28,7 @@ metadata:
   name: postgres-init
   labels: {{- include "de-stack.labels" . | nindent 4 }}
 data:
-{{- range $path, $_ := .Files.Glob "files/postgres/*.sql" }}
+{{- range $path, $_ := .Files.Glob "files/postgres/*.{sql,sh}" }}
   {{ base $path }}: |
 {{ $.Files.Get $path | indent 4 }}
 {{- end }}
@@ -66,7 +66,11 @@ spec:
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           env:
             - { name: POSTGRES_USER, value: "{{ .Values.postgres.user }}" }
-            - { name: POSTGRES_PASSWORD, value: "{{ .Values.postgres.password }}" }
+            - { name: POSTGRES_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: postgres-password } } }
+            - { name: PG_AIRFLOW_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: pg-airflow-password } } }
+            - { name: PG_POLARIS_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: pg-polaris-password } } }
+            - { name: PG_KEYCLOAK_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: pg-keycloak-password } } }
+            - { name: PG_SUPERSET_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: pg-superset-password } } }
             - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
           ports:
             - containerPort: 5432

@@ -124,6 +124,12 @@ single sign-on, register on the home portal) for every tool; see [0.3](../setup/
 | RustFS console (object store) | http://localhost:9001/rustfs/console/ | `storage.de.lan/rustfs/console/` | lab account (your own bucket) · root `admin` / `admin123` |
 | Spark master UI | http://localhost:8002 | `spark.de.lan` | — |
 
+!!! warning "On a team stack these admin logins are private"
+    The admin passwords above are the defaults of **your own laptop stack**, where you are the admin.
+    On a shared team stack (Kubernetes) every admin and service password is a random value in
+    the cluster's `de-stack-secrets` — only your **platform manager** has them. Learners sign in
+    with their own lab account, and use PostgreSQL as `learner` / `learner`.
+
 Internal wiring uses service names on a shared network: `polaris:8181`, `storage:9000`,
 `postgres:5432`, `spark://spark-master:7077`, `sc://spark-connect:15002`.
 

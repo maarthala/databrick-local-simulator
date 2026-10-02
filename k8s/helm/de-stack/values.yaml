@@ -3,6 +3,13 @@
 # Service names intentionally match the compose service names so the embedded
 # config files resolve (storage, hive-metastore, trino, iceberg-rest, ...).
 # =============================================================================
+# Admin / service passwords are NOT in this file: they live in the Secret below, created once
+# with random values by k8s/create-secrets.sh (the deploy playbook runs it). The platform
+# manager reads one with:
+#   kubectl -n de-stack get secret de-stack-secrets -o jsonpath='{.data.<key>}' | base64 -d
+secrets:
+  name: de-stack-secrets
+
 global:
   # Registry holding our custom images (push with helm/de-stack/push-images.sh).
   imageRegistry: ghcr.io/maarthala/de-stack
@@ -50,8 +57,7 @@ postgres:
   # default layout (/var/lib/postgresql/18/docker) doesn't apply.
   image: postgres:18
   storage: 5Gi
-  user: postgres
-  password: postgres
+  user: postgres            # password: secret key postgres-password
 
 redis:
   enabled: true
@@ -65,8 +71,7 @@ storage:
   image: rustfs/rustfs:1.0.0
   mcImage: ghcr.io/maarthala/de-stack/mc:RELEASE.2025-08-13T08-35-41Z   # admin client (works with RustFS)
   storage: 20Gi
-  rootUser: admin
-  rootPassword: admin123
+  rootUser: admin            # password: secret key storage-root-password
   learnerQuotaMB: 100        # each learner's bucket <user>-lake (hard limit)
 
 # ------------------------------------------------------------------ lakehouse
@@ -114,8 +119,7 @@ airflow:
   # KubernetesPodOperator. Much smaller/faster to schedule than the fat image.
   repo: airflow-slim
   tag: "20261002-7"        # dated: re-importing :latest can leave the old image
-  adminUser: airflow
-  adminPassword: airflow
+  adminUser: airflow         # password: secret key airflow-admin-password
   # Shared keys so apiserver/scheduler/dag-processor agree (from the compose cfg).
   fernetKey: "gZg3prHNcfcl0KS9NH_Sane7PLxC0crWcoruuuBdfp4="
   secretKey: "l7sViEv3ImrPg7KW5fwwvA=="
@@ -138,13 +142,11 @@ superset:
   enabled: true
   repo: superset
   tag: "20261002-4"          # dated: re-importing :latest can leave the old image
-  adminUser: admin
-  adminPassword: admin
+  adminUser: admin           # password: secret key superset-admin-password
 sqlpad:
   enabled: true
   image: sqlpad/sqlpad:7.5.7   # web SQL workbench (read+write) for Postgres (OLTP) + Trino (OLAP)
-  adminEmail: admin@de.local
-  adminPassword: admin1234
+  adminEmail: admin@de.local # password: secret key sqlpad-admin-password
   storage: 1Gi
 hue:
   enabled: false             # dropped — Superset's SQL Lab covers ad-hoc SQL
@@ -158,7 +160,7 @@ keycloak:
   enabled: true
   image: quay.io/keycloak/keycloak:26.8.0
   adminUser: admin            # Keycloak admin console: http://auth.<baseHost>/admin
-  adminPassword: admin
+                              # password: secret key keycloak-admin-password
 oauth2Proxy:
   image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.4
   cookieSecret: "de-lab-k8s-cookie-secret-32chars"   # must be 16/24/32 bytes (lab only)

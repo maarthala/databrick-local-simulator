@@ -21,7 +21,8 @@ Grant once to the role, and every user who holds it gets that access.
 
 Open the **Polaris Console** admin login — <http://localhost:8189/login?local=1> (k8s: `http://polaris-console.de.lan/login?local=1` — the
 `?local=1` shows the **Client ID / Secret** form instead of signing you in with your lab account) — and sign in as
-**`root` / `s3cr3t`** (the admin).
+**`root` / `s3cr3t`** (the admin, on your laptop stack — on a team stack only the platform
+manager has the admin login).
 
 !!! info "An admin lesson"
     Creating principals and roles needs the Polaris **admin** (`root`), so in a company this

@@ -25,7 +25,7 @@ spec:
           env:
             - { name: PGHOST, value: "postgres" }
             - { name: PGUSER, value: "{{ .Values.postgres.user }}" }
-            - { name: PGPASSWORD, value: "{{ .Values.postgres.password }}" }
+            - { name: PGPASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: postgres-password } } }
           command: ["/bin/bash", "-c"]
           args:
             - |

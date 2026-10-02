@@ -22,6 +22,8 @@
     for i in $(seq 1 20); do
       curl -s -o /dev/null "http://localhost:{{ polaris_local_port }}/api/catalog/v1/config" && break || sleep 1
     done
+    sec() { kubectl -n {{ namespace }} get secret de-stack-secrets -o jsonpath="{.data.$1}" | base64 -d; }
+    POLARIS_ROOT_CREDENTIAL="root:$(sec polaris-root-secret)" POLARIS_PERSONA_SECRET="$(sec polaris-persona-secret)" \
     POLARIS_URL="http://localhost:{{ polaris_local_port }}" bash "{{ polaris_seed_script }}"
   args:
     executable: /bin/bash
@@ -34,3 +36,16 @@
       Polaris seeded: catalog polaris_lake (engine name `iceberg`) with
       bronze/silver/gold namespaces + analyst/engineer/lead personas and graded
       RBAC. Personas log in with client id = secret = name; admin is root/s3cr3t.
+
+- name: Give the manager account its private password (the realm import ships manager/manager)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    sec() { kubectl -n {{ namespace }} get secret de-stack-secrets -o jsonpath="{.data.$1}" | base64 -d; }
+    kubectl -n {{ namespace }} exec deploy/keycloak -- env ADMINPW="$(sec keycloak-admin-password)" MGRPW="$(sec manager-password)" sh -c '
+      K=/opt/keycloak/bin/kcadm.sh
+      $K config credentials --server http://localhost:8080 --realm master --user admin --password "$ADMINPW" >/dev/null
+      $K set-password -r de-lab --username manager --new-password "$MGRPW"'
+  args:
+    executable: /bin/bash
+  no_log: true
+  changed_when: true

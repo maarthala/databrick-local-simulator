@@ -8,8 +8,12 @@
 set -euo pipefail
 
 B="${POLARIS_URL:-http://localhost:8185}"
+# Logins: the admin (root) and the three demo personas. Defaults = the laptop stack's published
+# ones; a team stack passes its private values (k8s Secret de-stack-secrets).
+ROOT="${POLARIS_ROOT_CREDENTIAL:-root:s3cr3t}"
+PERSONA_SECRET="${POLARIS_PERSONA_SECRET:-}"      # empty → each persona's secret = its name
 M="$B/api/management/v1"; C="$B/api/catalog/v1"
-RT=$(curl -s -m 10 "$B/api/catalog/v1/oauth/tokens" --user root:s3cr3t -H 'Polaris-Realm: POLARIS' \
+RT=$(curl -s -m 10 "$B/api/catalog/v1/oauth/tokens" --user "$ROOT" -H 'Polaris-Realm: POLARIS' \
       -d grant_type=client_credentials -d scope=PRINCIPAL_ROLE:ALL | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 H=(-H "Authorization: Bearer $RT" -H "Content-Type: application/json" -H "Polaris-Realm: POLARIS")
 post() { curl -s -m 10 "${H[@]}" -X POST "$1" -d "$2" -o /dev/null -w "%{http_code} "; }
@@ -22,7 +26,7 @@ echo "namespaces:$(for ns in bronze silver gold; do post $C/polaris_lake/namespa
 echo "principals:$(for p in analyst engineer lead; do post $M/principals "{\"principal\":{\"name\":\"$p\"}}"; done)"
 # Pin known client credentials so personas log in cleanly (clientId=secret=name).
 # No IdP needed — principals authenticate with client id/secret (API + Console).
-echo "creds:     $(for p in analyst engineer lead; do post $M/principals/$p/reset "{\"clientId\":\"$p\",\"clientSecret\":\"$p\"}"; done)"
+echo "creds:     $(for p in analyst engineer lead; do post $M/principals/$p/reset "{\"clientId\":\"$p\",\"clientSecret\":\"${PERSONA_SECRET:-$p}\"}"; done)"
 echo "p-roles:   $(for r in analyst_role engineer_role lead_role; do post $M/principal-roles "{\"principalRole\":{\"name\":\"$r\"}}"; done)"
 echo "assign:    $(for pr in analyst:analyst_role engineer:engineer_role lead:lead_role; do put $M/principals/${pr%%:*}/principal-roles "{\"principalRole\":{\"name\":\"${pr##*:}\"}}"; done)"
 echo "c-roles:   $(for r in analyst_role engineer_role lead_role; do post $M/catalogs/polaris_lake/catalog-roles "{\"catalogRole\":{\"name\":\"${r}_cr\"}}"; put $M/principal-roles/$r/catalog-roles/polaris_lake "{\"catalogRole\":{\"name\":\"${r}_cr\"}}"; done)"

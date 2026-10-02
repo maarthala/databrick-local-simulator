@@ -42,6 +42,9 @@ spec:
         - name: trino
           image: {{ .Values.trino.image }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:   # read by the catalog files as ${ENV:…}
+            - { name: POLARIS_ROOT_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: polaris-root-secret } } }
+            - { name: STORAGE_ROOT_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: storage-root-password } } }
           ports:
             - { name: http, containerPort: 8080 }
           volumeMounts:

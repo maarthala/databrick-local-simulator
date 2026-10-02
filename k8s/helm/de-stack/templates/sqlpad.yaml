@@ -40,7 +40,7 @@ spec:
           env:
             - { name: SQLPAD_PORT,           value: "3000" }
             - { name: SQLPAD_ADMIN,          value: "{{ .Values.sqlpad.adminEmail }}" }
-            - { name: SQLPAD_ADMIN_PASSWORD, value: "{{ .Values.sqlpad.adminPassword }}" }
+            - { name: SQLPAD_ADMIN_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: sqlpad-admin-password } } }
             - { name: SQLPAD_APP_LOG_LEVEL,  value: "warn" }
             {{- if .Values.keycloak.enabled }}
             # Sign in with the lab account (Keycloak realm de-lab, client sqlpad); learners are

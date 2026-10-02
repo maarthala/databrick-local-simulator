@@ -53,7 +53,7 @@ Sign in with the persona's **Client ID + Secret** wherever the stack asks *who y
 - **Polaris Console** — open <http://localhost:8189/login?local=1> (k8s:
   `http://polaris-console.de.lan/login?local=1` — the `?local=1` shows the Client ID / Secret form
   instead of signing you in with your lab account), enter the **Client ID** and **Client Secret**
-  (e.g. `analyst` / `analyst`), and sign in. The catalog tree you see is scoped to that persona's
+  (on your laptop: e.g. `analyst` / `analyst`; on a team stack, ask your platform manager), and sign in. The catalog tree you see is scoped to that persona's
   grants.
 - **An engine (Trino / Spark)** — point it at the governed catalog with the same client ID/secret;
   it reads/writes only what that persona is allowed.
@@ -75,6 +75,12 @@ accounts** for running the platform. Don't confuse them with the personas above:
 
 The personas (`analyst`/`engineer`/`lead`) are the ones that carry a **data-access role**; the table
 above is just how you open each tool.
+
+!!! warning "On a team stack these admin logins are private"
+    The passwords above are the defaults of **your own laptop stack**, where you are the admin.
+    On a shared team stack (Kubernetes) every admin and service password is a random value in
+    the cluster's `de-stack-secrets` — only your **platform manager** has them. Learners sign in
+    with their own lab account, and use PostgreSQL as `learner` / `learner`.
 
 ## Where the personas are defined (for the curious)
 

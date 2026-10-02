@@ -96,12 +96,20 @@ spec:
 {{- else }}
             - >
               airflow db migrate &&
-              printf '{"%s": "%s"}' "{{ .Values.airflow.adminUser }}" "{{ .Values.airflow.adminPassword }}"
+              printf '{"%s": "%s"}' "{{ .Values.airflow.adminUser }}" "$AIRFLOW_ADMIN_PASSWORD"
               > /opt/airflow/simple_auth_manager_passwords.json.generated &&
               exec airflow standalone
 {{- end }}
           env:
             - { name: AIRFLOW__CORE__EXECUTOR, value: "LocalExecutor" }
+            # secrets first: the values below build on them with $(VAR)
+            - { name: PG_AIRFLOW_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: pg-airflow-password } } }
+            - { name: STORAGE_ROOT_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: storage-root-password } } }
+            - { name: POLARIS_ROOT_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: polaris-root-secret } } }
+            - { name: TRINO_LAB_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: trino-lab-secret } } }
+            - { name: AIRFLOW_ADMIN_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: airflow-admin-password } } }
+            - { name: POLARIS_ADMIN, value: "root:$(POLARIS_ROOT_SECRET)" }      # lakehouse.py (lab_spark)
+            - { name: TRINO_POLARIS_LOGIN, value: "trino_lab:$(TRINO_LAB_SECRET)" }
 {{- if .Values.keycloak.enabled }}
             # UI login with the lab account (Keycloak client airflow) — FAB auth manager +
             # webserver_config.py baked into the image (managers → Admin, learners → User).
@@ -109,18 +117,18 @@ spec:
             - { name: KEYCLOAK_ENABLED, value: "1" }
 {{- else }}
             # `airflow standalone` with SimpleAuthManager (dev mode). Pin the
-            # admin username so login is a stable {{ .Values.airflow.adminUser }}/{{ .Values.airflow.adminPassword }}
+            # admin username so login is a stable {{ .Values.airflow.adminUser }} (password: secret airflow-admin-password)
             # (paired with the pre-written passwords file in args above).
             - { name: AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS, value: "{{ .Values.airflow.adminUser }}:admin" }
 {{- end }}
             # Learners' DAGs: one bundle syncs every <user>-lake/dags/ (learner_dags.py); dag
             # ids must start with <user>_ (airflow_local_settings.py). Both in /opt/airflow/lab.
             # Polaris login for the platform's own Spark jobs (the cluster holds none)
-            - { name: POLARIS_CREDENTIAL, value: "root:s3cr3t" }
+            - { name: POLARIS_CREDENTIAL, value: "root:$(POLARIS_ROOT_SECRET)" }
             - name: AIRFLOW_CONN_LEARNER_S3
-              value: '{"conn_type": "aws", "login": "{{ .Values.storage.rootUser }}", "password": "{{ .Values.storage.rootPassword }}", "extra": {"endpoint_url": "http://storage:9000", "region_name": "us-east-1", "config_kwargs": {"s3": {"addressing_style": "path"}}}}'
+              value: '{"conn_type": "aws", "login": "{{ .Values.storage.rootUser }}", "password": "$(STORAGE_ROOT_PASSWORD)", "extra": {"endpoint_url": "http://storage:9000", "region_name": "us-east-1", "config_kwargs": {"s3": {"addressing_style": "path"}}}}'
 
-            - { name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN, value: "postgresql+psycopg2://airflow:airflow@postgres:5432/airflow" }
+            - { name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN, value: "postgresql+psycopg2://airflow:$(PG_AIRFLOW_PASSWORD)@postgres:5432/airflow" }
             - { name: AIRFLOW__CORE__FERNET_KEY, value: "{{ .Values.airflow.fernetKey }}" }
             - { name: AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION, value: "true" }
             # rescan the DAGs bundle every 30s so git-synced DAGs appear quickly
@@ -149,7 +157,7 @@ spec:
             - { name: SPARK_REMOTE, value: "sc://spark-connect:15002" }
             - { name: AWS_REGION, value: "us-east-1" }
             - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.storage.rootUser }}" }
-            - { name: AWS_SECRET_ACCESS_KEY, value: "{{ .Values.storage.rootPassword }}" }
+            - { name: AWS_SECRET_ACCESS_KEY, value: "$(STORAGE_ROOT_PASSWORD)" }
           ports:
             - { name: http, containerPort: 8080 }
           readinessProbe:

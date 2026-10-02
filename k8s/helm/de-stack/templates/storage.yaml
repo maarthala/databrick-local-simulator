@@ -54,7 +54,7 @@ spec:
             - { name: RUSTFS_CONSOLE_ADDRESS, value: "0.0.0.0:9001" }
             - { name: RUSTFS_CONSOLE_ENABLE, value: "true" }
             - { name: RUSTFS_ACCESS_KEY, value: {{ .Values.storage.rootUser | quote }} }
-            - { name: RUSTFS_SECRET_KEY, value: {{ .Values.storage.rootPassword | quote }} }
+            - { name: RUSTFS_SECRET_KEY, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: storage-root-password } } }
             # Quotas fail closed until the usage scanner has counted a bucket (a new
             # learner's bucket refuses uploads until then). Lab data is tiny: scan every 10s.
             - { name: RUSTFS_SCANNER_CYCLE, value: "10" }
@@ -136,10 +136,12 @@ spec:
         - name: mc
           image: {{ .Values.storage.mcImage }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: STORAGE_ROOT_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: storage-root-password } } }
           command: ["/bin/sh", "-c"]
           args:
             - |
-              until mc alias set m http://storage:9000 {{ .Values.storage.rootUser }} {{ .Values.storage.rootPassword }} >/dev/null 2>&1; do
+              until mc alias set m http://storage:9000 {{ .Values.storage.rootUser }} "$STORAGE_ROOT_PASSWORD" >/dev/null 2>&1; do
                 echo "waiting for object storage..."; sleep 3;
               done
               mc mb --ignore-existing m/demo-bucket

@@ -14,7 +14,7 @@ def read_pg(spark, table):
     return (spark.read.format("jdbc")
             .option("url", "jdbc:postgresql://postgres:5432/shopflow")
             .option("dbtable", table)
-            .option("user", "postgres").option("password", "postgres")
+            .option("user", "learner").option("password", "learner")   # read-only course login
             .option("driver", "org.postgresql.Driver").load())
 
 

@@ -34,7 +34,7 @@ to see it in the Console.
 
 **As the admin — in the Console** (the platform manager, or your own laptop stack): open
 <http://localhost:8189/login?local=1> (k8s: `http://polaris-console.de.lan/login?local=1` — the
-`?local=1` shows the **Client ID / Secret** form instead of signing you in with your lab account), sign in as `root` / `s3cr3t`, then **Catalogs → Create catalog**:
+`?local=1` shows the **Client ID / Secret** form instead of signing you in with your lab account), sign in as `root` / `s3cr3t` (laptop stack; on a team stack this is the platform manager's job), then **Catalogs → Create catalog**:
 
 - **Name:** `learn`
 - **Storage type:** `S3`

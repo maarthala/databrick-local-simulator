@@ -63,15 +63,18 @@ helm template de-stack k8s/helm/de-stack | kubectl -n de-stack apply -f -
 ```
 
 ## 4. Access
-All UIs are at `https?://<name>.de.lan`. Default credentials (change for anything real):
+All UIs are at `https?://<name>.de.lan`. **Admin and service passwords are private**: they live in
+the Secret `de-stack-secrets`, created once with random values by `k8s/create-secrets.sh` (the
+deploy playbook runs it). The platform manager reads one with
+`kubectl -n de-stack get secret de-stack-secrets -o jsonpath='{.data.<key>}' | base64 -d`:
 
 | Service | URL | Login |
 |---|---|---|
-| Landing page | `http://de.lan` | **lab account** (Register, or `manager`/`manager`) — one login for every tool |
-| Keycloak (accounts) | `http://auth.de.lan/admin` | `admin` / `admin` (realm `de-lab`) |
+| Landing page | `http://de.lan` | **lab account** (Register; the admin account `manager` uses secret `manager-password`) — one login for every tool |
+| Keycloak (accounts) | `http://auth.de.lan/admin` | `admin` / secret `keycloak-admin-password` (realm `de-lab`) |
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
-| RustFS console | `http://storage.de.lan/rustfs/console/` | lab account (own bucket) · root `admin` / `admin123` |
-| Polaris Console | `http://polaris-console.de.lan` | lab account · `/login?local=1`: personas `analyst`/`engineer`/`lead` (id = secret = name), admin `root`/`s3cr3t` |
+| RustFS console | `http://storage.de.lan/rustfs/console/` | lab account (own bucket) · root `admin` / secret `storage-root-password` |
+| Polaris Console | `http://polaris-console.de.lan` | lab account · `/login?local=1`: personas `analyst`/`engineer`/`lead` (secret `polaris-persona-secret`), admin `root` (secret `polaris-root-secret`) |
 | Polaris API | `http://polaris.de.lan` | OAuth2 client credentials (realm `POLARIS`) |
 | Trino (monitor UI) | `http://trino.de.lan/ui/` | any username, no password |
 | Superset | `http://superset.de.lan` | lab account |
@@ -87,7 +90,7 @@ All UIs are at `https?://<name>.de.lan`. Default credentials (change for anythin
    (`bronze`/`silver`/`gold`), `shared` = the course lake. Spark Connect reads/writes through
    Polaris, which enforces each learner's access.
    **Personas** (governance lessons): `http://polaris-console.de.lan/login?local=1` with
-   `analyst`/`analyst`, `engineer`/`engineer`, `lead`/`lead` (admin `root`/`s3cr3t`).
+   `analyst` / `engineer` / `lead` with the secret `polaris-persona-secret` (admin `root`: `polaris-root-secret`).
 3. **Query the lake with SQL** — Trino (`iceberg` catalog) via the CLI, or Superset's SQL
    Lab (Trino → Iceberg connection is pre-configured).
 4. **Manage access** — create catalogs/namespaces/principals and grant/revoke in the Polaris

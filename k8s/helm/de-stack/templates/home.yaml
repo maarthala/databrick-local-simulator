@@ -120,6 +120,15 @@ spec:
           env:
             - { name: POLARIS_URL, value: "http://polaris:8181" }
             - { name: LEARNER_QUOTA_MB, value: {{ .Values.storage.learnerQuotaMB | quote }} }   # each learner's bucket <user>-lake
+            # platform logins (provisioning): storage root, Polaris root, the Trino principal
+            - { name: AWS_ACCESS_KEY_ID, value: {{ .Values.storage.rootUser | quote }} }
+            - { name: AWS_SECRET_ACCESS_KEY, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: storage-root-password } } }
+            - { name: POLARIS_ROOT_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: polaris-root-secret } } }
+            - { name: TRINO_LAB_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: trino-lab-secret } } }
+            - { name: POLARIS_ADMIN, value: "root:$(POLARIS_ROOT_SECRET)" }
+            - { name: TRINO_POLARIS_LOGIN, value: "trino_lab:$(TRINO_LAB_SECRET)" }
+            - { name: SQLPAD_ADMIN_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: sqlpad-admin-password } } }
+            - { name: SQLPAD_ADMIN, value: "{{ .Values.sqlpad.adminEmail }}:$(SQLPAD_ADMIN_PASSWORD)" }   # invites learners to SQLPad
           ports:
             - { name: http, containerPort: 8000 }
           readinessProbe:

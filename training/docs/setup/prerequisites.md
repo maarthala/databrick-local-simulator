@@ -231,6 +231,12 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 | RustFS console (S3) | http://localhost:9001/rustfs/console/ | lab account — you see **your own bucket** `<name>-lake` · root `admin` / `admin123` |
 | My files · My catalogs | links at the top of the landing page | your bucket's files; create catalogs & share them ([details](workspace.md)) |
 
+!!! warning "On a team stack these admin logins are private"
+    The passwords above are the defaults of **your own laptop stack**, where you are the admin.
+    On a shared team stack (Kubernetes) every admin and service password is a random value in
+    the cluster's `de-stack-secrets` — only your **platform manager** has them. Learners sign in
+    with their own lab account, and use PostgreSQL as `learner` / `learner`.
+
 ## You can now…
 - Set up your machine to use the stack (browser, Trino CLI) on macOS, Windows, or Linux
 - Sign in once with your lab account and reach every tool

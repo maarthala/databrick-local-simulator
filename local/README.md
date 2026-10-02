@@ -128,7 +128,7 @@ straight to the stack (both ports are published to your host):
 
 | Connection | Driver | Host | Port | Database / Catalog | User / Pass |
 |---|---|---|---|---|---|
-| ShopFlow / AdventureWorks (OLTP) | PostgreSQL | `localhost` | `5432` | `shopflow` / `adventureworks` | `postgres` / `postgres` |
+| ShopFlow / AdventureWorks (OLTP) | PostgreSQL | `localhost` | `5432` | `shopflow` / `adventureworks` | course login `learner` / `learner` (admin: `postgres` / `postgres`) |
 | Lakehouse (OLAP) | Trino | `localhost` | `8007` | catalog `iceberg` (or `shopflow`) | any user, no password |
 
 ## Notes

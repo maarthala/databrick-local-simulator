@@ -56,14 +56,14 @@ spec:
             - { name: KC_DB, value: postgres }
             - { name: KC_DB_URL, value: "jdbc:postgresql://postgres:5432/keycloak" }
             - { name: KC_DB_USERNAME, value: keycloak }
-            - { name: KC_DB_PASSWORD, value: keycloak }
+            - { name: KC_DB_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: pg-keycloak-password } } }
             - { name: KC_HOSTNAME, value: "http://auth.{{ .Values.ingress.baseHost }}" }
             - { name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC, value: "true" }
             - { name: KC_HTTP_ENABLED, value: "true" }
             - { name: KC_PROXY_HEADERS, value: xforwarded }
             - { name: KC_HEALTH_ENABLED, value: "true" }
             - { name: KC_BOOTSTRAP_ADMIN_USERNAME, value: {{ .Values.keycloak.adminUser | quote }} }
-            - { name: KC_BOOTSTRAP_ADMIN_PASSWORD, value: {{ .Values.keycloak.adminPassword | quote }} }
+            - { name: KC_BOOTSTRAP_ADMIN_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: keycloak-admin-password } } }
           ports:
             - { name: http, containerPort: 8080 }
             - { name: mgmt, containerPort: 9000 }
