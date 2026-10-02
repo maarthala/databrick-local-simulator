@@ -189,6 +189,33 @@ def make_folders(bucket):
                 pass
 
 
+# Practice files every learner starts with: <this dir>/seed/<path> → files/source/<path>
+# (e.g. seed/shopflow/customers.csv → files/source/shopflow/customers.csv). Copied once —
+# a learner's own edits or deletions are left alone.
+SEED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed")
+
+
+def seed_files(bucket):
+    import io
+    if not os.path.isdir(SEED_DIR):
+        return
+    for root, _, names in os.walk(SEED_DIR):
+        for n in names:
+            rel = os.path.relpath(os.path.join(root, n), SEED_DIR).replace(os.sep, "/")
+            key = f"files/source/{rel}"
+            try:
+                _s3("HEAD", bucket, key).close()
+                continue                                  # already there
+            except urllib.error.HTTPError:
+                pass
+            try:
+                body = open(os.path.join(root, n), "rb").read()
+                put_object(bucket, key, io.BytesIO(body), len(body), "text/csv" if n.endswith(".csv") else
+                           "application/octet-stream")
+            except urllib.error.HTTPError:                # new bucket not scanned yet — next call
+                pass
+
+
 def set_quota(bucket, mb=QUOTA_MB):
     """Hard quota: uploads that would exceed it are rejected."""
     return _admin("PUT", "set-bucket-quota", {"bucket": bucket},
@@ -315,6 +342,7 @@ def provision(name, instructor=False):
     create_bucket(bucket)
     set_quota(bucket)
     make_folders(bucket)
+    seed_files(bucket)
     put_storage_policy(name, admin=instructor)
     invite_sqlpad(name, admin=instructor)
     t = _admin_token()
