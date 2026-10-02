@@ -121,12 +121,12 @@ Our stack ships without the archival files, so **create a small export once — 
 bucket** (this simulates ShopFlow's nightly "archive old orders" job, and a partner's CSV
 export), then ingest it like any file source. The examples use the default lab account's
 bucket, `demouser-lake` (own account? use your bucket, e.g. `ravi-lake`); the files go under
-`raw/shopflow/` (about 1 MB of your 100 MB):
+`files/source/shopflow/` (about 1 MB of your 100 MB):
 
 ```python
 from pyspark.sql import functions as F
 
-RAW = "s3a://demouser-lake/raw/shopflow"     # your bucket
+RAW = "s3a://demouser-lake/files/source/shopflow"     # your bucket
 
 # One-time: write "archived" orders (older than 2024) as date-partitioned Parquet …
 (read_pg("orders")
@@ -160,7 +160,7 @@ print("history rows:", hist.count())
   **Parquet** files, `overwrite` any prior export, and **`partitionBy("dt")`** split them into one
   folder *per date* (`dt=2023-11-30/…`). The path uses `s3a://` — Spark's connector for
   S3-compatible object storage (here, RustFS — inside the stack it's still reached at `http://minio:9000`).
-  Open **📁 My files → raw/shopflow/** afterwards: one folder per date, plus the CSV.
+  Open **📁 My files → files/source/shopflow/** afterwards: one folder per date, plus the CSV.
 - **`.coalesce(1)…csv(…)`** — the same idea for the customer list: one CSV file with a header
   row (`coalesce(1)` = write a single file instead of one per partition).
 

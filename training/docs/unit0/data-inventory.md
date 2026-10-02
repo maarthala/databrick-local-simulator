@@ -54,8 +54,8 @@ bucket holds the shared course lake:
 
 **Reach it:** `spark.read.parquet("s3a://demo-bucket/…")` in a notebook ([3.9](../unit3/upload-register.md)),
 or the **RustFS console** (<http://localhost:9001/rustfs/console/>, sign in with your lab account)
-to browse/upload. In the console you see only **your own bucket, `<username>-lake`** (100 MB, with
-`notebooks/` and `dags/` folders) — `demo-bucket` is visible to instructors only; reach it from code.
+to browse/upload. In the console you see only **your own bucket, `<username>-lake`** (100 MB, laid out as
+`files/` — `src/notebooks`, `src/dags`, `source` — and `tables/`) — `demo-bucket` is visible to instructors only; reach it from code.
 
 ## 3. The `iceberg` catalog — governed lakehouse tables
 

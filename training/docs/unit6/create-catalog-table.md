@@ -24,7 +24,7 @@ writes to object storage.
 
 **As a learner — on 🗂️ My catalogs** (landing page): click **＋ New**, type `learn`,
 **Create**. You get **`demouser_learn`** — e.g. `ravi_learn` — stored in your own bucket at
-`s3://demouser-lake/catalogs/learn`, and you're its owner. Click **Open in Polaris Console ↗**
+`s3://demouser-lake/tables/demouser_learn`, and you're its owner. Click **Open in Polaris Console ↗**
 to see it in the Console.
 
 !!! note "Why not *Catalogs → Create catalog* in the Console?"
@@ -93,7 +93,7 @@ table with data.
 
 **Watch it land in your bucket** (📁 **My files**, or the RustFS console
 <http://localhost:9001/rustfs/console/>): after `CREATE TABLE` you'll see
-`demo/sales/metadata/00000-….metadata.json` in `demouser-lake`; after `INSERT`, a
+`tables/demouser_lake/demo/sales/metadata/00000-….metadata.json` in `demouser-lake`; after `INSERT`, a
 `data/*.parquet` plus manifest/snapshot files appear.
 
 ## C · Query the table

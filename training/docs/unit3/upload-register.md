@@ -19,10 +19,10 @@ Open the **RustFS console** at <http://localhost:9001/rustfs/console/> (sign in 
 
 1. Go to your own bucket, **`<username>-lake`** — the only one learners see in the console
    (instructors also see the shared **`demo-bucket`**).
-2. Create/enter a folder, e.g. **`uploads/`**.
+2. Create/enter a folder, e.g. **`files/source/uploads/`**.
 3. **Upload** your file — say `customers.csv`.
 
-The object is now at **`s3a://demouser-lake/uploads/customers.csv`**. (**📁 My files** on the
+The object is now at **`s3a://demouser-lake/files/source/uploads/customers.csv`**. (**📁 My files** on the
 landing page uploads to the same place. Any S3 client works too — RustFS is S3-compatible, reached
 inside the stack at `http://minio:9000` — but the console needs no tooling.)
 
@@ -33,7 +33,7 @@ account? Use your bucket instead (shown at the top of the landing page, e.g. `ra
 `spark` is already there ([3.7](spark.md)). Point it at the path:
 
 ```python
-path = "s3a://demouser-lake/uploads/customers.csv"   # your own bucket
+path = "s3a://demouser-lake/files/source/uploads/customers.csv"   # your own bucket
 
 df = (spark.read
         .option("header", True)        # first row is column names
@@ -44,7 +44,7 @@ df.printSchema()
 df.show(5)
 ```
 
-For Parquet it's just `spark.read.parquet("s3a://demouser-lake/uploads/…")` (schema is built in — no
+For Parquet it's just `spark.read.parquet("s3a://demouser-lake/files/source/uploads/…")` (schema is built in — no
 options needed).
 
 ### 3 · Register it as a catalog table
@@ -69,7 +69,7 @@ You can register the file without the DataFrame step, but there's a trap. The ob
 %%sql
 -- DON'T: the csv.`path` shorthand accepts NO options, so it can't set header=true
 CREATE TABLE iceberg.bronze.customers_upload USING iceberg AS
-SELECT * FROM csv.`s3a://demouser-lake/uploads/customers.csv`
+SELECT * FROM csv.`s3a://demouser-lake/files/source/uploads/customers.csv`
 ```
 Because that shorthand can't be told that row 1 is a header, you get generic columns
 **`_c0, _c1, _c2`** *and* the header line (`id,name,country`) lands as a **data row**:
@@ -86,7 +86,7 @@ cells):
 ```sql
 %%sql
 CREATE TEMPORARY VIEW customers_raw USING csv
-OPTIONS (path 's3a://demouser-lake/uploads/customers.csv', header 'true', inferSchema 'true')
+OPTIONS (path 's3a://demouser-lake/files/source/uploads/customers.csv', header 'true', inferSchema 'true')
 ```
 ```sql
 %%sql
@@ -107,7 +107,7 @@ no stray header row.
     ```sql
     %%sql
     CREATE TEMPORARY VIEW customers_raw (id INT, name STRING, country STRING) USING csv
-    OPTIONS (path 's3a://demouser-lake/uploads/customers.csv', header 'true')
+    OPTIONS (path 's3a://demouser-lake/files/source/uploads/customers.csv', header 'true')
     ```
     This is the SQL twin of the DataFrame reader's `.option("header", True)` / `.schema(...)` — the
     header/options `spark.read` sets in Python become the `OPTIONS (...)` clause in SQL.

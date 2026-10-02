@@ -170,8 +170,8 @@ Once the DAG passes locally, deploy it the same way the pros do:
   that folder and picks it up within a scan cycle (~30s).
 - **Remote/production:** **commit + push** to the Git repo the remote Airflow **git-syncs** (see the
   remote-development section) — never edit files on the server directly.
-- **Your own DAGs:** you can also save a DAG in Jupyter under **`dags/`** — it's synced to your
-  bucket and loaded by Airflow within ~30 s (the `dag_id` must start with `<username>_`).
+- **Your own DAGs:** you can also save a DAG in Jupyter under **`dags/`** — it's synced to your bucket's
+  `files/src/dags/` and loaded by Airflow within ~30 s (the `dag_id` must start with `<username>_`).
 
 ## Lab
 

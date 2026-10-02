@@ -39,7 +39,11 @@ SQLPAD_ADMIN = os.environ.get("SQLPAD_ADMIN", "admin@de.local:admin1234")
 NAMESPACES = ("bronze", "silver", "gold")
 TRINO = os.environ.get("TRINO_URL", "http://trino:8080")
 TRINO_LOGIN = os.environ.get("TRINO_POLARIS_LOGIN", "trino_lab:trino-lab-secret")   # Trino → learner catalogs
-FOLDERS = ("notebooks/", "dags/")      # learner code lives in their bucket (dags/ → Airflow)
+# Bucket layout (like a Fabric / Azure lakehouse): files/ = files you work with, tables/ = catalog
+# storage. files/src/{notebooks,dags} mirror Jupyter's notebooks/ + dags/ (dags → Airflow);
+# files/source/ = raw files to ingest; tables/<catalog>/… = Iceberg (and Delta) table data.
+SRC = "files/src/"
+FOLDERS = ("files/src/notebooks/", "files/src/dags/", "files/source/", "tables/")
 
 
 
@@ -156,14 +160,18 @@ def storage_key(name):
 
 
 _README = {
-    "notebooks/": "Your notebooks. Save .ipynb files here from Jupyter's \"my bucket\" drive.\n",
-    "dags/": "Airflow DAGs. Any .py here shows up in Airflow within ~30 seconds.\n"
-             "The dag_id must start with your username + '_', e.g. dag_id=\"ravi_daily_sales\".\n",
+    "files/src/notebooks/": "Your notebooks — the notebooks/ folder in Jupyter, kept in sync.\n",
+    "files/src/dags/": "Airflow DAGs — the dags/ folder in Jupyter, kept in sync. Any .py here shows up\n"
+                       "in Airflow within ~30 seconds. The dag_id must start with your username + '_',\n"
+                       "e.g. dag_id=\"ravi_daily_sales\".\n",
+    "files/source/": "Raw files to ingest (CSV, Parquet, JSON …) — lesson 4.2 exports ShopFlow here.\n",
+    "tables/": "Table storage for your catalogs (tables/<catalog>/<namespace>/<table>/). Managed by\n"
+               "the catalog — create and drop tables with SQL / Spark, don't edit files here.\n",
 }
 
 
 def make_folders(bucket):
-    """notebooks/ and dags/, each with a README (a real file — an empty "folder marker"
+    """The layout folders (FOLDERS), each with a README (a real file — an empty "folder marker"
     object shows up as an endless folder-inside-itself in s3fs-based browsers). Best
     effort: a brand-new bucket refuses writes until the quota scanner has seen it — the
     next provision call creates them."""
@@ -311,7 +319,7 @@ def provision(name, instructor=False):
     invite_sqlpad(name, admin=instructor)
     t = _admin_token()
     m, cat = "/api/management/v1", f"{name}_lake"
-    loc = f"s3://{bucket}"
+    loc = f"s3://{bucket}/tables/{cat}"
     _ok(_call("POST", f"{m}/catalogs", {"catalog": {
         "name": cat, "type": "INTERNAL",
         "properties": {"default-base-location": loc, "polaris.config.drop-with-purge.enabled": "true"},
@@ -320,6 +328,7 @@ def provision(name, instructor=False):
     _move_into_bucket(cat, loc, t)
     for ns in NAMESPACES:
         _ok(_call("POST", f"/api/catalog/v1/{cat}/namespaces", {"namespace": [ns]}, t)[0], f"namespace {ns}")
+        _relocate_namespace(cat, ns, f"{loc}/{ns}", t)
     _ok(_call("POST", f"{m}/principals", {"principal": {"name": name}}, t)[0], "principal")
     _ok(_call("POST", f"{m}/principal-roles", {"principalRole": {"name": name}}, t)[0], "principal-role")
     _ok(_call("PUT", f"{m}/principals/{name}/principal-roles", {"principalRole": {"name": name}}, t)[0], "assign role")
@@ -354,6 +363,15 @@ def _move_into_bucket(cat, loc, t):
     _ok(_call("PUT", f"/api/management/v1/catalogs/{cat}", {
         "currentEntityVersion": c["entityVersion"], "properties": props,
         "storageConfigInfo": storage}, t)[0], f"move {cat} into {loc}")
+
+
+def _relocate_namespace(cat, ns, want, t):
+    """Namespaces remember the location they were created with — point one created under the
+    old layout (bucket root) at tables/<catalog>/<ns> (tables already in it keep theirs)."""
+    st, b = _call("GET", f"/api/catalog/v1/{cat}/namespaces/{ns}", token=t)
+    if st == 200 and (b.get("properties") or {}).get("location", "").rstrip("/") != want:
+        _ok(_call("POST", f"/api/catalog/v1/{cat}/namespaces/{ns}/properties",
+                  {"updates": {"location": want}, "removals": []}, t)[0], f"relocate {ns}")
 
 
 def reset_secret(name):
@@ -413,7 +431,8 @@ def create_catalog(name, short):
     if not _NAME.match(short or "") or short == "lake":
         raise ValueError("catalog name: 1-24 of a-z, 0-9, _ (and not 'lake')")
     t = _admin_token()
-    cat, loc = f"{name}_{short}", f"s3://{bucket_name(name)}/catalogs/{short}"
+    cat = f"{name}_{short}"
+    loc = f"s3://{bucket_name(name)}/tables/{cat}"
     st, _ = _call("POST", f"{_M}/catalogs", {"catalog": {
         "name": cat, "type": "INTERNAL",
         "properties": {"default-base-location": loc, "polaris.config.drop-with-purge.enabled": "true"},

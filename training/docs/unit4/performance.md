@@ -15,7 +15,7 @@ the cluster's cores. Partitions are *the* reason Spark scales.
 ```python
 from pyspark.sql.functions import spark_partition_id
 
-RAW = "s3a://demouser-lake/raw/shopflow"    # exported in 4.2 (your bucket)
+RAW = "s3a://demouser-lake/files/source/shopflow"    # exported in 4.2 (your bucket)
 df = spark.read.parquet(f"{RAW}/history/orders")
 # how many chunks this DataFrame is split into
 print(df.select(spark_partition_id()).distinct().count())
@@ -56,7 +56,7 @@ Both change the partition count, but differently:
 
 ```python
 # Fewer output files when writing (cheap — no shuffle):
-df.coalesce(1).write.mode("overwrite").parquet("s3a://demouser-lake/tmp/orders_single")
+df.coalesce(1).write.mode("overwrite").parquet("s3a://demouser-lake/files/tmp/orders_single")
 
 # Rebalance / partition by a key before a heavy op (costs a shuffle, but evens skew):
 df.repartition(8, "customer_id")

@@ -86,7 +86,7 @@ with **Polaris** as the single catalog that every engine consults before touchin
 | **Keycloak** | The **lab accounts** (realm `de-lab`): registration, sign-in and single sign-on for every tool. Groups `learners` / `instructors` decide the role inside each tool. |
 | **oauth2-proxy** | Puts the home portal behind the lab-account login. |
 | **home-api** | The home portal's backend: on your first sign-in it creates **your** lakehouse, bucket and SQLPad user; serves **My files** and **My catalogs**. |
-| **JupyterHub** | Starts **one Jupyter per learner** (its own container / pod and work volume) with `iceberg` = that learner's lakehouse; mirrors `notebooks/` and `dags/` to their bucket. |
+| **JupyterHub** | Starts **one Jupyter per learner** (its own container / pod and work volume) with `iceberg` = that learner's lakehouse; mirrors `notebooks/` and `dags/` to `files/src/` in their bucket. |
 
 ### Engines — SQL and Spark
 | Service | What it is |
@@ -120,7 +120,7 @@ single sign-on, register on the home portal) for every tool; see [0.3](../setup/
 | Superset | http://localhost:8004 | `superset.de.lan` | lab account |
 | SQLPad | http://localhost:8003 | `sqlpad.de.lan` | lab account |
 | Jupyter (JupyterHub) | http://localhost:8008 | `jupyter.de.lan` | your lab account (own Jupyter + own lakehouse) |
-| Airflow | http://localhost:8001 | `airflow.de.lan` | lab account (DAGs also from your bucket's `dags/`) |
+| Airflow | http://localhost:8001 | `airflow.de.lan` | lab account (DAGs also from your bucket's `files/src/dags/`) |
 | RustFS console (object store) | http://localhost:9001/rustfs/console/ | `minio.de.lan/rustfs/console/` | lab account (your own bucket) · root `minioadmin` / `minioadmin` |
 | Spark master UI | http://localhost:8002 | `spark.de.lan` | — |
 

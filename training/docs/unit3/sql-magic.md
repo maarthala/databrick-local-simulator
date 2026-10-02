@@ -159,7 +159,7 @@ df.count()                              # keep working with the DataFrame in Pyt
     register it as a temp view once (see [3.9](upload-register.md)):
     ```python
     # your own files — e.g. the history you export in 4.2
-    spark.read.parquet("s3a://demouser-lake/raw/shopflow/history/orders") \
+    spark.read.parquet("s3a://demouser-lake/files/source/shopflow/history/orders") \
          .createOrReplaceTempView("orders_hist")
     ```
     ```sql

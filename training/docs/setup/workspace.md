@@ -71,13 +71,28 @@ nobody else's tables get in your way, and you can't break theirs.
 
 ## Your files — notebooks, DAGs, data
 
-In Jupyter's **file browser** you start with two folders. They are **mirrored to your bucket**:
-every save, rename and delete in them is copied to `<you>-lake` straight away.
+Your bucket is organised like an Azure / Fabric lakehouse — **Files** and **Tables**:
 
-| Folder | For | Also visible in |
+```
+<you>-lake/                       (demouser-lake for the default account)
+├── files/                        files you work with
+│   ├── src/
+│   │   ├── notebooks/            = Jupyter's notebooks/ folder (kept in sync)
+│   │   └── dags/                 = Jupyter's dags/ folder (kept in sync) → Airflow
+│   └── source/                   raw files to ingest — lesson 4.2 exports ShopFlow here
+└── tables/                       table storage of your catalogs — tables/<catalog>/<namespace>/<table>/
+```
+
+**Tables** is managed by the catalog: create and drop tables with SQL / Spark, don't edit files
+there. **Files** is yours to use freely.
+
+In Jupyter's **file browser** you start with two folders, **mirrored to `files/src/`**: every
+save, rename and delete in them is copied to your bucket straight away.
+
+| Jupyter folder | In your bucket | For |
 |---|---|---|
-| `notebooks/` | your notebooks (`.ipynb`) | My files · RustFS console |
-| `dags/` | your Airflow DAGs (`.py`) — **Airflow picks them up in ~30 s** | My files · RustFS console · Airflow |
+| `notebooks/` | `files/src/notebooks/` | your notebooks (`.ipynb`) |
+| `dags/` | `files/src/dags/` | your Airflow DAGs (`.py`) — **Airflow picks them up in ~30 s** |
 
 Files you upload elsewhere (My files, the RustFS console) appear in Jupyter the next time your
 server starts (**File → Hub Control Panel → Stop My Server → Start**). Anything outside these two
@@ -120,7 +135,7 @@ tells you whose is whose.
 
 **🗂️ My catalogs** (landing page) lists the catalogs you own and the ones shared with you:
 
-- **＋ New** creates a catalog `<you>_<name>`, stored in your bucket.
+- **＋ New** creates a catalog `<you>_<name>`, stored in your bucket under `tables/<you>_<name>/`.
 - **Share** a namespace or a single table with another learner — **read** or **write** — and
   **revoke** it again. Polaris enforces it: they see exactly what you shared.
 - **Open in Polaris Console ↗** opens the catalog in the Console, signed in as you — browse

@@ -1,7 +1,7 @@
 """Learner code ↔ their own bucket.
 
 ~/work/notebooks and ~/work/dags (JupyterLab's normal file browser) are mirrored to
-s3://<user>-lake/notebooks/ and dags/ — Airflow's "learners" bundle reads dags/ from there.
+s3://<user>-lake/files/src/notebooks/ and files/src/dags/ — Airflow's "learners" bundle reads the dags.
 
   server start   two-way: the newer copy of each file wins, nothing is deleted
                  (picks up files uploaded via My files / the RustFS console)
@@ -20,6 +20,7 @@ from jupyter_server.services.contents.largefilemanager import LargeFileManager
 from tornado import web
 
 FOLDERS = ("notebooks", "dags")
+PREFIX = "files/src/"                          # their place in the bucket: files/src/notebooks, …
 ROOT = "/home/jovyan/work"                     # the learner's persistent volume
 BUCKET = os.environ.get("LAKE_BUCKET", "")
 ENABLED = bool(BUCKET and os.environ.get("LAKE_S3_KEY"))
@@ -44,7 +45,7 @@ def synced(path):
 
 
 def _remote(rel):
-    return f"{BUCKET}/{rel.strip('/')}"
+    return f"{BUCKET}/{PREFIX}{rel.strip('/')}"
 
 
 def _upload(local, rel):
@@ -86,13 +87,13 @@ def initial_sync(root):
     for top in FOLDERS:
         Path(root, top).mkdir(parents=True, exist_ok=True)
         try:
-            found = fs().find(f"{BUCKET}/{top}", detail=True)
+            found = fs().find(f"{BUCKET}/{PREFIX}{top}", detail=True)
         except Exception as e:
             log.warning("[lab_sync] cannot list %s/%s: %s", BUCKET, top, e)
             continue
         remote = {}
         for name, info in found.items():
-            rel = name[len(BUCKET) + 1:]
+            rel = name[len(BUCKET) + 1 + len(PREFIX):]
             if info["type"] == "file" and not name.endswith("/") and synced(rel):
                 remote[rel] = info["LastModified"].timestamp()
         for rel, t in remote.items():
