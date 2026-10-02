@@ -65,6 +65,7 @@ extra:
 
 nav:
   - Home: index.md
+  - "Meet the lab — tour & who it's for": tour.md
   - "Help & community": help.md
   - "0 · Getting started":
       - "0.1 Prerequisites & setup": setup/prerequisites.md

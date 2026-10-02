@@ -7,6 +7,7 @@ things and try again for free. Build real expertise here first, then step onto a
 platform already knowing *why* things work — not just which buttons to press.
 
 [▶ Start with Unit 0](setup/prerequisites.md){ .md-button .md-button--primary }
+[👀 Take the tour](tour.md){ .md-button }
 [💬 Join the Discord](https://discord.gg/2B5mTgGjM){ .md-button }
 
 ## Course units
