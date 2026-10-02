@@ -51,7 +51,17 @@ services:
       - "15002:15002"
     # cap cores so notebook (Connect) work leaves room for Airflow spark-submit jobs
     # on the shared standalone cluster (otherwise one app grabs all cores).
-    entrypoint: ["/bin/bash", "-c", "/opt/spark/sbin/start-connect-server.sh --master spark://spark-master:7077 --conf spark.sql.catalogImplementation=in-memory --conf spark.connect.grpc.binding.port=15002 --conf spark.cores.max=2 --conf spark.executor.cores=1 && tail -f /dev/null"]
+    # Runs in the FOREGROUND (SPARK_NO_DAEMONIZE): if the server dies — e.g. killed when Docker
+    # runs out of memory — the container exits and `restart: always` brings it back. (It used to
+    # daemonize + `tail -f`, so a dead server left a live-looking container and every query hung.)
+    # --driver-memory caps the server's heap so it isn't the first thing killed.
+    environment:                  # (replaces the common list — keep its entries)
+      - SPARK_CONF_DIR=/opt/spark/conf/
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - SPARK_NO_DAEMONIZE=1
+    entrypoint: ["/bin/bash", "-c", "exec /opt/spark/sbin/start-connect-server.sh --master spark://spark-master:7077 --driver-memory 2g --conf spark.sql.catalogImplementation=in-memory --conf spark.connect.grpc.binding.port=15002 --conf spark.cores.max=2 --conf spark.executor.cores=1"]
 
 # # Enable additional workers as needed
 #   spark-worker-2:
