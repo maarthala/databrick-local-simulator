@@ -1,4 +1,6 @@
-# Data Engineering — hands-on with a governed lakehouse
+# Epireum's Data Engineering Lab
+
+**Data Engineering — hands-on with a governed lakehouse.**
 
 Learn the core concepts of Data Engineering — ingestion, the lakehouse, data modelling,
 transformation at scale, orchestration, governance and reporting — **without spending a

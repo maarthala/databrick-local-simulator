@@ -1,4 +1,4 @@
-site_name: Data Engineering — Hands-on with a Governed Lakehouse
+site_name: Epireum's Data Engineering Lab
 site_description: Learn Data Engineering by building a real Bronze→Silver→Gold pipeline for the ShopFlow e-commerce company, then map every skill to Databricks, Snowflake, Fabric, and Azure.
 site_url: https://maarthala.github.io/databrick-local-simulator/
 repo_url: https://github.com/maarthala/databrick-local-simulator
