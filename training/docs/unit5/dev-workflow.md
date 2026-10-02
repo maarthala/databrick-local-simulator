@@ -7,180 +7,160 @@ you develop and test them at **different levels**:
 - the **job** — the *data logic* (a Spark transformation), and
 - the **DAG** — the *orchestration* (order, schedule, retries).
 
-Two rules that decide *where* you run things:
+Two rules decide *where* you work:
 
-1. **Prove the logic before you orchestrate.** Get each job right on its own; only then wire it into a DAG.
-2. **"Local" means the *stack*, not a bare venv.** A Spark job needs Spark + the cluster + the data,
-   which live in the running stack. Your laptop's Python venv can only *author and parse-check* — it
-   can't run `spark-submit`. And you **never edit code in the Airflow web portal**; code lives in files,
-   in Git.
+1. **Prove the logic before you orchestrate.** Get each step right interactively; only then wire it
+   into a DAG.
+2. **Code lives in files, never in the Airflow web portal.** You write notebooks and DAG files in
+   Jupyter (your bucket); Airflow only *runs* them.
 
 ```mermaid
 flowchart LR
-  NB["1. Notebook<br/>prove the logic"] --> PY["2. Python job<br/>.py, test on cluster"]
-  PY --> DAG["3. Airflow DAG<br/>orchestrate + validate"]
-  DAG --> SHIP["4. Ship<br/>copy / git push"]
+  NB["1. Notebook<br/>prove the logic"] --> NBDAG["2. Schedule the notebook<br/>run_notebook"]
+  NBDAG --> TASKS["3. Graduate to tasks<br/>@task + lab_spark"]
+  TASKS --> SHIP["4. Ship<br/>save in dags/"]
   SHIP --> RUN["5. Run in Airflow"]
-  RUN --> VERIFY["6. Verify<br/>logs + data"]
+  RUN --> VERIFY["6. Verify<br/>logs + data + Spark UI"]
 ```
 
 ## The six steps
 
 ### 1 · Prototype the logic in a notebook
-Open Jupyter ([http://localhost:8008](http://localhost:8008), sign in with your lab account), connect to Spark
-(Spark Connect), and write the transformation **interactively** — run a cell, see the result, adjust.
-This is the fastest feedback loop for getting the *data logic* correct (it's exactly what you did in
-[Unit 4](../unit4/read-bronze.md)):
+Open Jupyter ([http://localhost:8008](http://localhost:8008)) and write the transformation
+**interactively** — run a cell, see the result, adjust. `spark` is already there, signed in as you
+(`iceberg` = your lakehouse). This is the fastest feedback loop for getting the *data logic* right —
+exactly what you did in [Unit 4](../unit4/read-bronze.md). Your `notebooks/` folder already has a
+small, complete example: **`load_sample_orders.ipynb`** reads a CSV from your bucket and replaces
+`bronze.sample_orders`. Open it and **Run All**.
+
+### 2 · Schedule the notebook as it is
+The quickest way to automate a working notebook is to run it from a DAG, unchanged. Your `dags/`
+folder has one ready: **`load_sample_orders.py`**:
 
 ```python
-from pyspark.sql import SparkSession
-spark = SparkSession.builder.getOrCreate()
-# … read a source, transform, writeTo("iceberg.bronze.…"), verify with counts/samples …
+from datetime import datetime
+
+from airflow.sdk import dag, task
+
+
+@dag(
+    dag_id="demouser_load_sample_orders",   # must start with your username + "_"
+    start_date=datetime(2026, 1, 1),
+    schedule=None,                        # manual; try "@daily" to run it every day
+    catchup=False,
+    tags=["starter", "bronze"],
+)
+def load_sample_orders():
+
+    @task
+    def run_load_notebook():
+        from lab_spark import run_notebook
+        run_notebook("load_sample_orders.ipynb")
+
+    run_load_notebook()
+
+
+load_sample_orders()
 ```
 
-### 2 · Package it as a `.py` job and test it **against the cluster**
-Refactor the proven cells into a script with a `main()` + `argparse` and drop the scratch
-(`printSchema`, exploratory counts). The result is a job like `code/shared/jobs/ingest_bronze.py` —
-the same logic, packaged so `spark-submit` can run it. Now test the script **two ways**:
+**Read it step by step:**
 
-**a) Fast inner-loop — VS Code + Spark Connect** (develop from your editor, run on the cluster):
+- **`run_notebook("load_sample_orders.ipynb")`** — fetches the notebook from your `notebooks/`
+  folder and runs its code cells **top to bottom**, the way Jupyter would: `spark` is a session
+  signed in as you and `%%sql` works. If a cell fails, the task fails and its log names the cell.
+- **One task** — the whole notebook is one box in the Graph. Fine for a small job; for a real
+  pipeline you'll want one task per step (next).
 
-```bash
-pip install "pyspark-client==4.1.3"          # once, in your project venv (match the cluster's Spark)
-export SPARK_REMOTE=sc://localhost:15002      # the published Spark Connect port
-python code/shared/jobs/ingest_bronze.py --catalog iceberg
-```
+Airflow runs the notebook **saved in your bucket**, so edit and save it in Jupyter, then trigger
+the DAG again — the next run uses your latest version.
 
-Your laptop is a **thin client** — the Spark *driver* runs on the cluster, so `postgres:5432`,
-`minio`, and the `iceberg` catalog all resolve **server-side**. You can even set breakpoints and
-**debug** the job in VS Code while it runs remotely.
+### 3 · Graduate the logic into tasks
+When a pipeline has several steps (Bronze → Silver → Gold), give each step its own **`@task`** that
+opens Spark with **`lab_spark()`** and does that step's work — exactly the
+[5.2 medallion DAG](medallion-dag.md). Copy the proven cells from your notebook into the task
+functions and drop the scratch (`show()`, exploratory counts). One task per layer makes failures
+easy to pinpoint and lets you re-run just the broken step.
 
-**b) Faithful check — `spark-submit`, exactly how Airflow will run it:**
+### 4 · Ship the DAG
+Never edit in the portal — deploy the *file*: save it in Jupyter's **`dags/`** folder (your
+bucket's `files/src/dags/`). Airflow picks it up within ~30 s. The `dag_id` must start with your
+username + `_`; if it doesn't — or the file has an error — it shows up under **import errors** in
+the Airflow UI.
 
-```bash
-docker compose exec airflow-scheduler spark-submit \
-  --master spark://spark-master:7077 \
-  --conf spark.sql.catalogImplementation=in-memory \
-  --conf spark.cores.max=2 \
-  /code/shared/jobs/ingest_bronze.py --catalog iceberg
-```
-
-!!! warning "Spark Connect ≠ `spark-submit` exactly"
-    The `--conf` flags (`spark.cores.max`, `spark.sql.catalogImplementation`) are **`spark-submit`**
-    options — they don't apply over Spark Connect, where the connect server's own config governs. So:
-    **develop & debug fast with Spark Connect (a)**, then do **one final `spark-submit` run (b)** to
-    confirm the job runs the way the scheduled task will.
-
-Test the medallion jobs in dependency order — Silver reads Bronze, Gold reads Silver:
-
-```bash
-python code/shared/jobs/build_silver.py --catalog iceberg          # → SILVER_ROWS 100000
-python code/shared/jobs/build_gold.py   --catalog iceberg --mart all # → GOLD_DAYS · TOP_PRODUCTS · CUSTOMER_LTV
-```
-
-### 3 · Wrap the jobs in a DAG and validate its structure locally
-Write the DAG (a `BashOperator` per job that `spark-submit`s it, wired `bronze >> silver >> gold` —
-see [5.2](medallion-dag.md)). Before shipping, **parse-check its structure** in your local Airflow
-(installed per [the setup section](basics.md#set-up-airflow-on-your-machine) — the same version,
-`3.3.2`):
-
-```bash
-export AIRFLOW__CORE__LOAD_EXAMPLES=False
-export AIRFLOW__CORE__DAGS_FOLDER="$PWD/tmp"     # the folder with your DAG
-airflow dags reserialize                          # parses the files; fails loudly on import errors
-```
-
-!!! note "The venv validates *structure*, not Spark tasks"
-    This checks the DAG imports and the task graph. It **can't run** the `spark-submit` tasks (no
-    Spark, no cluster in a bare venv) — that's expected. You're only proving the DAG is well-formed
-    before it reaches Airflow.
-
-### 4 · Ship the DAG to Airflow
-Never edit in the portal — deploy the *file*:
-
-- **Local (Compose):** copy it into the DAGs folder; the dag-processor picks it up in ~30–60s:
-  ```bash
-  cp tmp/shopflow_medallion.py local/code/airflow/dags/shopflow_medallion.py
-  ```
-- **Remote / production:** **`git push`** to the repo the remote Airflow **git-syncs** (see
-  [5.1's remote note](basics.md)); git-sync pulls it in. Git is the single source of truth.
-- **Your own DAGs (lab):** you can also save the file in Jupyter under **`dags/`** — it's synced to
-  your bucket's `files/src/dags/` and loaded by Airflow within ~30 s (the `dag_id` must start with `<username>_`).
+!!! note "In a company: Git, not a folder"
+    In a real team the DAGs folder is a **Git repository** that the shared Airflow **git-syncs**:
+    you `git push`, review, merge — and the scheduler picks the change up. Same idea as your
+    `dags/` folder, plus history and review.
 
 ### 5 · Run it in Airflow
 Open the UI at [http://localhost:8001](http://localhost:8001) (sign in with your lab account):
 
-1. Find **`shopflow_medallion`** → toggle it **on** (unpause).
+1. Find **`demouser_load_sample_orders`** → toggle it **on** (unpause).
 2. Click **▶ Trigger**.
-3. Watch the **Grid** — `bronze → silver → gold` turn green in order.
+3. Watch the **Grid** — the task turns green in about half a minute.
 
-!!! tip "A triggered run uses *now* as its date"
-    So it's after the DAG's `start_date` and the tasks actually run — unlike a CLI
-    `airflow dags test <old-date>`, which runs no tasks if the date precedes `start_date`.
-
-### 6 · Verify the results — in **two** places
-**a) The Airflow task logs** (did the job run correctly?) — click a task → **Logs**:
+### 6 · Verify the results — in **three** places
+**a) The Airflow task log** (did the job run correctly?) — click the task → **Logs**:
 
 ```
-wrote iceberg.bronze.orders
-BRONZE_ROWS 40000
+lab_spark: you are demouser · iceberg = demouser_lake · shared = polaris_lake
+run_notebook: files/src/notebooks/load_sample_orders.ipynb — 4 code cells
+1000 rows read from s3a://demouser-lake/files/source/shopflow/sample_orders.csv
+bronze.sample_orders replaced
+run_notebook: cell 4/4 ok
 ```
 
-**b) The data itself** (did it land?) — query the output in Superset SQL Lab or the Trino CLI:
+**b) The data itself** (did it land?) — every run replaces the table, so its history grows by one
+snapshot per run:
 
 ```sql
-SELECT * FROM iceberg.gold.daily_sales ORDER BY order_date DESC LIMIT 5;
+%%sql
+SELECT committed_at, operation FROM iceberg.bronze.sample_orders.snapshots ORDER BY committed_at DESC
 ```
 
+**c) The Spark cluster** (how did it run?) — next section.
+
 ## Watch the job run on the Spark cluster
-`spark-submit` jobs execute on the **standalone Spark cluster** — and you can watch them live in the
-**Spark Master UI** at [http://localhost:8002](http://localhost:8002) (k8s: `spark.de.lan`):
+DAG tasks and notebooks run their Spark work on the lab's **standalone Spark cluster**, through one
+long-running **Spark Connect server**. Watch it in the **Spark Master UI** at
+[http://localhost:8002](http://localhost:8002) (k8s: `spark.de.lan`):
 
 - The header shows **`Spark Master at spark://spark-master:7077`** and the **Alive Workers**.
-- Two tables: **Running Applications** and **Completed Applications**.
-- While a DAG task runs, its job appears under **Running Applications** by its **`appName`** — you'll
-  see **`shopflow_ingest_bronze`**, **`shopflow_build_silver`**, **`shopflow_build_gold`** — with the
-  **cores** it's using (capped at 2 by `--conf spark.cores.max=2`), memory, duration, and state.
-- **Click the application name** to open its **Application UI** — the **Jobs / Stages / SQL /
-  Executors** tabs show exactly what Spark did (how the query ran, how many tasks, where time went).
+- Under **Running Applications** you'll see **`Spark Connect server`** — every notebook and every
+  `lab_spark()` task runs *inside* it, so they don't show up as separate applications.
+- **Click `Spark Connect server`** to open its **Application UI** — the **Jobs / Stages / SQL /
+  Executors** tabs show exactly what Spark did for each query (how many tasks, where the time went).
+  While your DAG runs, its jobs appear at the top of **Jobs**.
 
-!!! info "The always-present `Spark Connect server`"
-    You'll also see a long-running **`Spark Connect server`** application in the list — that's the
-    endpoint your **notebook** and **VS Code** (`SPARK_REMOTE`) connect through. Your interactive
-    queries and Step-2(a) runs execute *under* that app, so they show there rather than as a new
-    application each time.
-
-!!! tip "If the cluster is out of cores, jobs sit in *WAITING*"
-    The cluster is shared between notebooks (Spark Connect) and Airflow jobs. Each `spark-submit`
-    passes `spark.cores.max=2` to leave room — if you still see an app stuck in **WAITING** on the
-    master UI, another app is holding the cores; wait or free them.
+!!! tip "If a query seems stuck"
+    The cluster is shared by the whole class. If your job sits waiting, other work is holding the
+    cores — it continues once they're free.
 
 !!! abstract "🎯 The same workflow on Databricks, Snowflake & Fabric"
-    - **Databricks** — develop in a **Repo** (notebook or `.py`), run against a cluster with
-      **Databricks Connect** (the direct analog of Spark Connect here), then schedule it as a
-      **Workflow/Job**; watch it in the **Spark UI** on the cluster. Deploy via Git.
-    - **Snowflake** — develop in Snowsight / Snowpark, run on a **Virtual Warehouse**, schedule with
-      **Tasks**; inspect via **Query History / Query Profile**.
-    - **Microsoft Fabric** — notebooks + Spark on OneLake, scheduled by **Data Factory pipelines**;
-      the **Monitoring hub** is the run/logs view.
+    - **Databricks** — develop in a **notebook**, then schedule it as a **Workflow/Job** (a notebook
+      task is the direct analog of `run_notebook`); split it into tasks as it grows; watch it in
+      the **Spark UI**. Deploy via Git (**Repos** / Asset Bundles).
+    - **Snowflake** — develop in Snowsight / Snowpark notebooks, schedule with **Tasks**; inspect via
+      **Query History / Query Profile**.
+    - **Microsoft Fabric** — notebooks + Spark on OneLake, scheduled by **Data Factory pipelines**
+      (Notebook activity); the **Monitoring hub** is the run/logs view.
 
-    Different tools, identical shape: **prove the logic → package → orchestrate → deploy via Git →
-    run → verify in logs, data, and the engine UI.**
+    Different tools, identical shape: **prove the logic → schedule it → split into tasks → deploy
+    via Git → run → verify in logs, data, and the engine UI.**
 
 ## Key terms, at a glance
 | Term | Plain meaning |
 |---|---|
-| **Job vs DAG** | The data *logic* (a `.py`/notebook) vs the *orchestration* (the Airflow DAG) |
-| **Spark Connect** | Thin-client protocol — run code from your laptop/IDE, driver executes on the cluster |
-| **`spark-submit`** | Submit a `.py` job to the cluster (how the DAG runs each task) |
-| **`SPARK_REMOTE`** | Env var pointing a client at the Connect server (`sc://localhost:15002`) |
-| **Parse-check** | `airflow dags reserialize` — validate a DAG's structure without running tasks |
-| **Ship** | Copy to the DAGs folder (Compose) / `git push` to the git-synced repo (remote) |
-| **Spark Master UI** | `:8002` — cluster status + Running/Completed Applications by `appName` |
-| **Application UI** | Per-app Jobs/Stages/SQL/Executors view (linked from the master UI) |
+| **Job vs DAG** | The data *logic* (a notebook / task code) vs the *orchestration* (the Airflow DAG) |
+| **`run_notebook()`** | Run one of your notebooks from a DAG task, top to bottom, as you |
+| **`lab_spark()`** | Open a Spark session on the cluster as you, inside a task |
+| **Ship** | Save the DAG file in `dags/` (lab) / `git push` to the git-synced repo (company) |
+| **Import errors** | Airflow's list of DAG files that failed to load — and why |
+| **Spark Master UI** | `:8002` — cluster status, workers, and the running Spark Connect server |
+| **Application UI** | Jobs / Stages / SQL / Executors for the Spark Connect server |
 
 ## You can now…
-- Follow the full loop: **notebook → `.py` job → DAG → ship → run → verify**
-- Test a `.py` job against the cluster two ways (Spark Connect from VS Code; `spark-submit` like Airflow)
-- Validate a DAG's structure locally before shipping, and deploy it by copy (Compose) or `git push` (remote)
-- Verify a run in **three** places: the Airflow task logs, the output data, and the **Spark Master UI**
+- Follow the full loop: **notebook → scheduled notebook → tasks → ship → run → verify**
+- Schedule a notebook unchanged with `run_notebook`, and know when to split it into tasks
+- Ship a DAG by saving it in `dags/`, and find the reason in **import errors** when it doesn't load
+- Verify a run in **three** places: the task log, the output data, and the **Spark Master UI**

@@ -68,11 +68,19 @@ flowchart LR
   B -.->|logs and status| UI["Web UI"]
 ```
 
-## Set up Airflow on your machine
+## In the lab: your DAGs live in Jupyter's `dags/` folder
+You don't need to install anything to do the labs. Every DAG you write goes into the **`dags/`**
+folder in Jupyter's file browser (your bucket's `files/src/dags/`); the lab's Airflow loads it
+from there within about **30 seconds**. One Airflow is shared by the whole class, so one rule
+keeps names apart: **every `dag_id` starts with your username and `_`** — `demouser_…` for the
+default account. (A DAG that breaks the rule shows up under Airflow's **import errors** with the
+name it expects.) Your `dags/` folder already holds one example: `load_sample_orders.py`.
+
+## Optional: Airflow on your own machine
 The professional workflow is: **write a DAG, test it locally on your own machine, and only *then*
-ship it** — copy it into `local/code/airflow/dags/` (Compose bind-mounts that folder) or push it to
-the Git repo the remote Airflow git-syncs. This section sets up a Docker-free local Airflow so you
-never push a broken DAG. (You'll still use the running stack's **web UI** for the labs below.)
+ship it** to the shared Airflow (in companies: push it to the Git repo the Airflow git-syncs). This
+section sets up a Docker-free local Airflow so you never ship a broken DAG — handy, but **not
+needed for the labs** (skip ahead to [the lab](#lab) if you like).
 
 !!! danger "Match the stack's version — Airflow **3.3.2**"
     This stack runs **Airflow 3**, whose DAGs import `from airflow.sdk import DAG`. That module does
@@ -116,7 +124,7 @@ airflow dags list                                 # your DAGs, no examples
 
 !!! tip "Use a scratch folder while developing"
     Point `DAGS_FOLDER` at a throwaway folder (e.g. `tmp/`) for the DAG you're writing — that keeps
-    your work-in-progress out of `code/airflow/dags/` until it passes. Once it's green, copy it in.
+    your work-in-progress away from the shared Airflow until it passes. Once it's green, ship it.
 
 ### 3. Test the DAG — three levels
 ```bash
@@ -147,7 +155,7 @@ yet still reports the run "successful" (a common surprise — pick any date betw
 
 !!! note "Local = *authoring & testing*; the stack = *running the real jobs*"
     These commands **execute** the operators. Pure-Python / Bash tasks run offline, but tasks that
-    reach services (a `spark-submit`, or `postgres:5432` / `minio:9000` / `trino:8080`) need those
+    reach services (Spark, or `postgres:5432` / `minio:9000` / `trino:8080`) need those
     services reachable — that's the running stack's job. So **validate the DAG's shape locally, run
     the heavy pipeline on the stack.** These same checks are what you put in **CI** to gate a DAG
     before it's merged and git-synced to a remote cluster.
@@ -164,14 +172,11 @@ yet still reports the run "successful" (a common surprise — pick any date betw
     | `WARNING - cannot record queued_duration …` | harmless metric note on a one-off test run | ignore |
 
 ### 4. Ship it
-Once the DAG passes locally, deploy it the same way the pros do:
+Once the DAG passes locally, deploy it:
 
-- **Local stack:** copy the file into `local/code/airflow/dags/` — the Compose Airflow bind-mounts
-  that folder and picks it up within a scan cycle (~30s).
-- **Remote/production:** **commit + push** to the Git repo the remote Airflow **git-syncs** (see the
-  remote-development section) — never edit files on the server directly.
-- **Your own DAGs:** you can also save a DAG in Jupyter under **`dags/`** — it's synced to your bucket's
-  `files/src/dags/` and loaded by Airflow within ~30 s (the `dag_id` must start with `<username>_`).
+- **In the lab:** save the file in Jupyter's **`dags/`** folder — Airflow loads it within ~30 s.
+- **In a company:** **commit + push** to the Git repo the shared Airflow **git-syncs** — never edit
+  files on the server directly.
 
 ## Lab
 
@@ -192,10 +197,8 @@ Take the tour:
 - The **▶ Trigger** button runs a DAG on demand.
 
 ### 2. Write your first DAG
-DAGs live in the **dags folder** — `code/airflow/dags/` in the compose stack (git-synced from the
-`de-lab` repo on Kubernetes). That folder is the *same* `/code` mount **JupyterLab** uses, so the
-container-free way to author a DAG is to create/edit the file right in JupyterLab's file browser
-(<http://localhost:8008>) — no container shell needed. Add `code/airflow/dags/hello_shopflow.py`:
+Open Jupyter (<http://localhost:8008>), and in the file browser open the **`dags/`** folder →
+right-click → **New File** → name it `hello_shopflow.py`:
 
 This one file is a complete pipeline. It's short on purpose — two trivial tasks that just print
 text — so you can see the *shape* of every DAG without any real logic in the way. Read the whole
@@ -207,7 +210,7 @@ from airflow.providers.standard.operators.bash import BashOperator
 import pendulum
 
 with DAG(
-    dag_id="hello_shopflow",
+    dag_id="demouser_hello_shopflow",     # own account? use your username instead of demouser
     description="First tiny DAG — two tasks in order",
     schedule=None,                    # manual only for now
     start_date=pendulum.datetime(2026, 1, 1, tz="UTC"),
@@ -242,8 +245,9 @@ with DAG(
 - **`with DAG(...) as dag:`** — this **defines the DAG**. The `with … as dag:` block is a Python
   context manager: every task you create *inside* the indented block automatically belongs to this
   DAG. The arguments configure the pipeline:
-    - **`dag_id="hello_shopflow"`** — the DAG's unique name. This is exactly what you'll see in the
-      DAGs list in the UI, so make it descriptive.
+    - **`dag_id="demouser_hello_shopflow"`** — the DAG's unique name. This is exactly what you'll
+      see in the DAGs list in the UI, so make it descriptive. It starts with **your username + `_`**
+      because one Airflow serves the whole class.
     - **`description=...`** — a one-line summary shown next to the DAG in the UI.
     - **`schedule=None`** — how often to run automatically. `None` means **manual only** — it never
       runs on its own; you press ▶ Trigger. (In [5.3](schedule.md) you'll change this to a real
@@ -288,7 +292,8 @@ You wrote the *definition*; now trigger an actual **DAG run** and watch the task
 green. Airflow rescans the dags folder every ~30s, so give it a moment after saving to appear. In
 the UI:
 
-1. Find **hello_shopflow** in the DAGs list and toggle it **on** (unpause).
+1. Find **demouser_hello_shopflow** in the DAGs list (type `demouser` in the search box) and
+   toggle it **on** (unpause).
 2. Click **▶ Trigger**.
 3. Open **Grid** → you should see two green squares. Click `show_run` → **Logs** and confirm it
    printed the run id.
@@ -305,30 +310,30 @@ Everything here — authoring, triggering, watching, reading logs — happens in
     [5.3](schedule.md).
 
 ## Challenge
-Add a third task `count_dags` that runs *after* `show_run` and prints how many DAG files are in the
-dags folder. Wire the order `say_hello >> show_run >> count_dags`. You're doing two things: making a
-third `BashOperator`, and extending the dependency chain so the new task runs last.
+Add a third task `count_tasks` that runs *after* `show_run` and prints how many tasks the DAG has.
+Wire the order `say_hello >> show_run >> count_tasks`. You're doing two things: making a third
+`BashOperator`, and extending the dependency chain so the new task runs last.
 
 ??? note "Solution"
     ```python
-    count_dags = BashOperator(
-        task_id="count_dags",
-        bash_command="ls /code/airflow/dags/*.py | wc -l",
+    count_tasks = BashOperator(
+        task_id="count_tasks",
+        bash_command="echo 'This DAG has {{ dag.task_ids | length }} tasks'",
     )
 
-    say_hello >> show_run >> count_dags
+    say_hello >> show_run >> count_tasks
     ```
     **Read it step by step:**
 
-    - **`count_dags = BashOperator(...)`** — a third task, same pattern as before. Its
-      `bash_command` lists the `.py` files in the dags folder and pipes the list to `wc -l` to
-      count the lines (one per file).
-    - **`say_hello >> show_run >> count_dags`** — chaining `>>` reads left to right as
-      "`say_hello`, **then** `show_run`, **then** `count_dags`." This one line replaces the earlier
+    - **`count_tasks = BashOperator(...)`** — a third task, same pattern as before. Its
+      `bash_command` is a template: **`{{ dag.task_ids | length }}`** is filled in at run time with
+      the number of tasks in this DAG (3) — templates can read the DAG itself, not just dates.
+    - **`say_hello >> show_run >> count_tasks`** — chaining `>>` reads left to right as
+      "`say_hello`, **then** `show_run`, **then** `count_tasks`." This one line replaces the earlier
       two-task version and wires all three in order.
 
     Chaining with `>>` scales to any number of tasks — in the Graph view you'll now see three boxes
-    connected left to right. (The command reads the mounted dags folder, so it needs no extra tools.)
+    connected left to right, and `count_tasks`' log says *This DAG has 3 tasks*.
 
 !!! tip "🎯 The same orchestration on Azure, Databricks, Snowflake & Fabric"
     **What you just did:** described a pipeline as a DAG of tasks wired with `>>`, then triggered

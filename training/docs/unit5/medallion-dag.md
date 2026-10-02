@@ -7,12 +7,12 @@ aggregates it into **Gold**. Run out of order they produce garbage — Gold read
 reads Bronze. **The order *is* the pipeline.**
 
 Now you'll capture that order as a single Airflow DAG: three tasks, one arrow between each,
-running the exact same `spark-submit` commands — except Airflow enforces the sequence, retries
+doing the same work as your Unit 4 notebooks — except Airflow enforces the sequence, retries
 failures, and records every run.
 
 ```mermaid
 flowchart LR
-  B["🥉 bronze<br/>ingest_bronze.py"] --> S["🥈 silver<br/>build_silver.py"] --> G["🥇 gold<br/>build_gold.py"]
+  B["🥉 bronze<br/>Postgres → bronze.*"] --> S["🥈 silver<br/>clean + join"] --> G["🥇 gold<br/>daily_sales"]
 ```
 
 Recall the two ideas this lesson fuses together:
@@ -25,12 +25,11 @@ Recall the two ideas this lesson fuses together:
   before the next one starts.
 
 The plan for this lesson is one **task per layer** and one arrow between them — so the DAG's shape
-*is* the medallion shape. You'll write `ingest → Bronze → Silver → Gold` once, and Airflow will run
-it in that order forever.
+*is* the medallion shape.
 
 !!! info "Why layer the pipeline into separate tasks at all?"
-    You *could* cram all three Spark jobs into one giant script. Splitting them into one task per
-    layer buys you three things:
+    You *could* cram all three steps into one giant task. Splitting them into one task per layer
+    buys you three things:
 
     - **Debuggable** — when something breaks, the failing box in the UI tells you *which layer*
       failed. A red `silver` box means "Bronze was fine, the cleaning step broke."
@@ -39,113 +38,113 @@ it in that order forever.
     - **Enforced order** — the arrows guarantee Silver never runs on a half-written Bronze. That
       guarantee is the entire reason to use an orchestrator instead of a shell script.
 
-**Why `BashOperator` + `spark-submit`?** It works identically on the local Docker stack and on
-k8s — Airflow just shells out to `spark-submit`, which submits to the Spark cluster. It's portable
-and easy to debug (the full command is right there in the logs). The three job scripts
-(`ingest_bronze.py`, `build_silver.py`, `build_gold.py`) are the Unit 4 medallion logic packaged
-as runnable files.
-
-!!! info "Where the medallion jobs live"
-    You edit these scripts in the repo at **`local/code/shared/jobs/`** —
-    `ingest_bronze.py`, `build_silver.py`, `build_gold.py` (plus `simulate_day.py`). Compose
-    **bind-mounts** `local/code/` to **`/code`** inside the Spark & Airflow containers, so the DAG
-    refers to them at **`/code/shared/jobs/…`** (that's the `JOBS` path in the code below). Edit on
-    the host in VS Code and the change is instantly live in the containers — no rebuild.
-
-    | | Path |
-    |---|---|
-    | Edit it (host) | `local/code/shared/jobs/ingest_bronze.py` |
-    | Compose runtime | `/code/shared/jobs/ingest_bronze.py` (bind mount) |
-    | Kubernetes runtime | git-synced from the **`de-lab`** repo, alongside the DAGs (`/git/repo/…`) |
-
-!!! note "Sharing the cluster: `spark.cores.max`"
-    The standalone Spark cluster is shared between your notebooks (Spark Connect) and these
-    Airflow jobs. By default one app grabs *all* cores, starving the others — so every submit
-    here passes `--conf spark.cores.max=2` to leave room. (You'll see jobs sit in *WAITING* if
-    the cluster is out of cores.)
+!!! info "Where does the Spark work run? — `lab_spark()`"
+    A task is plain Python running inside Airflow — but the data work is Spark, and Spark runs on
+    the lab's **Spark cluster**, not inside Airflow. Each task calls **`lab_spark()`**, which opens
+    a Spark session on the cluster **signed in as you**: exactly like your notebook, `iceberg` is
+    **your own lakehouse** (`demouser_lake`) and `shared` is the course lake. So the tables this
+    DAG writes are the same ones you built by hand in Unit 4.
 
 ## Lab
 
 ### 1. Create the DAG
-Create `code/airflow/dags/shopflow_medallion.py`. Build the `spark-submit` command once as a
-helper so all three tasks stay consistent, then wire them with `>>`:
+In Jupyter's **`dags/`** folder create **`medallion.py`**. Each layer is a `@task` function; the
+last line wires them with `>>`:
 
 ```python
-from airflow.sdk import DAG
-from airflow.providers.standard.operators.bash import BashOperator
 import pendulum
+from airflow.sdk import dag, task
 
-JOBS = "/code/shared/jobs"                    # compose; on k8s these are git-synced with the DAGs
-SPARK_MASTER = "spark://spark-master:7077"
+PG = {"url": "jdbc:postgresql://postgres:5432/shopflow", "user": "postgres",
+      "password": "postgres", "driver": "org.postgresql.Driver"}
 
-def spark_job(script: str) -> str:
-    """A spark-submit command for one medallion job (writes the iceberg catalog)."""
-    return (
-        f"spark-submit --master {SPARK_MASTER} "
-        "--conf spark.sql.catalogImplementation=in-memory "   # this stack has no Hive Metastore
-        "--conf spark.cores.max=2 "                           # share the cluster with notebooks
-        f"{JOBS}/{script} --catalog iceberg"
-    )
 
-with DAG(
-    dag_id="shopflow_medallion",
+@dag(
+    dag_id="demouser_medallion",          # own account? use your username instead of demouser
     description="Bronze → Silver → Gold for ShopFlow",
-    schedule=None,                  # run manually in this lesson; 5.3 adds a schedule
+    schedule=None,                        # manual for now; 5.3 adds a schedule
     start_date=pendulum.datetime(2026, 1, 1, tz="UTC"),
     catchup=False,
     tags=["unit5", "medallion"],
-) as dag:
+)
+def medallion():
 
-    bronze = BashOperator(task_id="bronze", bash_command=spark_job("ingest_bronze.py"))
-    silver = BashOperator(task_id="silver", bash_command=spark_job("build_silver.py"))
-    gold   = BashOperator(task_id="gold",   bash_command=spark_job("build_gold.py"))
+    @task
+    def bronze():
+        """Land the four ShopFlow source tables as-is (raw copy)."""
+        from lab_spark import lab_spark
+        spark = lab_spark()                                    # signed in as you
+        for t in ["customers", "products", "orders", "order_items"]:
+            (spark.read.format("jdbc").options(**PG, dbtable=t).load()
+                  .writeTo(f"iceberg.bronze.{t}").createOrReplace())
+            print("bronze", t, spark.table(f"iceberg.bronze.{t}").count())
 
-    # the medallion order — this is the whole point of the DAG
-    bronze >> silver >> gold
+    @task
+    def silver():
+        """Clean + join Bronze into one order-line table."""
+        from lab_spark import lab_spark
+        from pyspark.sql import functions as F
+        spark = lab_spark()
+        o = (spark.table("iceberg.bronze.orders")
+             .withColumn("order_date", F.to_date("order_ts"))
+             .dropDuplicates(["order_id"]))
+        i = spark.table("iceberg.bronze.order_items").dropDuplicates(["order_id", "product_id"])
+        c = spark.table("iceberg.bronze.customers")
+        p = spark.table("iceberg.bronze.products")
+        silver = (i.join(o, "order_id").join(c, "customer_id", "left").join(p, "product_id", "left")
+                  .select("order_id", "order_date", "customer_id",
+                          F.col("full_name").alias("customer_name"), "country", "channel",
+                          "product_id", F.col("name").alias("product_name"), "category",
+                          "quantity", i["unit_price"],
+                          (i["quantity"] * i["unit_price"]).cast("decimal(12,2)").alias("line_amount"),
+                          "status"))
+        silver.writeTo("iceberg.silver.orders").createOrReplace()
+        print("silver.orders", spark.table("iceberg.silver.orders").count())
+
+    @task
+    def gold():
+        """Business mart: delivered revenue per day."""
+        from lab_spark import lab_spark
+        spark = lab_spark()
+        spark.sql("""
+            CREATE OR REPLACE TABLE iceberg.gold.daily_sales AS
+            SELECT order_date, count(DISTINCT order_id) AS orders,
+                   sum(line_amount) AS revenue, sum(quantity) AS units
+            FROM iceberg.silver.orders
+            WHERE status = 'delivered'
+            GROUP BY order_date""")
+        print("gold.daily_sales", spark.table("iceberg.gold.daily_sales").count())
+
+    bronze() >> silver() >> gold()
+
+
+medallion()
 ```
 
 **Read it step by step:**
 
-- **`from airflow.sdk import DAG`** and the `BashOperator` import — `DAG` is the container you
-  declare your pipeline in; `BashOperator` is the **operator** that runs a shell command as a task.
-  (An *operator* is a pre-built task type; there's one for bash, one for Python, one for SQL, and so
-  on. You pick the operator that matches the work.)
-- **`JOBS` and `SPARK_MASTER`** — two constants. `JOBS` is the folder holding the three Unit 4 job
-  scripts; `SPARK_MASTER` is the address of the Spark cluster the jobs submit to. Pulling them out
-  as names keeps the command below readable.
-- **`def spark_job(script)`** — a small helper that builds *one* `spark-submit` command string for a
-  given script. Every task runs the same shape of command (same master, same configs, same catalog)
-  differing only in the script name — so writing it once here means all three tasks stay identical
-  and you fix a flag in a single place. The `--conf` flags are Spark tuning (no Hive Metastore on
-  this stack; cap cores to share the cluster); `--catalog iceberg` points every job at the shared
-  lakehouse.
-- **`with DAG(...) as dag:`** — this *defines the DAG*. Everything indented under it belongs to this
-  pipeline. The keyword arguments are its identity and settings:
-    - **`dag_id="shopflow_medallion"`** — the unique name you'll see and click in the UI.
-    - **`schedule=None`** — don't run on a timer; you'll trigger it by hand this lesson (5.3 adds a
-      schedule).
-    - **`start_date` / `catchup=False`** — when the pipeline "begins" and *not* to back-fill past
-      runs. (Covered in 5.1.)
-    - **`tags=[...]`** — labels for filtering DAGs in the UI.
-- **`bronze = BashOperator(task_id="bronze", bash_command=spark_job("ingest_bronze.py"))`** — this
-  creates the first **task**. `task_id` is the box's name in the graph; `bash_command` is what it
-  runs — here, the `spark-submit` for the Bronze ingest job. The `silver` and `gold` lines do the
-  same for their layers. At this point you have three tasks defined but *not yet connected*.
-- **`bronze >> silver >> gold`** — this is the whole point of the DAG. The **`>>`** operator sets a
-  **dependency**: `bronze >> silver` means "run `bronze` first; only when it succeeds, run
-  `silver`." Chaining it wires the full medallion order. `bronze` is *upstream* of `silver`;
-  `gold` is *downstream* of `silver`.
-
-**The resulting task graph:** three boxes in a straight line, `bronze → silver → gold`. Airflow
-reads the `>>` arrows and knows the run order without you scheduling each step by hand — Silver
-physically cannot start until Bronze reports success, and Gold cannot start until Silver does.
-
-Each job writes to the shared **`iceberg`** catalog, so the tables land as
-`iceberg.bronze/silver/gold.*` — the same ones Trino and Superset read.
+- **`@dag(...)`** above `def medallion():` — the **TaskFlow** way to define a DAG: the decorated
+  function *is* the pipeline, and calling `medallion()` at the bottom registers it. Same arguments
+  as `with DAG(...)` in [5.1](basics.md): `dag_id` (your username first), `schedule=None` (manual),
+  `start_date`, `catchup=False`, `tags`.
+- **`@task`** above `def bronze():` — turns a plain Python function into an Airflow **task**. The
+  function name becomes the `task_id` (`bronze`, `silver`, `gold` — the boxes in the Graph).
+- **`from lab_spark import lab_spark` / `spark = lab_spark()`** — inside each task, open a Spark
+  session as you. The import sits *inside* the function so Airflow can read the DAG file quickly
+  without starting Spark.
+- **`bronze`** — reads the four ShopFlow tables from Postgres over **JDBC** (the `PG` settings) and
+  writes each one to `iceberg.bronze.<table>` with **`createOrReplace()`** — a full reload, safe to
+  re-run ([4.2](../unit4/read-bronze.md)).
+- **`silver`** — joins order lines with their order, customer and product, renames columns and
+  computes `line_amount` — the Silver table from [4.3](../unit4/transform-silver.md).
+- **`gold`** — the `daily_sales` mart with Spark SQL: delivered orders per day — the same query as
+  [4.4](../unit4/spark-sql-gold.md).
+- **`bronze() >> silver() >> gold()`** — calling each task function creates the task; `>>` sets the
+  order. **This line is the medallion.**
 
 ### 2. See the graph
 Airflow parses your `.py` file, reads the `>>` arrows, and draws the pipeline for you. Open the
-UI → **shopflow_medallion** → **Graph**. You'll see exactly what you wired — three boxes, left to
+UI → **demouser_medallion** → **Graph**. You'll see exactly what you wired — three boxes, left to
 right, one arrow between each:
 
 ```mermaid
@@ -153,54 +152,67 @@ flowchart LR
   B[bronze] --> S[silver] --> G[gold]
 ```
 
-This graph *is* your `bronze >> silver >> gold` line, drawn out. Each box is a task; each arrow is a
-dependency. Reading left to right gives you the run order at a glance: the arrow into `silver` means
-"waits for `bronze`," and the arrow into `gold` means "waits for `silver`." (During a run these boxes
-change colour — green for success, running, failed — which is what makes the layering so easy to
-debug.)
+This graph *is* your `bronze() >> silver() >> gold()` line, drawn out. Each box is a task; each
+arrow is a dependency. (During a run these boxes change colour — green for success, running,
+failed — which is what makes the layering so easy to debug.)
 
-If the DAG doesn't appear, check **DAGs → import errors** in the UI (a bad import or typo shows up
-there).
+If the DAG doesn't appear within a minute, check **import errors** in the Airflow UI (a typo, a
+bad import, or a `dag_id` that doesn't start with your username shows up there).
 
 ### 3. Run it end to end
 In the Airflow UI, toggle the DAG **on** (unpause) and click **▶ Trigger**. In **Grid** view:
-`bronze` goes green, *then* `silver` starts, *then* `gold`. Watch the order — this is the `>>`
-dependency doing its job. `silver` sits idle until `bronze` reports success; `gold` waits on
-`silver`. If `bronze` fails, `silver` and `gold` stay grey — you never run against half-built data.
-That's the **re-runnable** promise from the top of the lesson: fix the failing layer, re-trigger,
-and the downstream tasks pick up the clean data.
+`bronze` goes green, *then* `silver` starts, *then* `gold` — about a minute in total. `silver` sits
+idle until `bronze` reports success; `gold` waits on `silver`. If `bronze` fails, `silver` and
+`gold` stay grey — you never run against half-built data. Fix the failing layer, re-trigger, and
+the downstream tasks pick up the clean data.
 
-Click each task → **Logs** to see the real `spark-submit` output. When all three are green,
-confirm the run landed (Trino CLI or Superset, from [Unit 2](../unit2/intro.md)):
+Click each task → **Logs**: you'll see `lab_spark: you are demouser · iceberg = demouser_lake` and
+the row counts each task printed (`bronze orders 40000`, `silver.orders 100000`,
+`gold.daily_sales 731`). Then confirm the result in your lakehouse — in a notebook:
 
 ```sql
-SELECT * FROM iceberg.gold.daily_sales ORDER BY order_date DESC LIMIT 5;
+%%sql
+SELECT * FROM iceberg.gold.daily_sales ORDER BY order_date DESC LIMIT 5
+```
+
+or in SQLPad / Trino, where your lakehouse is `demouser_lake`:
+
+```sql
+SELECT * FROM demouser_lake.gold.daily_sales ORDER BY order_date DESC LIMIT 5;
 ```
 
 ## Challenge
-So far the pipeline is a straight line. But dependencies only need to be real: Gold has three
-independent marts (`daily_sales`, `top_products`, `customer_ltv`) that all read Silver but *don't*
-depend on each other — so there's no reason to run them one after another. Build them **in parallel**
-after Silver instead of in one task, so a slow mart doesn't block the others. Use
-`build_gold.py --mart <name>` and a Python list for fan-out.
+So far the pipeline is a straight line. But dependencies only need to be real: Gold can have several
+independent marts that all read Silver but *don't* depend on each other — so there's no reason to
+run them one after another. Add a second mart, **`gold.top_products`** (delivered revenue and units
+per product), as its own task that runs **in parallel** with `gold` after `silver`.
 
 ??? note "Solution"
+    Add a task next to `gold`:
     ```python
-    def gold_mart(name: str) -> str:
-        return spark_job("build_gold.py") + f" --mart {name}"
-
-    daily = BashOperator(task_id="gold_daily",    bash_command=gold_mart("daily_sales"))
-    top   = BashOperator(task_id="gold_top",      bash_command=gold_mart("top_products"))
-    ltv   = BashOperator(task_id="gold_ltv",      bash_command=gold_mart("customer_ltv"))
-
-    # bronze → silver, then fan out to the three marts in parallel
-    bronze >> silver >> [daily, top, ltv]
+    @task
+    def top_products():
+        """Business mart: revenue + units per product."""
+        from lab_spark import lab_spark
+        spark = lab_spark()
+        spark.sql("""
+            CREATE OR REPLACE TABLE iceberg.gold.top_products AS
+            SELECT product_id, product_name, category,
+                   sum(line_amount) AS revenue, sum(quantity) AS units
+            FROM iceberg.silver.orders
+            WHERE status = 'delivered'
+            GROUP BY product_id, product_name, category""")
     ```
-    A Python **list** on either side of `>>` creates fan-out / fan-in. Airflow runs the three
-    marts concurrently (subject to available worker slots and `spark.cores.max`).
+    and change the last line to fan out after Silver:
+    ```python
+    s = silver()
+    bronze() >> s >> [gold(), top_products()]
+    ```
+    A Python **list** on the right of `>>` creates **fan-out**: both marts wait for `silver`, then
+    run at the same time. (`[a, b] >> c` would be the opposite — **fan-in**.)
 
 !!! tip "🎯 The same orchestration on Azure, Databricks, Snowflake & Fabric"
-    **What you just did:** chained three Spark jobs as `bronze >> silver >> gold` so each stage
+    **What you just did:** chained three Spark steps as `bronze >> silver >> gold` so each stage
     runs only after the previous one succeeds.
 
     - **Azure Databricks** — a **Workflow/Job** with three tasks (each a Spark notebook/job)
@@ -219,20 +231,17 @@ after Silver instead of in one task, so a slow mart doesn't block the others. Us
 | Term | Plain meaning |
 |---|---|
 | **DAG** | The whole pipeline as code — tasks plus the arrows between them; "acyclic" = no loops back |
-| **Task** | One unit of work in the DAG (here, one Spark job = one box in the graph) |
-| **Operator** | A pre-built task type; `BashOperator` runs a shell command |
+| **Task** | One unit of work in the DAG (here, one layer = one box in the graph) |
+| **`@dag` / `@task`** | TaskFlow decorators: a function becomes the DAG / a task |
+| **`lab_spark()`** | Opens a Spark session on the cluster, signed in as you (`iceberg` = your lakehouse) |
 | **Dependency (`>>`)** | Run order: `a >> b` means run `a` first, then `b` only if it succeeded |
 | **Task graph** | The boxes-and-arrows drawing Airflow builds from your `>>` lines |
 | **Upstream / downstream** | Upstream = must run first; downstream = waits on it (`bronze` is upstream of `silver`) |
 | **Medallion pipeline** | The `ingest → Bronze → Silver → Gold` chain, one task per layer |
-| **`BashOperator` + `spark-submit`** | Run a Spark job from a task by shelling out |
 | **Fan-out / fan-in** | `a >> [b, c] >> d` — run b and c in parallel |
-| **`spark.cores.max`** | Cap an app's cores so jobs share the cluster |
-| **`--catalog iceberg`** | Write to the shared lakehouse catalog |
 | **Import errors** | Where the UI shows a DAG that failed to parse |
 
 ## You can now…
-- Turn the Unit 4 Spark jobs into an Airflow DAG with `bronze >> silver >> gold`
-- Run `spark-submit` from a `BashOperator` and read the logs in the UI
-- Express parallel branches with lists (`>> [a, b] >>`) for fan-out / fan-in
-- Share a Spark cluster between notebooks and Airflow with `spark.cores.max`
+- Turn your Unit 4 medallion into an Airflow DAG with `bronze() >> silver() >> gold()`
+- Write tasks with `@task` that do Spark work as you via `lab_spark()`, and read their logs in the UI
+- Express parallel branches with lists (`>> [a, b]`) for fan-out / fan-in
