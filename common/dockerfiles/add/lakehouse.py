@@ -377,6 +377,7 @@ def provision(name, instructor=False):
         _ok(_call("PUT", f"{m}/principal-roles/{name}/catalog-roles/{SHARED}",
                   {"catalogRole": {"name": "learner_reader"}}, t)[0], "attach reader")
     trino_catalog(cat, t)
+    sample_table(cat)
 
 
 def _move_into_bucket(cat, loc, t):
@@ -621,6 +622,7 @@ def trino_catalog(cat, t=None):
             "iceberg.rest-catalog.security": "OAUTH2",
             "iceberg.rest-catalog.oauth2.credential": TRINO_LOGIN,
             "iceberg.rest-catalog.oauth2.scope": "PRINCIPAL_ROLE:ALL",
+            "iceberg.unique-table-location": "false",      # tables/<cat>/<ns>/<table>/ like Spark (no -uuid)
             "fs.native-s3.enabled": "true",
             "s3.endpoint": f"{u.scheme}://{u.netloc}",
             "s3.path-style-access": "true",
@@ -633,6 +635,16 @@ def trino_catalog(cat, t=None):
     except Exception as e:                      # Trino down / not dynamic: tables still work in Spark
         if "already exists" not in str(e):       # (two syncs racing — harmless)
             print(f"[lakehouse] trino catalog {cat}: {e}", flush=True)
+
+
+def sample_table(cat):
+    """One ready-made table to practise SQL on from day one: <cat>.bronze.sample_orders — the
+    first 1,000 ShopFlow orders, created through Trino once (never overwritten)."""
+    try:
+        _trino(f"CREATE TABLE IF NOT EXISTS {cat}.bronze.sample_orders AS "
+               "SELECT * FROM shopflow.public.orders ORDER BY order_id LIMIT 1000")
+    except Exception as e:                      # Trino not up yet — the next provision call
+        print(f"[lakehouse] sample table {cat}: {e}", flush=True)
 
 
 def sync_trino():

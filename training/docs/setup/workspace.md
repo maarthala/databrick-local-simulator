@@ -34,6 +34,8 @@ open — Superset, Airflow, SQLPad — keeps its own session until you log out t
 | Yours | Name | What it is |
 |---|---|---|
 | 🏠 Lakehouse | `<you>_lake` | your own Polaris catalog with `bronze` / `silver` / `gold` — where *your* Spark tables go |
+| 🧪 Sample table | `<you>_lake.bronze.sample_orders` | 1,000 ShopFlow orders, ready to query from day one (SQLPad, Trino, Superset, `%%sql`) |
+| 📄 Practice files | `files/source/shopflow/*.csv` | small, messy customers / orders / products CSVs to load and clean |
 | 🪣 Bucket | `<you>-lake` | your own object storage (RustFS, **100 MB** limit) — your files, notebooks and DAGs |
 | 📓 Jupyter | your own server | your notebooks, with `spark` ready and `iceberg` = your lakehouse |
 | 🧰 SQLPad user | `<you>` | your saved queries |
