@@ -67,5 +67,17 @@ spec:
                 LOOP EXECUTE format('ALTER TABLE %I.%I ALTER COLUMN %I TYPE numeric(38,6)', r.table_schema, r.table_name, r.column_name); END LOOP;
               END $$;
               SQL
+              # the course's database login (learner, created by the postgres init) reads it all
+              echo "granting read to learner..."
+              psql -h "$PGHOST" -v ON_ERROR_STOP=1 -d adventureworks >/dev/null <<'SQL'
+              GRANT CONNECT ON DATABASE adventureworks TO learner;
+              DO $$ DECLARE s text; BEGIN
+                FOR s IN SELECT nspname FROM pg_namespace
+                         WHERE nspname NOT LIKE 'pg\_%' AND nspname <> 'information_schema' LOOP
+                  EXECUTE format('GRANT USAGE ON SCHEMA %I TO learner', s);
+                  EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO learner', s);
+                END LOOP;
+              END $$;
+              SQL
               echo "✅ adventureworks loaded"
 {{- end }}

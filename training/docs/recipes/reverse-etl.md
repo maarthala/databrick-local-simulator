@@ -100,7 +100,7 @@ Postgres table that an operational application reads directly — no BI tool, no
 (report.write.format("jdbc")
        .option("url", "jdbc:postgresql://postgres:5432/shopflow")
        .option("dbtable", "public.country_report_demouser")
-       .option("user", "postgres").option("password", "postgres")
+       .option("user", "learner").option("password", "learner")
        .mode("overwrite").save())
 ```
 
@@ -130,7 +130,7 @@ Verify from Python (a JDBC read-back, straight out of Unit 4.2):
 (spark.read.format("jdbc")
     .option("url", "jdbc:postgresql://postgres:5432/shopflow")
     .option("dbtable", "public.country_report_demouser")
-    .option("user", "postgres").option("password", "postgres")
+    .option("user", "learner").option("password", "learner")
     .load().show())
 ```
 
@@ -177,7 +177,7 @@ folder of exports.
     (dated.write.format("jdbc")
         .option("url", "jdbc:postgresql://postgres:5432/shopflow")
         .option("dbtable", "public.country_report_history_demouser")
-        .option("user", "postgres").option("password", "postgres")
+        .option("user", "learner").option("password", "learner")
         .mode("append").save())
 
     # (2) write CSV partitioned by country — one folder per country

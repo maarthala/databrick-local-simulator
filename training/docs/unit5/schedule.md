@@ -45,8 +45,8 @@ from datetime import timedelta
 import pendulum
 from airflow.sdk import dag, task
 
-PG = {"url": "jdbc:postgresql://postgres:5432/shopflow", "user": "postgres",
-      "password": "postgres", "driver": "org.postgresql.Driver"}
+PG = {"url": "jdbc:postgresql://postgres:5432/shopflow", "user": "learner",
+      "password": "learner", "driver": "org.postgresql.Driver"}
 
 
 @dag(
