@@ -56,6 +56,7 @@ integration-level updates (like AdventureWorks or SQLPad) get an entry.
 
 | Date | Release / integration | What it adds | Scope |
 |---|---|---|---|
+| 2026-10-02 | **Learner workspace & course on it** | Default account `demouser`; bucket laid out like a Fabric lakehouse (`files/src`, `files/source`, `tables/`); starter kit (practice CSVs, `bronze.sample_orders`, a load notebook + DAG); `lab_spark()` / `run_notebook()` so learner DAGs write their own lakehouse; learner catalogs in Trino → SQLPad/Superset; every lesson rewritten and run as `demouser` | local |
 | 2026-10-01 | **Single sign-on for every tool** | One lab account (Keycloak) for Jupyter, Airflow, Superset, SQLPad, Polaris Console and the RustFS console; instructors are admins everywhere | local · k8s |
 | 2026-10-01 | **JupyterHub — one Jupyter per learner** | Per-learner Jupyter (DockerSpawner locally, KubeSpawner on k8s) with `iceberg` = own lakehouse and `shared` = the course lake; `notebooks/` + `dags/` mirrored to the learner's bucket | local · k8s |
 | 2026-10-01 | **RustFS object store (replaces MinIO)** | S3-compatible, Apache-2.0; per-learner bucket `<user>-lake` (100 MB quota, own-bucket policy); **My files** page | local · k8s |
