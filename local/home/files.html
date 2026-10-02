@@ -76,6 +76,22 @@
           background:rgba(11,16,32,.86); border:2px dashed var(--accent2); border-radius:12px; color:var(--accent2); z-index:2}
     .list.dragging .drop{display:flex}
     .hint{color:var(--muted); font-size:.85rem}
+
+    /* ---- file viewer (replaces the list while a file is open) ---- */
+    .viewer{flex:1; min-height:240px; display:none; flex-direction:column; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden}
+    .viewer.on{display:flex}
+    .vbar{display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); background:var(--panel2)}
+    .vbar .vname{font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+    .vbar .vmeta{color:var(--muted); font-size:.85rem; white-space:nowrap}
+    .vbody{flex:1; overflow:auto; padding:0}
+    .vbody pre{margin:0; padding:14px 16px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.86rem; line-height:1.5; white-space:pre; color:var(--ink)}
+    .vbody table td, .vbody table th{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.84rem; padding:6px 12px; white-space:nowrap}
+    .vbody table td.rn{color:var(--muted); text-align:right}
+    .vnote{padding:10px 16px; color:var(--muted); font-size:.85rem; border-top:1px solid var(--line)}
+    .nbcell{margin:12px 16px; border:1px solid var(--line); border-radius:10px; overflow:hidden}
+    .nbcell .lbl{font-size:.72rem; color:var(--muted); padding:4px 10px; background:var(--panel2); border-bottom:1px solid var(--line)}
+    .nbcell.md pre{white-space:pre-wrap; font-family:inherit; font-size:.92rem}
+    .vempty{padding:40px; text-align:center; color:var(--muted)}
     .uploads{display:flex; flex-direction:column; gap:6px}
     .prow{font-size:.85rem; color:var(--muted)}
     .prow .track{height:5px; background:var(--panel2); border-radius:5px; overflow:hidden; margin-top:3px}
@@ -126,6 +142,15 @@
           <tbody id="rows"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
         </table>
         <div class="drop">Drop files to upload into this folder</div>
+      </div>
+      <div class="viewer" id="viewer">
+        <div class="vbar">
+          <button id="v-back">← Back</button>
+          <span class="vname" id="v-name"></span><span class="vmeta" id="v-meta"></span>
+          <button id="v-copy" title="Copy Spark path">⧉ Copy path</button>
+          <button id="v-dl">⬇ Download</button>
+        </div>
+        <div class="vbody" id="v-body"></div>
       </div>
       <div class="hint">Only you can see this bucket (limit <span id="quota">100</span> MB). Use a file from Spark with its path — click ⧉ to copy it, e.g. <code id="example">s3a://…/files/source/orders.csv</code></div>
     </main>
@@ -268,6 +293,7 @@
         });
         d.files.forEach(function (f) {
           var a = el('a', null, '📄 ' + f.name); a.href = '/api/files/download?' + new URLSearchParams({key: f.key});
+          a.onclick = function (e) { e.preventDefault(); view(f, d.bucket); };
           var tr = el('tr'); tr.appendChild(cell(a, 'name')); tr.appendChild(el('td', 'num', size(f.size))); tr.appendChild(el('td', 'num', when(f.modified)));
           tr.appendChild(cell(group([
             iconBtn('⧉', 'Copy Spark path', '', function () {
@@ -284,6 +310,74 @@
         }
       });
     }
+    // ---------- viewer: open a file in place (CSV as a table, text / code, notebooks) ----------
+    var PREVIEW_MAX = 2 * 1024 * 1024;                     // larger files: download instead
+    var TEXT_EXT = /\.(csv|tsv|txt|md|py|sql|json|jsonl|yaml|yml|log|sh|cfg|ini|toml|xml|html|js|ipynb)$/i;
+    function closeViewer() { $('viewer').classList.remove('on'); $('list').style.display = ''; }
+    function parseCSV(text, sep) {                         // RFC-4180-ish: quotes, "" escapes, CRLF
+      var rows = [], row = [], f = '', q = false;
+      for (var i = 0; i < text.length; i++) {
+        var c = text[i];
+        if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+        else if (c === '"') q = true;
+        else if (c === sep) { row.push(f); f = ''; }
+        else if (c === '\n') { row.push(f); rows.push(row); row = []; f = ''; }
+        else if (c !== '\r') f += c;
+      }
+      if (f !== '' || row.length) { row.push(f); rows.push(row); }
+      return rows;
+    }
+    function csvTable(text, sep) {
+      var rows = parseCSV(text, sep), body = $('v-body'), LIMIT = 1000;
+      if (!rows.length) { body.appendChild(el('div', 'vempty', 'Empty file.')); return; }
+      var t = el('table'), th = el('tr'); th.appendChild(el('th', 'num', '#'));
+      rows[0].forEach(function (h) { th.appendChild(el('th', null, h)); });
+      var thead = el('thead'); thead.appendChild(th); t.appendChild(thead);
+      var tb = el('tbody');
+      rows.slice(1, LIMIT + 1).forEach(function (r, i) {
+        var tr = el('tr'); tr.appendChild(el('td', 'rn', String(i + 1)));
+        r.forEach(function (v) { tr.appendChild(el('td', null, v)); }); tb.appendChild(tr);
+      });
+      t.appendChild(tb); body.appendChild(t);
+      var n = rows.length - 1;
+      body.appendChild(el('div', 'vnote', n + ' rows · ' + rows[0].length + ' columns' + (n > LIMIT ? ' — showing the first ' + LIMIT : '')));
+    }
+    function notebook(text) {
+      var nb, body = $('v-body');
+      try { nb = JSON.parse(text); } catch (e) { body.appendChild(el('pre', null, text)); return; }
+      (nb.cells || []).forEach(function (c, i) {
+        var box = el('div', 'nbcell' + (c.cell_type === 'markdown' ? ' md' : ''));
+        box.appendChild(el('div', 'lbl', c.cell_type === 'markdown' ? 'Markdown' : 'Code [' + (i + 1) + ']'));
+        box.appendChild(el('pre', null, [].concat(c.source || []).join('')));
+        body.appendChild(box);
+      });
+    }
+    function view(f, bucket) {
+      var url = '/api/files/download?' + new URLSearchParams({key: f.key});
+      $('list').style.display = 'none'; $('viewer').classList.add('on');
+      $('v-name').textContent = '📄 ' + f.name; $('v-meta').textContent = size(f.size) + ' · ' + when(f.modified);
+      $('v-dl').onclick = function () { location.href = url; };
+      $('v-copy').onclick = function () {
+        var p = 's3a://' + bucket + '/' + f.key;
+        (navigator.clipboard ? navigator.clipboard.writeText(p) : Promise.reject()).then(
+          function () { toast('Copied ' + p); }, function () { toast(p); });
+      };
+      var body = $('v-body'); body.innerHTML = '';
+      if (!TEXT_EXT.test(f.name)) { body.appendChild(el('div', 'vempty', 'No preview for this file type — use ⬇ Download.')); return; }
+      if (f.size > PREVIEW_MAX) { body.appendChild(el('div', 'vempty', 'This file is ' + size(f.size) + ' — too big to preview here. Use ⬇ Download.')); return; }
+      body.appendChild(el('div', 'vempty', 'Loading…'));
+      fetch(url, {credentials: 'same-origin'}).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status); return r.text();
+      }).then(function (text) {
+        body.innerHTML = '';
+        if (/\.csv$/i.test(f.name)) csvTable(text, ',');
+        else if (/\.tsv$/i.test(f.name)) csvTable(text, '\t');
+        else if (/\.ipynb$/i.test(f.name)) notebook(text);
+        else body.appendChild(el('pre', null, text));
+      }).catch(function (e) { body.innerHTML = ''; body.appendChild(el('div', 'vempty', 'Could not open the file (' + e.message + ').')); });
+    }
+    $('v-back').onclick = closeViewer;
+
     function refresh() { return revealPath(state.prefix).then(load).then(highlight); }
 
     // ---------- actions ----------
@@ -354,10 +448,10 @@
 
     // ---------- wiring ----------
     $('mkdir').onclick = newFolderRow;
-    $('refresh').onclick = function () { if (nodes[state.prefix]) nodes[state.prefix].loaded = false; refresh(); };
+    $('refresh').onclick = function () { closeViewer(); if (nodes[state.prefix]) nodes[state.prefix].loaded = false; refresh(); };
     $('upload').onclick = function () { $('picker').click(); };
     $('picker').onchange = function () { uploadFiles(this.files); this.value = ''; };
-    window.addEventListener('hashchange', function () { state.prefix = decodeURIComponent(location.hash.slice(1) || ''); refresh(); });
+    window.addEventListener('hashchange', function () { closeViewer(); state.prefix = decodeURIComponent(location.hash.slice(1) || ''); refresh(); });
     var list = $('list');
     ['dragenter', 'dragover'].forEach(function (ev) { list.addEventListener(ev, function (e) { e.preventDefault(); list.classList.add('dragging'); }); });
     list.addEventListener('dragleave', function (e) { if (e.target === list.querySelector('.drop')) list.classList.remove('dragging'); });
