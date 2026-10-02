@@ -248,7 +248,40 @@ healthy business sees them flatten out rather than fall toward zero.
     **Pivot it into a classic triangle** (optional) — turn month indices into columns:
 
     ```sql
-    -- Wrap the query above in a CTE called grid, then:
+    -- The query above, renamed "grid" as one more CTE, then pivoted: one row per cohort,
+    -- one column per month index (m0 … m6).
+    WITH completed AS (
+      SELECT customer_id, date_trunc('month', order_ts) AS activity_month
+      FROM shopflow.public.orders
+      WHERE status = 'delivered'
+    ),
+    first_order AS (
+      SELECT customer_id, MIN(activity_month) AS cohort_month
+      FROM completed GROUP BY customer_id
+    ),
+    activity AS (
+      SELECT DISTINCT customer_id, activity_month FROM completed
+    ),
+    cohort_activity AS (
+      SELECT f.cohort_month,
+             date_diff('month', f.cohort_month, a.activity_month) AS month_index,
+             a.customer_id
+      FROM first_order AS f JOIN activity AS a ON a.customer_id = f.customer_id
+    ),
+    cohort_size AS (
+      SELECT cohort_month, COUNT(DISTINCT customer_id) AS cohort_size
+      FROM first_order GROUP BY cohort_month
+    ),
+    retention AS (
+      SELECT cohort_month, month_index, COUNT(DISTINCT customer_id) AS active_customers
+      FROM cohort_activity GROUP BY cohort_month, month_index
+    ),
+    grid AS (                                   -- the long-format result from above
+      SELECT r.cohort_month, s.cohort_size, r.month_index,
+             ROUND(100.0 * r.active_customers / s.cohort_size, 1) AS retention_pct
+      FROM retention AS r JOIN cohort_size AS s ON s.cohort_month = r.cohort_month
+      WHERE r.month_index <= 6
+    )
     SELECT cohort_month, cohort_size,
            MAX(CASE WHEN month_index = 0 THEN retention_pct END) AS m0,
            MAX(CASE WHEN month_index = 1 THEN retention_pct END) AS m1,
