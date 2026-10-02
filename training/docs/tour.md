@@ -1,4 +1,6 @@
-# Meet the lab — a complete data platform on your laptop
+# Epireum's Data Engineering Lab
+
+**A complete data platform on your laptop.**
 
 **Epireum's Data Engineering Lab** is a real, company-style data platform — object storage, a
 governed lakehouse, Spark, SQL, orchestration and BI — that runs on your own machine with one
