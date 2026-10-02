@@ -22,14 +22,18 @@ flowchart LR
 Recall the grain: `iceberg.silver.orders` is **one row per order line** — key `(order_id,
 product_id)` — already enriched with `product_name`, `category`, `quantity`, `unit_price`,
 `line_amount`, `order_date` (Unit 4). A corrected or re-sent line shares that key, which is exactly
-what `MERGE` keys on. Confirm the grain is clean:
+what `MERGE` keys on. Confirm the grain is clean — in a notebook (your Silver from Unit 4 or the
+[5.2 medallion DAG](../unit5/medallion-dag.md)):
 
 ```sql
+%%sql
 SELECT order_id, product_id, COUNT(*) AS n
 FROM iceberg.silver.orders
 GROUP BY order_id, product_id
-HAVING COUNT(*) > 1;      -- should return nothing
+HAVING COUNT(*) > 1
 ```
+
+It should return no rows.
 
 ## Challenge
 **Project brief — build the governed `product_weekly` data product.**
@@ -45,12 +49,12 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
    with columns `iso_week` (e.g. `2026-W36`), `product_name`, `category`, `revenue`, `units`.
 3. **Idempotency.** Recompute only the weeks touched by the batch and **overwrite just those
    partitions**, so a re-run is byte-identical and a late line corrects only its week.
-4. **RBAC (least privilege).** In Apache Polaris, **engineer** works in `silver`; **analyst**
-   (analyst) gets `SELECT` on **`gold` only**. Define both; note where enforcement lives.
+4. **Sharing (least privilege).** Share `gold.product_weekly` **read-only** with another learner on
+   **🗂️ My catalogs** — and nothing else: your `silver` stays private.
 5. **Airflow.** Schedule it (`@weekly`, or a weekly rollup task on the `@daily` DAG),
    `catchup=False`, idempotent re-runs.
-6. **Superset.** A **Product Performance** dashboard reading `gold.product_weekly`: weekly revenue
-   trend, top categories, and a week filter.
+6. **Superset.** A **Product Performance** dashboard reading `demouser_lake` → `gold.product_weekly`:
+   weekly revenue trend, top categories, and a week filter.
 
 ### Acceptance criteria
 - `iceberg.silver.orders` has **exactly one row per `(order_id, product_id)`** after any number of
@@ -58,7 +62,7 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
 - Injecting a **corrected line** and re-running updates that week's `revenue`/`units` in
   `gold.product_weekly` with **no duplicate `(iso_week, product_name)` rows**.
 - Re-triggering the same run produces an identical mart (idempotent).
-- The analyst grant on `gold` and the engineer grant on `silver` are defined in Polaris.
+- My catalogs lists exactly one share: read on `gold.product_weekly`.
 - The dashboard renders from Gold only.
 
 ### Hints
@@ -114,33 +118,43 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
     `2026-W35` recomputes only that week. Same input → same partition contents (idempotent), no
     duplicate `(iso_week, product_name)` rows.
 
-    **3 — RBAC, two blast radii (Apache Polaris, from Unit 6; per-principal grants):**
+    **3 — Share the product, keep the plumbing private (My catalogs):**
 
-    Grant each Polaris principal exactly the blast radius its role needs — the same grant
-    chain from [6.2](../unit6/polaris-admin.md), applied to two schemas:
+    **🗂️ My catalogs** → `demouser_lake` → `gold` → `product_weekly` → **Share** → the other
+    learner → **read**. They can now `SELECT` that one table (in Spark after
+    `use_catalog("demouser_lake")`, or in Trino); `silver` and everything else stay yours alone.
+    Polaris enforces it — the same grant chain as [6.4](../unit6/grant-and-query.md). (In a company
+    you'd grant **groups**, e.g. *analysts*, not individual people.)
 
-        # engineer works in silver
-        engineer  →  USE CATALOG iceberg  →  USE SCHEMA silver  (read + write)
-        # analyst reads gold only — least privilege
-        analyst   →  USE CATALOG iceberg  →  USE SCHEMA gold    →  SELECT
+    **4 — Airflow, idempotent + no catchup** — `dags/product_weekly.py`:
 
-    This defines the least-privilege policy. On the managed **Databricks catalog** the engines
-    enforce it automatically (and you'd grant **groups**, not users); on this OSS stack it records
-    the intent — see the honest note in [6.2](../unit6/polaris-admin.md).
+        import pendulum
+        from airflow.sdk import dag, task
 
-    **4 — Airflow, idempotent + no catchup:**
+        @dag(dag_id="demouser_product_weekly", schedule="@weekly", catchup=False,
+             start_date=pendulum.datetime(2026, 1, 1, tz="UTC"))
+        def product_weekly():
 
-        with DAG(dag_id="shopflow_product_weekly", schedule="@weekly",
-                 catchup=False, start_date=pendulum.datetime(2026, 1, 1, tz="UTC")) as dag:
-            silver = BashOperator(task_id="silver", bash_command=spark_job("build_silver.py"))
-            product_weekly = BashOperator(task_id="product_weekly",
-                                          bash_command=spark_job("build_product_weekly.py"))
-            silver >> product_weekly
+            @task
+            def merge_silver():
+                from lab_spark import lab_spark
+                spark = lab_spark()
+                ...                                    # step 1: build `batch`, MERGE into silver
 
-    `catchup=False` avoids a backfill stampede; both jobs are idempotent (MERGE + overwrite
+            @task
+            def build_weekly():
+                from lab_spark import lab_spark
+                spark = lab_spark()
+                ...                                    # step 2: recompute weeks, overwritePartitions
+
+            merge_silver() >> build_weekly()
+
+        product_weekly()
+
+    `catchup=False` avoids a backfill stampede; both steps are idempotent (MERGE + overwrite
     partitions), so re-running any week is safe.
 
-    **5 — Superset (Gold only):** Dataset on `gold.product_weekly` → Line (SUM(revenue) by
+    **5 — Superset (Gold only):** Dataset on `demouser_lake` / `gold` / `product_weekly` → Line (SUM(revenue) by
     `iso_week`), Bar (revenue by `category`), a week filter. Dashboard "ShopFlow — Product
     Performance".
 
