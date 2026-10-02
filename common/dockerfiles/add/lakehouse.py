@@ -189,9 +189,11 @@ def make_folders(bucket):
                 pass
 
 
-# Practice files every learner starts with: <this dir>/seed/<path> → files/source/<path>
-# (e.g. seed/shopflow/customers.csv → files/source/shopflow/customers.csv). Copied once —
-# a learner's own edits or deletions are left alone.
+# Starter files every learner gets, copied from <this dir>/seed/ to the same path in their bucket:
+#   seed/files/source/shopflow/*.csv        practice data
+#   seed/files/src/notebooks/*.ipynb        starter notebooks (Jupyter's notebooks/ folder)
+# Copied once — a learner's own edits or deletions are left alone. In notebooks, __BUCKET__ /
+# __LAKE__ become the learner's bucket / lakehouse, so their code shows real names.
 SEED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed")
 
 
@@ -199,19 +201,23 @@ def seed_files(bucket):
     import io
     if not os.path.isdir(SEED_DIR):
         return
+    lake = bucket[:-len("-lake")].replace("-", "_") + "_lake"
     for root, _, names in os.walk(SEED_DIR):
         for n in names:
-            rel = os.path.relpath(os.path.join(root, n), SEED_DIR).replace(os.sep, "/")
-            key = f"files/source/{rel}"
+            path = os.path.join(root, n)
+            key = os.path.relpath(path, SEED_DIR).replace(os.sep, "/")
             try:
                 _s3("HEAD", bucket, key).close()
                 continue                                  # already there
             except urllib.error.HTTPError:
                 pass
+            body = open(path, "rb").read()
+            if n.endswith(".ipynb"):
+                body = body.replace(b"__BUCKET__", bucket.encode()).replace(b"__LAKE__", lake.encode())
+            ctype = {"csv": "text/csv", "ipynb": "application/x-ipynb+json"}.get(n.rsplit(".", 1)[-1],
+                                                                               "application/octet-stream")
             try:
-                body = open(os.path.join(root, n), "rb").read()
-                put_object(bucket, key, io.BytesIO(body), len(body), "text/csv" if n.endswith(".csv") else
-                           "application/octet-stream")
+                put_object(bucket, key, io.BytesIO(body), len(body), ctype)
             except urllib.error.HTTPError:                # new bucket not scanned yet — next call
                 pass
 
