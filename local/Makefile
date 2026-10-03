@@ -16,11 +16,12 @@ COMPOSE = docker compose
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init up down restart ps logs config clean docs docs-serve polaris-seed
+.PHONY: help init up down restart ps logs config clean docs docs-serve polaris-seed \
+        learners learner-create learner-password learner-reset learner-wipe learner-delete
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
 init: ## Download required JARs/tarballs (first time only)
 	bash init.sh
@@ -55,3 +56,33 @@ config: ## Validate the merged compose configuration
 
 clean: ## Remove images built for this stack
 	bash remove-stack.sh
+
+# ---- manager toolkit (runs common/dockerfiles/add/labadmin.py inside home-api) ----------
+LABADMIN = docker exec home-api python /app/labadmin.py
+
+learners: ## List lab accounts, their lakehouse and bucket use
+	$(LABADMIN) list
+
+learner-create: ## New lab account + lakehouse: make learner-create U=ravi [P=password]
+	@test -n "$(U)" || { echo "usage: make learner-create U=<user> [P=<password>]"; exit 1; }
+	$(LABADMIN) create $(U) $(P)
+
+learner-password: ## New password (changed at next sign-in): make learner-password U=ravi [P=…]
+	@test -n "$(U)" || { echo "usage: make learner-password U=<user> [P=<password>]"; exit 1; }
+	$(LABADMIN) password $(U) $(P)
+
+learner-reset: ## Drop every table in a learner's catalogs: make learner-reset U=ravi
+	@test -n "$(U)" || { echo "usage: make learner-reset U=<user>"; exit 1; }
+	$(LABADMIN) reset-lakehouse $(U)
+
+learner-wipe: ## Tables + bucket + Jupyter files back to a fresh start: make learner-wipe U=ravi
+	@test -n "$(U)" || { echo "usage: make learner-wipe U=<user>"; exit 1; }
+	-docker rm -f jupyter-$(U) >/dev/null 2>&1
+	-docker volume rm jupyterhub-user-$(U) >/dev/null 2>&1
+	$(LABADMIN) wipe $(U)
+
+learner-delete: ## Remove a lab account and everything it owns: make learner-delete U=ravi
+	@test -n "$(U)" || { echo "usage: make learner-delete U=<user>"; exit 1; }
+	-docker rm -f jupyter-$(U) >/dev/null 2>&1
+	-docker volume rm jupyterhub-user-$(U) >/dev/null 2>&1
+	$(LABADMIN) delete $(U) --yes

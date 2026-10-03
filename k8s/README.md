@@ -103,6 +103,21 @@ deploy playbook runs it). The platform manager reads one with
    ShopFlow Bronze → Silver → Gold jobs over Spark Connect into `polaris_lake`). The lessons'
    ready-made tables (`shared.gold.daily_sales` in notebooks) come from it.
 
+### Manager toolkit
+`k8s/lab-admin.sh` (runs `labadmin.py` in the home-api pod; on the node add `KUBECTL="microk8s kubectl"`):
+
+| Command | Does |
+|---|---|
+| `list` | lab accounts, their lakehouse, catalogs, bucket use |
+| `create <user> [password]` | new lab account + lakehouse, bucket, SQLPad user (password changed at first sign-in) |
+| `password <user> [password]` | new password (changed at the next sign-in) |
+| `reset-lakehouse <user>` | drop every table/view in their catalogs; bronze/silver/gold + sample table come back |
+| `wipe <user>` | reset-lakehouse + empty their bucket and Jupyter volume; starter files come back |
+| `delete <user> --yes` | remove the account, catalogs, bucket, SQLPad user, Jupyter volume |
+
+No password given → a random one is printed. Locally the same commands are `make learners`,
+`make learner-create U=… [P=…]`, `learner-password`, `learner-reset`, `learner-wipe`, `learner-delete`.
+
 ### Learners' notebooks and DAGs (no git needed)
 Each learner's Jupyter keeps `notebooks/` and `dags/` mirrored to their own bucket
 `<user>-lake`; Airflow's `learners` DAG bundle loads every bucket's `dags/` (dag_id must start

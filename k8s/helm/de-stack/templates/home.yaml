@@ -140,6 +140,7 @@ spec:
           volumeMounts:   # lab code + starter files from the lab-code / lab-seed ConfigMaps
             - { name: lab-code, mountPath: /app/lakehouse.py, subPath: lakehouse.py }
             - { name: lab-code, mountPath: /app/app.py, subPath: home-api.py }
+            - { name: lab-code, mountPath: /app/labadmin.py, subPath: labadmin.py }
             - { name: lab-seed, mountPath: /app/seed }
       volumes:
         - { name: lab-code, configMap: { name: lab-code } }

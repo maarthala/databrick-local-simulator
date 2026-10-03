@@ -5,6 +5,7 @@ FROM python:3.10-slim
 COPY add/lakehouse.py /app/lakehouse.py
 COPY add/seed /app/seed
 COPY add/home-api.py /app/app.py
+COPY add/labadmin.py /app/labadmin.py
 USER nobody
 EXPOSE 8000
 CMD ["python", "/app/app.py"]
