@@ -220,8 +220,11 @@ def seed_files(bucket):
     if not os.path.isdir(SEED_DIR):
         return
     lake = bucket[:-len("-lake")].replace("-", "_") + "_lake"
-    for root, _, names in os.walk(SEED_DIR):
-        for n in names:
+    # On Kubernetes the seed is a ConfigMap mount: `files` is a link into the hidden
+    # ..<timestamp>/ folder (with a ..data link beside it) — follow links, skip hidden entries.
+    for root, dirs, names in os.walk(SEED_DIR, followlinks=True):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        for n in (n for n in names if not n.startswith(".")):
             path = os.path.join(root, n)
             key = os.path.relpath(path, SEED_DIR).replace(os.sep, "/")
             try:
