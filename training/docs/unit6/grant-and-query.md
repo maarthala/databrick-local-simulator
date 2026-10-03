@@ -38,8 +38,8 @@ analyst (principal) ─► analyst_role ─► sales_reader (catalog-role) ─�
 Sign in to the Console as `root` / `s3cr3t` (your laptop stack — on a team stack, the platform manager) at <http://localhost:8189/login?local=1> (k8s: `http://polaris-console.de.lan/login?local=1` — the
 `?local=1` shows the **Client ID / Secret** form instead of signing you in with your lab account).
 
-!!! tip "Learners: the same grant, without the admin"
-    Sharing *your own* tables with another learner doesn't need root: on **🗂️ My catalogs**
+!!! tip "Members: the same grant, without the admin"
+    Sharing *your own* tables with another member doesn't need root: on **🗂️ My catalogs**
     pick a namespace or table → **Share** → their username → **read** or **read + write**.
     Behind the scenes it creates exactly the chain below (a catalog role with these
     privileges, bound to their principal-role) — and **Revoke** removes it.
@@ -74,7 +74,7 @@ Reading through Polaris vends **short-lived, scoped credentials** — a user can
 tables they're granted. Whoever queries as **analyst** (signed into the Console, or an
 engine configured with analyst's client id/secret) sees exactly `demo.sales` and nothing
 they weren't granted. Your notebook's `spark` signs in as **you** (your own principal), so
-it's enforced there too: a table another learner shared with you is readable after
+it's enforced there too: a table another member shared with you is readable after
 `use_catalog("<their catalog>")`, and anything not shared answers *forbidden*.
 
 ## Revoke

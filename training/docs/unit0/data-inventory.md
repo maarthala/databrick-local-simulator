@@ -37,7 +37,7 @@ JDBC. Example: `SELECT count(*) FROM shopflow.public.orders` → 40000.
 
 !!! note "Other Postgres databases are platform plumbing"
     Postgres also hosts `airflow`, `superset`, `metastore`, `polarisdb`, `ucdb`, `hue` — these are
-    **metastores for the tools**, not learner data. Only `shopflow` is your source data.
+    **metastores for the tools**, not member data. Only `shopflow` is your source data.
 
 ## 2. RustFS — the data lake (object storage)
 

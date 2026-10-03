@@ -22,14 +22,14 @@ writes to object storage.
 
 ## A · Create a catalog
 
-**As a learner — on 🗂️ My catalogs** (landing page): click **＋ New**, type `learn`,
+**As a member — on 🗂️ My catalogs** (landing page): click **＋ New**, type `learn`,
 **Create**. You get **`demouser_learn`** — e.g. `ravi_learn` — stored in your own bucket at
 `s3://demouser-lake/tables/demouser_learn`, and you're its owner. Click **Open in Polaris Console ↗**
 to see it in the Console.
 
 !!! note "Why not *Catalogs → Create catalog* in the Console?"
     Creating catalogs there needs the Polaris **admin** — with your lab account it answers
-    *403*. (For the same reason the Console's **Catalogs** list shows `0` for learners:
+    *403*. (For the same reason the Console's **Catalogs** list shows `0` for members:
     listing *all* catalogs is admin-only. Open yours from My catalogs.)
 
 **As the admin — in the Console** (the platform manager, or your own laptop stack): open

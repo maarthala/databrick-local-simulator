@@ -232,7 +232,7 @@ SELECT * FROM demouser_lake.my_lab.first_table ORDER BY id;
 !!! note "Why writing just works"
     `demouser_lake` is **yours** — you're its owner, so you can create and change anything in it
     without asking. Anywhere else you need a grant: the course's shared lake is read-only for you,
-    and another learner's lakehouse is closed until they share it. Ownership, grants and sharing
+    and another member's lakehouse is closed until they share it. Ownership, grants and sharing
     are [Unit 6](../unit6/polaris.md).
 
 ## Challenge

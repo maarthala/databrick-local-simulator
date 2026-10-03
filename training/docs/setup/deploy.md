@@ -94,7 +94,7 @@ learning.
     !!! warning "`make down` deletes the volumes"
         It runs `docker compose down -v`, so the object store (RustFS), Postgres, the catalog and the
         **lab accounts** are wiped — registered accounts are gone (`demouser`, `learner2` and `manager`
-        come back by themselves), and each learner's lakehouse and bucket are recreated, empty, on their next
+        come back by themselves), and each member's lakehouse and bucket are recreated, empty, on their next
         sign-in. Use it
         for a clean reset; use `docker compose stop` if you only want to pause and keep your data.
 
@@ -133,7 +133,7 @@ learning.
     ```bash
     kubectl -n de-stack get pods         # wait for everything to be Running/Ready
     ```
-    Open the landing page at **`http://de.lan`**. Learners **register / sign in** there (Keycloak at
+    Open the landing page at **`http://de.lan`**. Members **register / sign in** there (Keycloak at
     `http://auth.de.lan`, realm `de-lab`); each gets their own lakehouse, bucket and Jupyter on first
     login. All UIs live at `http(s)://<name>.de.lan` (jupyter, trino, superset, sqlpad, airflow,
     spark, storage — the RustFS console, polaris-console) — the landing page links them.

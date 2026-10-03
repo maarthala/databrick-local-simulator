@@ -127,11 +127,12 @@ bound to the other user's principal-role:
 Revoke deletes that catalog-role. In [6.4](grant-and-query.md) you build the same chain by
 hand in the Console, as the Polaris admin.
 
-!!! warning "Governed in Spark and the Console — not (yet) in Trino / SQLPad"
+!!! info "Governed everywhere — Spark, the Console, SQLPad and Superset"
     Spark and the Console sign in to Polaris **as you**, so everything above is enforced there.
-    Trino (and SQLPad / Superset on top of it) reaches learner catalogs with **one shared lab
-    login**, so through Trino learners can read each other's lakes. That's a lab shortcut; a
-    production Trino passes each user's identity to the catalog (or uses its own access rules).
+    SQLPad (your own connection) and Superset pass **your username** to Trino, whose access rules
+    are generated from these same Polaris grants: your own catalogs, exactly what was shared with
+    you, and the shared lake read-only. A new share or revoke reaches Trino within about half a
+    minute (a minute or two on a team stack).
 
 !!! info "Personas on the shared lake"
     `polaris_lake` also has three demo principals — **`analyst`**, **`engineer`**, **`lead`** —
@@ -144,7 +145,7 @@ hand in the Console, as the Polaris admin.
 | **Iceberg REST catalog** | the open protocol every engine speaks → one governed catalog |
 | **principal / principal-role / catalog-role** | *who* / *the roles they hold* / *a grants bundle in one catalog* |
 | **owner** | your catalog-role on your lakehouse: `CATALOG_MANAGE_CONTENT` (everything inside it) |
-| **share** | a catalog-role in your catalog, bound to another learner's principal-role |
+| **share** | a catalog-role in your catalog, bound to another member's principal-role |
 | **credential vending** | Polaris hands the engine short-lived storage creds scoped to what you may do |
 
 ## 🎯 The same model on Azure, Databricks, Snowflake & Fabric

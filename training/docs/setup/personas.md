@@ -79,7 +79,7 @@ above is just how you open each tool.
 !!! warning "On a team stack these admin logins are private"
     The passwords above are the defaults of **your own laptop stack**, where you are the admin.
     On a shared team stack (Kubernetes) every admin and service password is a random value in
-    the cluster's `de-stack-secrets` — only your **platform manager** has them. Learners sign in
+    the cluster's `de-stack-secrets` — only your **platform manager** has them. Members sign in
     with their own lab account, and use PostgreSQL as `learner` / `learner`.
 
 ## Where the personas are defined (for the curious)

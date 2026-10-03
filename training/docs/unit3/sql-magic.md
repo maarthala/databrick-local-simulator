@@ -75,7 +75,7 @@ INSERT INTO iceberg.sandbox.my_customers VALUES
 
 !!! warning "403 / Forbidden is governance, not your SQL"
     In `iceberg` (your own lakehouse) you can create anything. In `shared` (read-only) or in a
-    catalog another learner shared with you, writing needs a **Polaris grant** — a **403 /
+    catalog another member shared with you, writing needs a **Polaris grant** — a **403 /
     Forbidden** there is RBAC, not a SQL mistake. See [Unit 6](../unit6/polaris.md).
 
 ### 3 · Explore & query your data

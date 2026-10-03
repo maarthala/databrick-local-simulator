@@ -75,7 +75,7 @@ from there within about **30 seconds**. One Airflow is shared by the whole class
 keeps names apart: **every `dag_id` starts with your username and `_`** — `demouser_…` for the
 default account. (A DAG that breaks the rule shows up under Airflow's **import errors** with the
 name it expects.) In the Airflow UI you see **your own DAGs** (you can run, edit and delete them)
-and the platform's DAGs (read-only) — other learners' DAGs and runs stay private to them.
+and the platform's DAGs (read-only) — other members' DAGs and runs stay private to them.
 Your `dags/` folder already holds one example: `load_sample_orders.py`.
 
 ## Optional: Airflow on your own machine

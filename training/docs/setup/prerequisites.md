@@ -23,7 +23,7 @@ flowchart LR
 | 2 | The **Trino CLI** | Optional, laptop stack only | A terminal client for Trino. On a team stack you run SQL in SQLPad / Superset instead |
 | 3 | **Docker Desktop** + Git | ⚙️ Only if *you* run the stack | Needed to bring the platform up on your own laptop |
 
-Item 1 is all a learner needs when the stack is provided for you (a shared server, or an
+Item 1 is all a member needs when the stack is provided for you (a shared server, or an
 instructor's machine). Item 3 is only for running the whole thing yourself.
 
 !!! note "One lab account for everything — and no hosts-file entry"
@@ -230,7 +230,7 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 !!! warning "On a team stack these admin logins are private"
     The passwords above are the defaults of **your own laptop stack**, where you are the admin.
     On a shared team stack (Kubernetes) every admin and service password is a random value in
-    the cluster's `de-stack-secrets` — only your **platform manager** has them. Learners sign in
+    the cluster's `de-stack-secrets` — only your **platform manager** has them. Members sign in
     with their own lab account, and use PostgreSQL as `learner` / `learner`.
 
 ## You can now…

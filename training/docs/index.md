@@ -51,7 +51,7 @@ concepts properly here, then walk into **Microsoft Fabric, Databricks or Snowfla
 
     ---
 
-    One sign-in for every tool, your own workspace, shared company data, and roles — learners
+    One sign-in for every tool, your own workspace, shared company data, and roles — members
     and a `manager` who administers everyone. The same shape you'll meet at work.
 
 -   ⚡ **The tools teams actually use**
@@ -144,7 +144,7 @@ table — read or write — with a teammate. Polaris enforces it on every query
 
     ---
 
-    - **Trainers and bootcamps** — run a class on Kubernetes: every learner gets their own
+    - **Trainers and bootcamps** — run a class on Kubernetes: every member gets their own
       workspace, and the `manager` account sees and supports everyone.
     - **Companies onboarding data engineers** — a safe sandbox with the same shape as your
       production platform.
@@ -158,7 +158,7 @@ table — read or write — with a teammate. Polaris enforces it on every query
 
 | Layer | Tool | What you do with it |
 |---|---|---|
-| Accounts | **Keycloak** | one sign-in for every tool; learner and manager roles |
+| Accounts | **Keycloak** | one sign-in for every tool; member and manager roles |
 | Storage | **S3-compatible object storage** (RustFS) | your bucket — raw files, code and table data |
 | Catalog & governance | **Apache Polaris** (Iceberg REST) | your lakehouse, grants, sharing, credential vending |
 | Notebooks & compute | **Jupyter** + **Spark** (Spark Connect) | Python, pandas and Spark — Bronze → Silver → Gold |

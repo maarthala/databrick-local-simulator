@@ -68,7 +68,7 @@ with **Polaris** as the single catalog that every engine consults before touchin
 ### Storage — where state lives
 | Service | What it is | Holds |
 |---|---|---|
-| **RustFS** | S3-compatible object store — the lakehouse (in-stack name `storage:9000`) | shared Iceberg tables + raw history (`demo-bucket/…`), and each learner's bucket `<user>-lake` (their lakehouse, notebooks, DAGs; 100 MB) |
+| **RustFS** | S3-compatible object store — the lakehouse (in-stack name `storage:9000`) | shared Iceberg tables + raw history (`demo-bucket/…`), and each member's bucket `<user>-lake` (their lakehouse, notebooks, DAGs; 100 MB) |
 | **Postgres** | One relational DB serving several roles | the **`shopflow`** source OLTP data; **metastores** for Polaris (`polarisdb`), Keycloak, Airflow, Superset |
 | **Redis** | In-memory store | **Superset's** cache & async query results (Airflow uses LocalExecutor — no broker needed) |
 
@@ -86,7 +86,7 @@ with **Polaris** as the single catalog that every engine consults before touchin
 | **Keycloak** | The **lab accounts** (realm `de-lab`): registration, sign-in and single sign-on for every tool. Groups `learners` / `managers` decide the role inside each tool. |
 | **oauth2-proxy** | Puts the home portal behind the lab-account login. |
 | **home-api** | The home portal's backend: on your first sign-in it creates **your** lakehouse, bucket and SQLPad user; serves **My files** and **My catalogs**. |
-| **JupyterHub** | Starts **one Jupyter per learner** (its own container / pod and work volume) with `iceberg` = that learner's lakehouse; mirrors `notebooks/` and `dags/` to `files/src/` in their bucket. |
+| **JupyterHub** | Starts **one Jupyter per member** (its own container / pod and work volume) with `iceberg` = that member's lakehouse; mirrors `notebooks/` and `dags/` to `files/src/` in their bucket. |
 
 ### Engines — SQL and Spark
 | Service | What it is |
@@ -127,7 +127,7 @@ single sign-on, register on the home portal) for every tool; see [0.3](../setup/
 !!! warning "On a team stack these admin logins are private"
     The admin passwords above are the defaults of **your own laptop stack**, where you are the admin.
     On a shared team stack (Kubernetes) every admin and service password is a random value in
-    the cluster's `de-stack-secrets` — only your **platform manager** has them. Learners sign in
+    the cluster's `de-stack-secrets` — only your **platform manager** has them. Members sign in
     with their own lab account, and use PostgreSQL as `learner` / `learner`.
 
 Internal wiring uses service names on a shared network: `polaris:8181`, `storage:9000`,
@@ -137,10 +137,10 @@ Internal wiring uses service names on a shared network: `polaris:8181`, `storage
 
 State survives restarts; only a deliberate teardown wipes it.
 
-- **RustFS volume** — all lakehouse tables + raw files + every learner's bucket.
+- **RustFS volume** — all lakehouse tables + raw files + every member's bucket.
 - **Postgres volume** — source data + every metastore (incl. Polaris' `polarisdb`, so the
   catalog, principals, and grants persist).
-- **Each learner's Jupyter work volume** (and the Hub's own small database), Spark working dirs,
+- **Each member's Jupyter work volume** (and the Hub's own small database), Spark working dirs,
   and Superset's home.
 
 On Compose these are named Docker volumes; on k8s they're PersistentVolumeClaims

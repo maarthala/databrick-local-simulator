@@ -27,7 +27,7 @@ manager has the admin login).
 !!! info "An admin lesson"
     Creating principals and roles needs the Polaris **admin** (`root`), so in a company this
     is the platform team's job (or done on your own laptop stack). With your lab account you can't
-    create users — but you *can* share your own tables with other learners on
+    create users — but you *can* share your own tables with other members on
     **🗂️ My catalogs** ([0.3](../setup/workspace.md)), which builds exactly this
     user → role → grant chain for you.
 

@@ -49,7 +49,7 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
    with columns `iso_week` (e.g. `2026-W36`), `product_name`, `category`, `revenue`, `units`.
 3. **Idempotency.** Recompute only the weeks touched by the batch and **overwrite just those
    partitions**, so a re-run is byte-identical and a late line corrects only its week.
-4. **Sharing (least privilege).** Share `gold.product_weekly` **read-only** with another learner on
+4. **Sharing (least privilege).** Share `gold.product_weekly` **read-only** with another member on
    **🗂️ My catalogs** — and nothing else: your `silver` stays private.
 5. **Airflow.** Schedule it (`@weekly`, or a weekly rollup task on the `@daily` DAG),
    `catchup=False`, idempotent re-runs.
@@ -121,7 +121,7 @@ governed by least-privilege grants, scheduled idempotently, and surfaced in Supe
     **3 — Share the product, keep the plumbing private (My catalogs):**
 
     **🗂️ My catalogs** → `demouser_lake` → `gold` → `product_weekly` → **Share** → the other
-    learner → **read**. They can now `SELECT` that one table (in Spark after
+    member → **read**. They can now `SELECT` that one table (in Spark after
     `use_catalog("demouser_lake")`, or in Trino); `silver` and everything else stay yours alone.
     Polaris enforces it — the same grant chain as [6.4](../unit6/grant-and-query.md). (In a company
     you'd grant **groups**, e.g. *analysts*, not individual people.)

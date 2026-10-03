@@ -51,7 +51,7 @@ tools are grouped in four columns — *Build & explore* (Notebook, Compute, SQL 
 
 ## Which lake am I querying?
 
-There are two kinds of lake — **yours** and the course's **shared** one (read-only for learners,
+There are two kinds of lake — **yours** and the course's **shared** one (read-only for members,
 with the ready-made ShopFlow tables such as `gold.daily_sales`):
 
 | Where you run it | `iceberg.…` means | The shared lake is |
@@ -72,7 +72,7 @@ nobody else's tables get in your way, and you can't break theirs.
 
 !!! tip "Another catalog in Spark"
     `use_catalog("<catalog>")` makes any other catalog you may use available in Spark — one you
-    created on **My catalogs**, or one another learner shared with you:
+    created on **My catalogs**, or one another member shared with you:
     `use_catalog("kiran_sales")` → `SELECT * FROM kiran_sales.sales.orders`.
 
 ## Your files — notebooks, DAGs, data
@@ -106,10 +106,10 @@ folders stays in your Jupyter workspace only.
 
 **📁 My files** (landing page) is a file manager for your bucket — browse, upload, download, new
 folder, delete. The **RustFS console** (Storage tile) shows the same bucket. (Its bucket
-**Settings** page is for managers — learners get *Access Denied* there; everything about
+**Settings** page is for managers — members get *Access Denied* there; everything about
 your files works in the browser view and My files.)
 
-!!! warning "100 MB per learner"
+!!! warning "100 MB per member"
     Your bucket holds at most **100 MB** — plenty for code and lesson data. If it's full, saving
     shows an error ("saved in Jupyter, but NOT in your bucket"); delete files you no longer need.
 
@@ -142,10 +142,10 @@ tells you whose is whose.
 **🗂️ My catalogs** (landing page) lists the catalogs you own and the ones shared with you:
 
 - **＋ New** creates a catalog `<you>_<name>`, stored in your bucket under `tables/<you>_<name>/`.
-- **Share** a namespace or a single table with another learner — **read** or **write** — and
+- **Share** a namespace or a single table with another member — **read** or **write** — and
   **revoke** it again. Polaris enforces it: they see exactly what you shared.
 - **Open in Polaris Console ↗** opens the catalog in the Console, signed in as you — browse
-  it, add namespaces and tables. (The Console's own **Catalogs** list shows `0` for learners:
+  it, add namespaces and tables. (The Console's own **Catalogs** list shows `0` for members:
   listing *all* catalogs is admin-only, so open yours from here.)
 
 ## Starting over
@@ -166,5 +166,5 @@ switch **self-registration** on or off (on while a new batch signs up, off other
 - Register, sign in once and reach every tool with your lab account
 - Tell your own lakehouse (`iceberg` in Jupyter) from the shared lake (`shared` in Jupyter, `iceberg` in Trino)
 - Keep notebooks and DAGs in `notebooks/` and `dags/`, and name DAGs `<you>_…`
-- Create a catalog and share a namespace or table with another learner
+- Create a catalog and share a namespace or table with another member
 - Know when to ask a manager for a lakehouse reset or a full wipe

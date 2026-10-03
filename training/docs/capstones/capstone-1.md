@@ -36,7 +36,7 @@ Add a new Gold mart `gold.daily_cancellations` to your lakehouse and expose it i
    `order_date`, and writes `iceberg.gold.daily_cancellations` with columns `order_date`,
    `total_orders`, `cancelled_orders`, `cancellation_rate` (0.0–1.0), using `createOrReplace`
    (idempotent). It runs after `silver`, beside the existing `gold` task.
-2. **Governance.** Share the new table **read-only** with one other learner on **🗂️ My catalogs**
+2. **Governance.** Share the new table **read-only** with one other member on **🗂️ My catalogs**
    ([6.4](../unit6/grant-and-query.md)) — nothing more than that one table.
 3. **BI.** Add a Superset **Dataset** on `demouser_lake` → `gold` → `daily_cancellations` and a
    **line chart** of `cancellation_rate` over `order_date`, on your executive dashboard
@@ -95,7 +95,7 @@ Add a new Gold mart `gold.daily_cancellations` to your lakehouse and expose it i
     **2. Governance — share it read-only (My catalogs)**
 
     **🗂️ My catalogs** → `demouser_lake` → in *Namespaces & tables* find `gold` →
-    `daily_cancellations` → **Share** → the other learner's username → **read** → **Share**.
+    `daily_cancellations` → **Share** → the other member's username → **read** → **Share**.
     Behind the scenes that's a Polaris catalog role with `TABLE_READ_DATA` on that one table, bound
     to their principal-role — the least-privilege grant chain from [6.4](../unit6/grant-and-query.md).
 
