@@ -28,6 +28,7 @@ import lakehouse as lh
 KEYCLOAK = os.environ.get("KEYCLOAK_URL", "http://keycloak:8080")
 REALM = os.environ.get("KEYCLOAK_REALM", "de-lab")
 HUB_API = os.environ.get("HUB_API_URL", "http://jupyterhub:8081/hub/api")
+AIRFLOW = os.environ.get("AIRFLOW_URL", "http://airflow-apiserver:8080")
 USERNAME = re.compile(r"^[a-z0-9][a-z0-9-]{1,30}$")
 _C = "/api/catalog/v1"
 
@@ -97,6 +98,30 @@ def _hub_forget(user):
             time.sleep(1)
     st, _ = _hub("DELETE", f"/users/{user}")
     return st in (204, 404)
+
+
+# ---- Airflow: the member's role, account, job logins and DAG history (on delete) ----------
+def _airflow_forget(user, name):
+    """Best effort; needs AIRFLOW_ADMIN=user:password. False if Airflow couldn't be reached."""
+    adm = os.environ.get("AIRFLOW_ADMIN", "")
+    if ":" not in adm:
+        return False
+    u, p = adm.split(":", 1)
+    st, tok = _http("POST", f"{AIRFLOW}/auth/token", {"username": u, "password": p})
+    if st not in (200, 201):
+        return False
+    h = {"Authorization": f"Bearer {tok['access_token']}"}
+    _, dags = _http("GET", f"{AIRFLOW}/api/v2/dags?" + urllib.parse.urlencode(
+        {"dag_id_pattern": f"{name}_", "limit": 1000}), headers=h)
+    for d in (dags or {}).get("dags", []) if isinstance(dags, dict) else []:
+        if d["dag_id"].startswith(f"{name}_"):          # their DAG runs and task history
+            _http("DELETE", f"{AIRFLOW}/api/v2/dags/{urllib.parse.quote(d['dag_id'])}", headers=h)
+    for var in (f"lab_jobs_{name}", f"lab_jobs_s3_{name}"):   # their job logins (lab_spark)
+        _http("DELETE", f"{AIRFLOW}/api/v2/variables/{var}", headers=h)
+    _http("DELETE", f"{AIRFLOW}/auth/fab/v1/users/{urllib.parse.quote(user)}", headers=h)
+    for role in {f"lab_{user}", f"lab_{name}"}:
+        _http("DELETE", f"{AIRFLOW}/auth/fab/v1/roles/{urllib.parse.quote(role)}", headers=h)
+    return True
 
 
 # ---- Polaris: tables of a catalog -------------------------------------------------------
@@ -304,8 +329,14 @@ def delete(user):
     ct = _content_token() if cats else None
     for cat in cats:                                     # tables, namespaces, roles, catalog
         _drop_catalog(cat, t, ct)
-    lh._call("DELETE", f"{lh._M}/principals/{name}", token=t)
+    for pr in (name, f"{name}_jobs"):                    # their login + their Airflow jobs' login
+        lh._call("DELETE", f"{lh._M}/principals/{pr}", token=t)
     lh._call("DELETE", f"{lh._M}/principal-roles/{name}", token=t)
+    try:
+        airflow = _airflow_forget(user, name)
+    except Exception as e:
+        airflow = False
+        print(f"[labadmin] airflow {user}: {e}", flush=True)
     try:                                                 # bucket, its policy and keys
         lh._s3("HEAD", bucket).close()
         _empty_prefix(bucket, "")
@@ -330,7 +361,7 @@ def delete(user):
     if u:
         _kc("DELETE", f"/admin/realms/{REALM}/users/{u['id']}", token=kc)
     lh.publish_trino_rules()
-    return {"user": user, "catalogs": cats, "bucket": bucket, "jupyter_reset": jupyter}
+    return {"user": user, "catalogs": cats, "bucket": bucket, "jupyter_reset": jupyter, "airflow_cleaned": airflow}
 
 
 def registration():

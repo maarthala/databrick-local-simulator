@@ -140,6 +140,8 @@ spec:
             - { name: KEYCLOAK_ADMIN_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: keycloak-admin-password } } }
             - { name: KEYCLOAK_ADMIN, value: "{{ .Values.keycloak.adminUser }}:$(KEYCLOAK_ADMIN_PASSWORD)" }
             - { name: HUB_ADMIN_TOKEN, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: hub-admin-token } } }
+            - { name: AIRFLOW_ADMIN_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: airflow-admin-password } } }
+            - { name: AIRFLOW_ADMIN, value: "{{ .Values.airflow.adminUser }}:$(AIRFLOW_ADMIN_PASSWORD)" }   # delete tidies the member's Airflow role / history
           ports:
             - { name: http, containerPort: 8000 }
           readinessProbe:
