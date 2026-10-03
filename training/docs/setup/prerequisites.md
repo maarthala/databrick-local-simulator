@@ -219,7 +219,7 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 | Jupyter (notebooks) | http://localhost:8008 | your lab account — your **own** Jupyter, and `iceberg` = your own lakehouse |
 | Spark master UI | http://localhost:8002 | — |
 | Trino | through SQLPad / Superset (laptop stack: UI http://localhost:8007/ui/, CLI `:8007`) | lab account (via SQLPad / Superset) |
-| SQLPad (SQL workbench) | http://localhost:8003 | lab account (**Sign in with Epireum lab account**) |
+| SQLPad (SQL workbench) | http://localhost:8003 | lab account (from the landing page you go straight in) |
 | Superset (BI) | http://localhost:8004 | lab account (managers = Admin) |
 | Airflow | http://localhost:8001 (or the `AIRFLOW_HOST_PORT` you set) | lab account (managers = Admin) |
 | Polaris Console (governance) | http://localhost:8189 | lab account · Client ID/Secret form at `/login?local=1` (admin `root` / `s3cr3t`, [personas](personas.md)) |

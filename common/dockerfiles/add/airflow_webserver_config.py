@@ -20,6 +20,20 @@ if os.environ.get("KEYCLOAK_ENABLED") == "1":
     from airflow.providers.fab.auth_manager.security_manager.override import (
         FabAirflowSecurityManagerOverride,
     )
+    from airflow.providers.fab.auth_manager.views.auth_oauth import CustomAuthOAuthView
+    from flask import request
+    from flask_appbuilder import expose
+
+    class LabAuthOAuthView(CustomAuthOAuthView):
+        """Straight to the lab sign-in (the only provider) instead of a "Sign in with keycloak"
+        page — already signed in to the lab, the user lands in Airflow. /auth/login/?local=1 shows it."""
+
+        @expose("/login/")
+        @expose("/login/<provider>")
+        def login(self, provider=None):
+            if provider is None and request.args.get("local") != "1":
+                provider = "keycloak"
+            return super().login(provider)
 
     _KC = os.environ.get("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080").rstrip("/") + "/realms/de-lab"
 
@@ -49,6 +63,7 @@ if os.environ.get("KEYCLOAK_ENABLED") == "1":
 
     class LabSecurityManager(FabAirflowSecurityManagerOverride):
         """Username = identity; Keycloak groups → role mapping; learners also get lab_<user>."""
+        authoauthview = LabAuthOAuthView
 
         def _learner_role(self):
             role = self.find_role(LEARNER_ROLE) or self.add_role(LEARNER_ROLE)

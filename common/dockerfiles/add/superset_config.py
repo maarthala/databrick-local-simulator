@@ -52,8 +52,24 @@ if os.environ.get("KEYCLOAK_ENABLED") == "1":
         },
     }]
 
+    from flask import request
+    from flask_appbuilder import expose
+    from flask_appbuilder.security.views import AuthOAuthView
+
+    class LabAuthOAuthView(AuthOAuthView):
+        """Straight to the lab sign-in (the only provider) instead of a "Sign in with keycloak"
+        page — already signed in to the lab, the user lands in Superset. /login/?local=1 shows it."""
+
+        @expose("/login/")
+        @expose("/login/<provider>")
+        def login(self, provider=None):
+            if provider is None and request.args.get("local") != "1":
+                provider = "keycloak"
+            return super().login(provider)
+
     class LabSecurityManager(SupersetSecurityManager):
         """Learners have no email: username is the identity; groups → role mapping."""
+        authoauthview = LabAuthOAuthView
 
         def oauth_user_info(self, provider, response=None):
             me = self.appbuilder.sm.oauth_remotes[provider].get("userinfo").json()
@@ -67,3 +83,13 @@ if os.environ.get("KEYCLOAK_ENABLED") == "1":
             }
 
     CUSTOM_SECURITY_MANAGER = LabSecurityManager
+
+    def FLASK_APP_MUTATOR(app):
+        """Superset 6 serves its own React login page at /login/ (ahead of the OAuth view) — send
+        it straight to the lab sign-in as well; /login/?local=1 still shows the page."""
+        from flask import redirect
+
+        @app.before_request
+        def _straight_to_lab_login():
+            if request.path == "/login/" and request.args.get("local") != "1":
+                return redirect("/login/keycloak" + ("?" + request.query_string.decode() if request.query_string else ""))

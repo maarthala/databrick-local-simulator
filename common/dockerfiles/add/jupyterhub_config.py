@@ -30,6 +30,7 @@ c.GenericOAuthenticator.userdata_url = f"{KC_INTERNAL}/realms/{REALM}/protocol/o
 c.GenericOAuthenticator.scope = ["openid", "profile"]
 c.GenericOAuthenticator.username_claim = "preferred_username"
 c.GenericOAuthenticator.login_service = "Epireum's Data Engineering Lab"
+c.Authenticator.auto_login = True    # straight to the lab sign-in (already signed in → straight in)
 c.GenericOAuthenticator.allow_all = True                        # everyone in the realm
 c.GenericOAuthenticator.manage_groups = True                     # Keycloak groups → Hub groups
 c.GenericOAuthenticator.auth_state_groups_key = "oauth_user.groups"

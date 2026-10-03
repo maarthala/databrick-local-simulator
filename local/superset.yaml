@@ -26,6 +26,9 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+    volumes:   # lab code mounted over the image's copies (as on Kubernetes) — edits need only a restart
+      - ../common/dockerfiles/add/superset_config.py:/app/pythonpath/superset_config.py:ro
+      - ../common/dockerfiles/add/connections.py:/extras/connections.py:ro
     command: >
       /bin/bash -c "
         superset db upgrade &&

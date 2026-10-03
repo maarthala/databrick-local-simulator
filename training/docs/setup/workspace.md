@@ -26,8 +26,9 @@ Kubernetes. You land on the **Epireum's Data Engineering Lab** sign-in page:
     `demouser` only exists on the local stack.
 
 That one account signs you in to **every** tool — Jupyter, Airflow, Superset, SQLPad, the Polaris
-Console and the RustFS console. When a tool shows a **"Sign in with Epireum lab account"** button,
-click it; you won't be asked for your password again while you're signed in. **Log out** on the
+Console and the RustFS console. Open a tool from the landing page and you're straight in; you won't
+be asked for your password again while you're signed in. (Opened some other way, SQLPad and the
+RustFS console may show a **"Sign in with Epireum lab account"** button: click it.) **Log out** on the
 landing page ends your lab-account session (Jupyter follows within a minute); a tool you still have
 open — Superset, Airflow, SQLPad — keeps its own session until you log out there or it expires.
 

@@ -10,6 +10,9 @@ services:
     container_name: storage
     image: rustfs/rustfs:1.0.0
     restart: always
+    depends_on:              # loads the console sign-in from Keycloak once, at start-up
+      keycloak:
+        condition: service_healthy
     environment:
       RUSTFS_VOLUMES: /data
       RUSTFS_ADDRESS: 0.0.0.0:9000

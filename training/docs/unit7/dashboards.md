@@ -62,8 +62,8 @@ answer.
     different names.
 
 ## Lab
-Open Superset at [http://localhost:8004](http://localhost:8004) (k8s: `superset.de.lan`) and click
-**Sign in with Epireum lab account**.
+Open Superset from the landing page, or at [http://localhost:8004](http://localhost:8004) (k8s:
+`superset.de.lan`). Signed in to the lab, you go straight in.
 
 !!! note "Build your Gold first"
     The charts use **your** Gold marts — `daily_sales`, `top_products` and `customer_ltv` from
