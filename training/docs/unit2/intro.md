@@ -66,8 +66,8 @@ who you are, so you see your own lakehouse and the shared data, and nobody else'
 (local) / `sqlpad.de.lan` (k8s), sign in with your lab account, and pick the connection
 **Lakehouse (Trino) — demouser** (your own username). It reaches every Trino catalog you're allowed
 to use: `shopflow`, `adventureworks`, the shared `iceberg` lake and your own `demouser_lake`. The
-**ShopFlow — OLTP** and **AdventureWorks — OLTP** connections talk to Postgres directly. You
-don't need them for these lessons.
+**ShopFlow — OLTP** and **AdventureWorks — OLTP** connections talk to Postgres directly, read-only
+(it plays the shop's production database). You don't need them for these lessons.
 
 **B. Superset SQL Lab: read-only, nice for charts.** Open Superset at `http://localhost:8004`
 (local) or `superset.de.lan` (k8s), go to **SQL → SQL Lab**, and pick the **shopflow** database

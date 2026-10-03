@@ -143,30 +143,38 @@ df = pd.read_sql(
     plus `params=` close the hole: the value can never change the *shape* of the query, only fill
     a slot in it. Make it a habit for **every** externally-supplied value.
 
-### Write a DataFrame back to Postgres
-So far data has flowed *out* of the database. **`to_sql`** goes the other way — it takes a
-DataFrame and writes it *into* a table, handy for staging a computed result other tools can read:
+### Writing back: not to the production database
+So far data has flowed *out* of the database. The mirror call exists: **`to_sql`** takes a
+DataFrame and writes it *into* a table. But our ShopFlow and AdventureWorks databases play the
+**production** systems of the shop, and like at most companies, data engineers may **read**
+production but never change it. Your `learner` login is read-only, so try it and see:
 
 ```python
-table = "country_revenue_demouser"   # your own table (own account? use your username)
+by_country.to_sql("country_revenue", pg, if_exists="replace", index=False)
+# → InternalError: cannot execute CREATE TABLE in a read-only transaction
+```
 
-by_country.to_sql(table, pg, if_exists="replace", index=False)
-pd.read_sql(f"SELECT * FROM {table}", pg)
+That error is the point: you don't stage results in the source system. A computed result goes to
+**your own lakehouse**, where you're the owner. Turn the pandas DataFrame into a Spark one and
+save it as a table:
+
+```python
+spark.createDataFrame(by_country).writeTo("iceberg.gold.country_revenue").createOrReplace()
+spark.table("iceberg.gold.country_revenue").toPandas()      # read it back
 ```
 
 **Read it step by step:**
 
-- **`by_country.to_sql(...)`** — `to_sql` is a *method on the DataFrame*, the mirror image of
-  `read_sql`. It creates the table (if needed) and inserts the rows.
-- **`table`** — the target table name to create/write. The ShopFlow database is **shared by the
-  whole class**, so the name ends in your username — otherwise every learner would
-  overwrite the same table.
-- **`pg`** — the same engine again; `to_sql` needs to know *where* to write.
-- **`if_exists="replace"`** — what to do if that table already exists. `"replace"` drops and
-  recreates it; other choices are `"fail"` (raise an error) and `"append"` (add rows to it).
-- **`index=False`** — don't write the DataFrame's row index as an extra column. Usually what you
-  want, unless the index carries real data.
-- **The final `read_sql`** — reads the table straight back so you can confirm the write landed.
+- **`to_sql(...)`**: the pandas method for writing a DataFrame into a database table, the mirror
+  image of `read_sql`. It works on databases you're allowed to write to, such as a team's
+  reporting database, but not on production.
+- **`spark.createDataFrame(by_country)`**: copies the small pandas DataFrame into Spark.
+- **`.writeTo("iceberg.gold.country_revenue")`**: the target table in **your own** lakehouse
+  (`iceberg` = your `demouser_lake`), in its `gold` layer.
+- **`.createOrReplace()`**: creates the table, or replaces it if it already exists, so you can
+  re-run the cell. (`.append()` would add rows to an existing table instead.)
+- **The final `spark.table(...).toPandas()`** reads the table straight back so you can confirm the
+  write landed.
 
 ### Query the lakehouse from Python
 The lakehouse tables (built in [Unit 4](../unit4/spark-sql-gold.md)) are read through **Spark**,
@@ -252,7 +260,8 @@ revenue. Sort by revenue, highest first.
 | **SQLAlchemy engine** | A reusable DB connection factory built by `create_engine(url)` — makes/pools connections on demand |
 | **Connection URL** | `dialect+driver://user:pass@host:port/database` — swap it to point at a different DB |
 | **`pd.read_sql`** | Run a query on an engine/connection → DataFrame |
-| **`to_sql`** | Write a DataFrame → a database table (`if_exists`, `index`) |
+| **`to_sql`** | Write a DataFrame → a database table (`if_exists`, `index`); never into production |
+| **Read-only production** | Data engineers query the source systems but don't change them; results go to the lakehouse |
 | **Parameterised query** | Placeholders (`%(c)s`) + `params={...}` — pass values as *data*, never string-format them in |
 | **SQL injection** | The attack a parameterised query prevents: user input changing the query's shape |
 | **Pushdown** | Do filter/aggregate in the DB; return only the small result |
@@ -260,6 +269,6 @@ revenue. Sort by revenue, highest first.
 
 ## You can now…
 - Run SQL against Postgres from Python and get a DataFrame (`pd.read_sql`)
-- Write a DataFrame back to a database (`to_sql`)
+- Explain why you don't write to the production database, and save a result to your lakehouse instead
 - Read the lakehouse from Python with Spark (`spark.sql(...).toPandas()`)
 - Split work sensibly between the database (heavy SQL) and pandas (light shaping)

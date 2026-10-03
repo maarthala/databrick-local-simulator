@@ -735,8 +735,8 @@ def sync_trino():
 # Learners reach Trino only through SQLPad (a private connection under their own name) and
 # Superset (queries as the signed-in user); on k8s a NetworkPolicy keeps everyone else out. The
 # rules below mirror Polaris: a learner gets their own catalogs, exactly what was shared with
-# them, the shared lake read-only and the OLTP sources read-only (they write there through the
-# PostgreSQL `learner` login). Rewritten by home-api whenever Polaris changes (Trino re-reads
+# them, the shared lake read-only and the OLTP sources read-only (the PostgreSQL `learner` login
+# is read-only too: the sources play production). Rewritten by home-api whenever Polaris changes (Trino re-reads
 # the file every 30 s): a file locally, the ConfigMap trino-access on Kubernetes.
 TRINO_ADMINS = os.environ.get("TRINO_ADMIN_USERS", "lab|manager|admin")
 TRINO_RULES_PATH = os.environ.get("TRINO_RULES_PATH", "")          # local: a bind-mounted file

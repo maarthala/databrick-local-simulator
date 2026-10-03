@@ -34,9 +34,10 @@ concepts properly here, then walk into **Microsoft Fabric, Databricks or Snowfla
 
     ---
 
-    **OLTP**: write `INSERT` / `UPDATE` / `MERGE` against real operational databases (PostgreSQL —
-    the ShopFlow shop and AdventureWorks) in **SQLPad**. **OLAP**: run big joins, window functions
-    and CTEs over the lakehouse with **Trino**. Each SQL lesson shows the **T-SQL** (Fabric
+    **OLTP**: query real operational databases (PostgreSQL — the ShopFlow shop and AdventureWorks),
+    read-only like production, in **SQLPad**. **OLAP**: run big joins, window functions and CTEs
+    over the lakehouse with **Trino**, and write your own tables there with `INSERT` / `UPDATE` /
+    `MERGE`. Each SQL lesson shows the **T-SQL** (Fabric
     Warehouse / Synapse), Spark SQL and Snowflake version too.
 
 -   🧊 **A governed lakehouse**

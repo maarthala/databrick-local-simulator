@@ -8,15 +8,16 @@ operational app's database, or a SaaS tool (a CRM, a marketing platform). The la
 the answer once; reverse-ETL delivers that answer to the systems people already live in.
 
 A destination you write to is called a **sink** (the mirror of a *source*, which you read from).
-This recipe publishes one small Gold-style report to two sinks:
+This recipe publishes one small Gold-style report to two sinks: a CSV file drop, and a **serving
+table** an app reads.
 
 ```mermaid
 flowchart LR
   G["🥇 iceberg.gold.*<br/>country_report"] --> RE[Spark write]
   RE -->|CSV| S3[(RustFS<br/>exports/country_report/)]
-  RE -->|JDBC| PG[(Postgres<br/>public.country_report_demouser)]
+  RE -->|writeTo| ST[(Serving table<br/>iceberg.serving.country_report)]
   S3 --> BU[📥 Business users<br/>download the CSV]
-  PG --> APP[🖥️ Operational app<br/>reads the table]
+  ST --> APP[🖥️ App / dashboard<br/>reads it over SQL]
 ```
 
 **Why Gold is what you publish:** the same rule from [Unit 7.1](../unit7/dashboards.md) — you serve
@@ -26,10 +27,7 @@ finished metric (revenue by country), so there's nothing left to explain to whoe
 !!! info "Reverse-ETL is just ETL with the arrow reversed"
     Ordinary **ETL** moves data *from* operational systems *into* your warehouse/lakehouse.
     **Reverse-ETL** moves curated data *out of* the lakehouse *back into* operational systems. Same
-    machinery (`spark.write`), opposite direction. The classic case is the **JDBC** write in Cell C:
-    it's the exact mirror of the JDBC *read* you did in [Unit 4.2](../unit4/read-bronze.md) — there
-    you pulled Postgres tables *in* with `spark.read.format("jdbc")`; here you push a Gold table
-    *out* with `spark.write.format("jdbc")`. One protocol, both directions.
+    machinery (`spark.write`), opposite direction.
 
 ## Lab
 Assume the `spark` session from [4.1](../unit4/fundamentals.md) — the object named `spark` is your
@@ -92,49 +90,36 @@ one line per country — ready to hand to anyone.
     renames it to `country_report.csv`. The `coalesce(1)` is what guarantees there's only *one*
     part-file to point at.
 
-### Cell C — push it straight into an operational Postgres table
-The second sink is a live app database. This is **classic reverse-ETL**: the Gold number lands in a
-Postgres table that an operational application reads directly — no BI tool, no lakehouse in the loop.
+### Cell C — a serving table the app reads
+The second sink is a table an application or dashboard reads directly over SQL: a small
+**serving table** in its own namespace, holding just what the consumer needs.
 
 ```python
-(report.write.format("jdbc")
-       .option("url", "jdbc:postgresql://postgres:5432/shopflow")
-       .option("dbtable", "public.country_report_demouser")
-       .option("user", "learner").option("password", "learner")
-       .mode("overwrite").save())
+spark.sql("CREATE NAMESPACE IF NOT EXISTS iceberg.serving")
+report.writeTo("iceberg.serving.country_report").createOrReplace()
 ```
 
 **Read it step by step:**
 
-- **`report.write.format("jdbc")`** — write over a **JDBC** database driver instead of to files.
-  This is the *mirror image* of the JDBC **read** in [Unit 4.2](../unit4/read-bronze.md): same
-  `format("jdbc")`, same connection options — you're just going *out* instead of *in*.
-- **`.option("url", "jdbc:postgresql://postgres:5432/shopflow")`** — the connection string: the
-  `shopflow` database on host `postgres`, port `5432`. The identical URL you *read* from in Unit 4.
-- **`.option("dbtable", "public.country_report_demouser")`** — the **target table** to write. Spark
-  creates it if it doesn't exist. `public` is the Postgres schema; the table name ends in your
-  username because the ShopFlow database is **shared by the whole class** (own account? use your
-  username).
-- **`.option("user"/"password", …)`** — credentials for the write.
-- **`.mode("overwrite")`** — **replace** the table's contents each run (Spark drops & recreates it).
-  Use `"append"` instead to *add* today's rows to whatever's already there — the Challenge does this.
-- **`.save()`** — the *action* that runs the write.
+- **`CREATE NAMESPACE IF NOT EXISTS iceberg.serving`**: a separate namespace (schema) in your own
+  lakehouse for tables you publish to consumers, apart from your working `bronze`/`silver`/`gold`.
+- **`report.writeTo("iceberg.serving.country_report")`**: the target table. Readers get a stable
+  name to point their app at, whatever you change in your pipeline behind it.
+- **`.createOrReplace()`**: replaces the table's contents each run, so re-running always leaves
+  exactly one fresh copy (**idempotent**). `.append()` would *add* rows instead (the Challenge does
+  this).
 
-*Produces:* a Postgres table `public.country_report_demouser` with three rows. Any app connected to
-that database can now `SELECT * FROM country_report_demouser` and see the Gold number — the lakehouse result
-delivered into an operational system.
+*Produces:* `iceberg.serving.country_report` with three rows. An app or dashboard reads it with
+plain SQL, for example in SQLPad: `SELECT * FROM demouser_lake.serving.country_report`.
 
-Verify from Python (a JDBC read-back, straight out of Unit 4.2):
-
-```python
-(spark.read.format("jdbc")
-    .option("url", "jdbc:postgresql://postgres:5432/shopflow")
-    .option("dbtable", "public.country_report_demouser")
-    .option("user", "learner").option("password", "learner")
-    .load().show())
-```
-
-If three rows come back, the round-trip works: Gold → Postgres → read-back.
+!!! warning "Why not straight into the shop's Postgres?"
+    Classic reverse-ETL often writes into an operational app's database over JDBC (the mirror of
+    the JDBC *read* in [Unit 4.2](../unit4/read-bronze.md)): `report.write.format("jdbc")…save()`.
+    But ShopFlow's Postgres is our **production** database, and data engineers only get a
+    **read-only** login there (try it: the write fails with *cannot execute CREATE TABLE in a
+    read-only transaction*). In a real company the app team creates a dedicated table and a
+    separate service account that may write only to it, and the pipeline uses that account, never
+    a personal login.
 
 !!! tip "Publish as Excel, not just CSV"
     Some recipients want a real `.xlsx`, not a CSV. Since Gold reports are small, pull the DataFrame
@@ -156,8 +141,8 @@ If three rows come back, the round-trip works: Gold → Postgres → read-back.
 
 ## Challenge
 The report is published fresh each run today (`overwrite`). Make it a **daily history** instead:
-stamp each run with its date and **append** to a history table in Postgres,
-`country_report_history_demouser`, so it accumulates one batch per day. As a stretch, also write the CSV **partitioned by country** so each country gets its own
+stamp each run with its date and **append** to a history table,
+`iceberg.serving.country_report_history`, so it accumulates one batch per day. As a stretch, also write the CSV **partitioned by country** so each country gets its own
 folder of exports.
 
 !!! tip "The idea: append, don't overwrite"
@@ -173,12 +158,12 @@ folder of exports.
     # stamp each run with today's date
     dated = report.withColumn("run_date", F.current_date())
 
-    # (1) append daily history into its own Postgres table instead of overwriting
-    (dated.write.format("jdbc")
-        .option("url", "jdbc:postgresql://postgres:5432/shopflow")
-        .option("dbtable", "public.country_report_history_demouser")
-        .option("user", "learner").option("password", "learner")
-        .mode("append").save())
+    # (1) append daily history into its own table instead of overwriting
+    hist = "iceberg.serving.country_report_history"
+    if spark.catalog.tableExists(hist):
+        dated.writeTo(hist).append()
+    else:
+        dated.writeTo(hist).create()
 
     # (2) write CSV partitioned by country — one folder per country
     (report.write.mode("overwrite").option("header", True)
@@ -189,10 +174,9 @@ folder of exports.
 
     - **`.withColumn("run_date", F.current_date())`** — add a `run_date` column set to today's date,
       so each daily batch is distinguishable once they pile up in the same table.
-    - **`.mode("append")`** — *add* the new rows instead of replacing them. Run it three days running
-      and you get three dated batches — a growing history. It's a **separate table** because append
-      can't add the new `run_date` column to the 2-column `country_report_demouser` from Cell C — a
-      history table has its own shape.
+    - **`.append()`** — *add* the new rows instead of replacing them (the first run creates the
+      table). Run it three days running and you get three dated batches — a growing history. It's a
+      **separate table** because the history has an extra `run_date` column — its own shape.
     - **`.partitionBy("country")`** — split the CSV output into one folder per country
       (`country=US/`, `country=UK/`, `country=DE/`). A consumer who only wants one country reads
       just that folder. Note there's no `coalesce(1)` here — partitioning *is* the split you want.
@@ -201,8 +185,8 @@ folder of exports.
     daily history, overwrite when it only ever wants the latest snapshot.
 
 !!! tip "🎯 The same reverse-ETL on Azure Data Factory, Databricks & Fabric"
-    **What you just did:** published a Gold table out to two sinks — a CSV file drop and an
-    operational Postgres table — over the same `spark.write` you'd use anywhere.
+    **What you just did:** published a Gold table out to two sinks — a CSV file drop and a
+    serving table — over the same `spark.write` you'd use anywhere.
 
     - **Azure Data Factory** — a **Copy activity** with your Gold table as source and a **SQL /
       Blob sink** as destination; the "sink" concept is ADF's own word for it.
@@ -224,12 +208,13 @@ folder of exports.
 | **`coalesce(1)`** | Collapse to one partition → one output file, not many part-files |
 | **`.mode("overwrite")`** | Replace the target's contents each run (idempotent) |
 | **`.mode("append")`** | Add rows to what's already there — builds history |
-| **JDBC write** | `write.format("jdbc")` + a connection URL — mirror of the JDBC *read* |
+| **Serving table** | A small published table with a stable name that apps / dashboards read |
+| **JDBC write** | `write.format("jdbc")` into an app database, with a service account that may write there |
 | **`partitionBy(col)`** | Split output into one folder per value of that column |
 | **Why publish Gold** | Small, safe, business-ready — never publish Bronze/Silver |
 
 ## You can now…
 - Explain reverse-ETL — pushing curated Gold back out to a sink (file, app database, SaaS)
 - Publish a Gold report as a single downloadable CSV in object storage with `coalesce(1)`
-- Write a Gold table straight into an operational Postgres table over JDBC (the mirror of the 4.2 read)
+- Publish a Gold table as a serving table, and explain why pipelines don't write to production with personal logins
 - Choose `overwrite` vs `append`, and partition the output by column for per-value file drops
