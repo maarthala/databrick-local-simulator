@@ -99,8 +99,9 @@ example is written for it), or **Register** your own.
 
 ### 2 · The home page — your platform at a glance
 After signing in you land on the lab home: the tools grouped the way a data team thinks about
-them — **Build & explore**, **Query & visualise**, **Orchestrate**, **Govern & store**. The header
-shows who you are and your own lakehouse and bucket.
+them — **Build & explore** (notebooks, Spark, SQL), **Pipelines** (Airflow), **Visualize**
+(Superset) and **Lakehouse** (your files, catalogs and storage). The header shows who you are and
+your own lakehouse and bucket.
 
 ![The lab home page](assets/tour/home.jpg)
 

@@ -45,8 +45,8 @@ open — Superset, Airflow, SQLPad — keeps its own session until you log out t
 
 The top bar of the landing page shows it: **"your lakehouse: `<you>_lake` ✓ · bucket:
 `<you>-lake`"**, plus **📁 My files**, **🗂️ My catalogs** and **Log out**. Below it, the
-tools are grouped in four columns — *Build & explore*, *Query & visualise*, *Orchestrate*,
-*Govern & store*.
+tools are grouped in four columns — *Build & explore* (Notebook, Compute, SQL workbench),
+*Pipelines* (Airflow), *Visualize* (Superset) and *Lakehouse* (My files, My catalogs, Storage).
 
 ## Which lake am I querying?
 
@@ -147,8 +147,22 @@ tells you whose is whose.
   it, add namespaces and tables. (The Console's own **Catalogs** list shows `0` for learners:
   listing *all* catalogs is admin-only, so open yours from here.)
 
+## Starting over
+
+Broke your lakehouse, or want a clean slate for the next unit? Ask your **platform manager**
+(on your laptop stack, that's you: sign in as `manager`). On the landing page they have
+**👥 Manage members**, with two resets:
+
+| | What goes | What stays |
+|---|---|---|
+| **Reset lakehouse** | every table and view in your catalogs (bronze / silver / gold and the sample table come back) | your files, notebooks, DAGs, catalogs and shares |
+| **Wipe** | everything: tables, extra catalogs, the shares you gave, your bucket, your Jupyter files | your account; you're back to a new member's setup (lakehouse, sample table, starter files) |
+
+The same page lets managers create members, give someone a new password, and delete an account.
+
 ## You can now…
 - Register, sign in once and reach every tool with your lab account
 - Tell your own lakehouse (`iceberg` in Jupyter) from the shared lake (`shared` in Jupyter, `iceberg` in Trino)
 - Keep notebooks and DAGs in `notebooks/` and `dags/`, and name DAGs `<you>_…`
 - Create a catalog and share a namespace or table with another learner
+- Know when to ask a manager for a lakehouse reset or a full wipe
