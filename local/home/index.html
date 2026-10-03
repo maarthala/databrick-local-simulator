@@ -105,26 +105,14 @@
           <div class="ico">⚡</div>
           <div><h3>Compute</h3><p><b>Spark</b> — cluster master UI: jobs, workers, executors.</p></div>
         </a>
-        <a class="card mine" href="/files.html">
-          <div class="ico">📁</div>
-          <div><h3>My files</h3><p>Your bucket — notebooks, DAGs and data. Browse, upload, download.</p></div>
-        </a>
-      </section>
-
-      <section class="col">
-        <h4>Query &amp; visualise</h4>
         <a class="card" href="http://localhost:8003/auth/oidc" target="_blank">
           <div class="ico">🧰</div>
-          <div><h3>SQL workbench</h3><p><b>SQLPad</b> — run any SQL (incl. INSERT/UPDATE/DDL) on the lakehouse via Trino (your own connection) &amp; Postgres.</p></div>
-        </a>
-        <a class="card" href="http://localhost:8004" target="_blank">
-          <div class="ico">📊</div>
-          <div><h3>BI</h3><p><b>Superset</b> — dashboards &amp; SQL Lab over the Gold layer.</p></div>
+          <div><h3>SQL workbench</h3><p><b>SQLPad</b> — SQL on your lakehouse via Trino, incl. INSERT/UPDATE/DDL (your own connection); query the Postgres sources read-only.</p></div>
         </a>
       </section>
 
       <section class="col">
-        <h4>Orchestrate</h4>
+        <h4>Pipelines</h4>
         <a class="card" id="airflow-tile" href="http://localhost:8001" target="_blank">
           <div class="ico">🌬️</div>
           <div><h3>Orchestration</h3><p><b>Airflow</b> — schedule the Bronze→Silver→Gold pipeline. Your own DAGs come from your bucket's <code>dags/</code>.</p></div>
@@ -132,16 +120,28 @@
       </section>
 
       <section class="col">
-        <h4>Govern &amp; store</h4>
+        <h4>Visualize</h4>
+        <a class="card" href="http://localhost:8004" target="_blank">
+          <div class="ico">📊</div>
+          <div><h3>BI</h3><p><b>Superset</b> — dashboards &amp; SQL Lab over the Gold layer.</p></div>
+        </a>
+      </section>
+
+      <section class="col">
+        <h4>Lakehouse</h4>
+        <a class="card mine" href="/files.html">
+          <div class="ico">📁</div>
+          <div><h3>My files</h3><p>Your bucket — notebooks, DAGs and data. Browse, upload, download.</p></div>
+        </a>
+        <a class="card mine" href="/catalogs.html">
+          <div class="ico">🤝</div>
+          <div><h3>My catalogs</h3><p>Your catalogs: create, share namespaces or tables with other members, open them in the Polaris Console.</p></div>
+        </a>
         <!-- managers only (Polaris admin view of every catalog); members open their own catalogs
              in the Console from My catalogs — the Console can't list catalogs for them -->
         <a class="card" id="gov-tile" href="http://localhost:8189/?sso=1" target="_blank" hidden>
           <div class="ico">🗂️</div>
           <div><h3>Governance</h3><p><b>Polaris Console</b> — every catalog, principal, role &amp; grant (managers).</p></div>
-        </a>
-        <a class="card mine" href="/catalogs.html">
-          <div class="ico">🤝</div>
-          <div><h3>My catalogs</h3><p>Your catalogs: create, share namespaces or tables with other members, open them in the Polaris Console.</p></div>
         </a>
         <a class="card" href="http://localhost:9001/rustfs/admin/v3/oidc/authorize/default" target="_blank">
           <div class="ico">🪣</div>
