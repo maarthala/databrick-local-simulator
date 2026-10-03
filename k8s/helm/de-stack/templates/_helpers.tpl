@@ -61,3 +61,20 @@ app.kubernetes.io/part-of: de-stack
     # root-owned, and the volume is only visible inside this pod.
     defaultMode: 0444
 {{- end -}}
+
+{{/* Pod annotation: roll the pod whenever the lab code / seed ConfigMaps change. */}}
+{{- define "de-stack.labChecksum" -}}
+checksum/lab-code: {{ include (print .Template.BasePath "/lab-code.yaml") . | sha256sum }}
+{{- end }}
+
+{{/* Volume with the starter files laid out as seed/<path> (keys are flattened in lab-seed). */}}
+{{- define "de-stack.labSeedVolume" -}}
+- name: lab-seed
+  configMap:
+    name: lab-seed
+    items:
+{{- range $path, $_ := .Files.Glob "files/lab-seed/**" }}
+{{- $rel := trimPrefix "files/lab-seed/" $path }}
+      - { key: {{ $rel | replace "/" "__" }}, path: {{ $rel }} }
+{{- end }}
+{{- end }}

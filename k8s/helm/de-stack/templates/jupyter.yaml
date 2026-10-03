@@ -62,6 +62,8 @@ spec:
   template:
     metadata:
       labels: {{- include "de-stack.selector" (dict "app" "jupyterhub") | nindent 8 }}
+      annotations:
+        {{- include "de-stack.labChecksum" . | nindent 8 }}
     spec:
       serviceAccountName: jupyterhub
       enableServiceLinks: false
@@ -112,8 +114,13 @@ spec:
             limits:   { memory: 1Gi }
           volumeMounts:
             - { name: data, mountPath: /srv/jupyterhub/data }
+            - { name: lab-code, mountPath: /srv/jupyterhub/lakehouse.py, subPath: lakehouse.py }
+            - { name: lab-code, mountPath: /srv/jupyterhub/jupyterhub_config.py, subPath: jupyterhub_config.py }
+            - { name: lab-seed, mountPath: /srv/jupyterhub/seed }
       volumes:
         - { name: data, persistentVolumeClaim: { claimName: jupyterhub-data } }
+        - { name: lab-code, configMap: { name: lab-code } }
+        {{- include "de-stack.labSeedVolume" . | nindent 8 }}
 ---
 apiVersion: v1
 kind: Service

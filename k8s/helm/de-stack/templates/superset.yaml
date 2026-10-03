@@ -11,7 +11,11 @@ spec:
   template:
     metadata:
       labels: {{- include "de-stack.selector" (dict "app" "superset") | nindent 8 }}
+      annotations:
+        {{- include "de-stack.labChecksum" . | nindent 8 }}
     spec:
+      volumes:
+        - { name: lab-code, configMap: { name: lab-code } }
       containers:
         - name: superset
           image: {{ include "de-stack.image" (dict "root" $ "repo" .Values.superset.repo "tag" .Values.superset.tag) }}
@@ -40,6 +44,9 @@ spec:
               superset fab create-admin --username {{ .Values.superset.adminUser }} --firstname Superset --lastname Admin --email admin@superset.com --password "$SUPERSET_ADMIN_PASSWORD" &&
               superset init && python /extras/connections.py &&
               superset run -h 0.0.0.0 -p 8088 --with-threads --reload --debugger
+          volumeMounts:
+            - { name: lab-code, mountPath: /app/pythonpath/superset_config.py, subPath: superset_config.py }
+            - { name: lab-code, mountPath: /extras/connections.py, subPath: connections.py }
           ports:
             - { name: http, containerPort: 8088 }
           readinessProbe:

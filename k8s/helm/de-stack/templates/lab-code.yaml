@@ -1,0 +1,27 @@
+# The lab's own code and starter files, mounted over the copies baked into the images — so a
+# code-only change is `apply` + the pods roll by themselves (each Deployment carries a checksum
+# of these ConfigMaps); images are rebuilt only for package / jar / system changes.
+# files/lab/* and files/lab-seed are symlinks to common/dockerfiles/add (one copy of each file).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lab-code
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+{{- range $path, $_ := .Files.Glob "files/lab/*" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+---
+# Starter files every learner gets (seed/<path> → same path in their bucket). ConfigMap keys
+# can't contain "/", so paths are flattened here and restored by the volume's `items`.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lab-seed
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+{{- range $path, $_ := .Files.Glob "files/lab-seed/**" }}
+  {{ trimPrefix "files/lab-seed/" $path | replace "/" "__" }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}

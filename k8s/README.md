@@ -127,6 +127,13 @@ custom ones are built from `common/dockerfiles` by the Ansible `images` role:
 - **polaris-console** — upstream console + lab SSO (`Dockerfile.polaris-console`).
 - **Superset**, **airflow-slim**, **home** (nginx + baked training site).
 
+**Code changes need no image rebuild.** The lab's own Python and starter files (lakehouse,
+lab_spark, notebook start-up, Hub / Airflow / Superset config, seed files) are mounted from the
+ConfigMaps `lab-code` and `lab-seed` (`templates/lab-code.yaml`; `files/lab/*` are symlinks to
+`common/dockerfiles/add`). Edit the file, `helm template … | kubectl apply -f -`, and the pods
+that use it roll by themselves (each carries a checksum of the ConfigMaps). Rebuild an image only
+for new packages, jars or system tools.
+
 Unity Catalog + Keycloak have been removed (Polaris is the governance). To bring them
 back, restore their chart templates, `values.yaml` blocks, and the ansible
 `source_images` build spec from git history.

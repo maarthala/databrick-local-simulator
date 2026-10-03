@@ -112,6 +112,8 @@ spec:
   template:
     metadata:
       labels: {{- include "de-stack.selector" (dict "app" "home-api") | nindent 8 }}
+      annotations:
+        {{- include "de-stack.labChecksum" . | nindent 8 }}
     spec:
       containers:
         - name: home-api
@@ -133,6 +135,13 @@ spec:
             - { name: http, containerPort: 8000 }
           readinessProbe:
             httpGet: { path: /api/health, port: 8000 }
+          volumeMounts:   # lab code + starter files from the lab-code / lab-seed ConfigMaps
+            - { name: lab-code, mountPath: /app/lakehouse.py, subPath: lakehouse.py }
+            - { name: lab-code, mountPath: /app/app.py, subPath: home-api.py }
+            - { name: lab-seed, mountPath: /app/seed }
+      volumes:
+        - { name: lab-code, configMap: { name: lab-code } }
+        {{- include "de-stack.labSeedVolume" . | nindent 8 }}
 ---
 apiVersion: v1
 kind: Service

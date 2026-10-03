@@ -71,6 +71,9 @@ spec:
   template:
     metadata:
       labels: {{- include "de-stack.selector" (dict "app" "airflow") | nindent 8 }}
+      annotations:
+        {{- include "de-stack.labChecksum" . | nindent 8 }}
+        checksum/medallion-jobs: {{ (.Files.Glob "files/medallion-jobs/*.py").AsConfig | sha256sum }}
     spec:
       enableServiceLinks: false
       serviceAccountName: airflow
@@ -179,6 +182,12 @@ spec:
               readOnly: true
 {{- end }}
             - { name: logs, mountPath: /opt/airflow/logs }
+            # lab code (lab-code ConfigMap) over the copies in the image
+            - { name: lab-code, mountPath: /opt/airflow/webserver_config.py, subPath: airflow_webserver_config.py }
+            - { name: lab-code, mountPath: /opt/airflow/lab/learner_dags.py, subPath: airflow_learner_dags.py }
+            - { name: lab-code, mountPath: /opt/airflow/lab/airflow_local_settings.py, subPath: airflow_local_settings.py }
+            - { name: lab-code, mountPath: /opt/airflow/lab/lab_spark.py, subPath: lab_spark.py }
+            - { name: lab-code, mountPath: /opt/airflow/lab/lakehouse.py, subPath: lakehouse.py }
 {{- range $path, $_ := .Files.Glob "files/medallion-jobs/*.py" }}
             - name: medallion-jobs
               mountPath: /opt/airflow/jobs/{{ base $path }}
@@ -195,6 +204,7 @@ spec:
         - { name: dags, configMap: { name: airflow-dags } }
         - { name: logs, emptyDir: {} }
         - { name: medallion-jobs, configMap: { name: medallion-jobs } }
+        - { name: lab-code, configMap: { name: lab-code } }
 ---
 apiVersion: v1
 kind: Service

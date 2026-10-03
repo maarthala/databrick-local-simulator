@@ -66,8 +66,16 @@ if SPAWNER == "kubernetes":
     c.KubeSpawner.pvc_name_template = "claim-{username}"
     c.KubeSpawner.storage_capacity = env.get("SINGLEUSER_STORAGE", "1Gi")
     c.KubeSpawner.storage_class = env.get("SINGLEUSER_STORAGE_CLASS", "microk8s-hostpath")
-    c.KubeSpawner.volumes = [{"name": "work", "persistentVolumeClaim": {"claimName": "claim-{username}"}}]
-    c.KubeSpawner.volume_mounts = [{"name": "work", "mountPath": "/home/jovyan/work"}]
+    c.KubeSpawner.volumes = [{"name": "work", "persistentVolumeClaim": {"claimName": "claim-{username}"}},
+                             # the lab's own code (ConfigMap lab-code) over the copies in the image,
+                             # so code changes need no image rebuild; 0755 for the entrypoint
+                             {"name": "lab-code", "configMap": {"name": "lab-code", "defaultMode": 0o755}}]
+    c.KubeSpawner.volume_mounts = [{"name": "work", "mountPath": "/home/jovyan/work"}] + [
+        {"name": "lab-code", "mountPath": path, "subPath": key, "readOnly": True} for key, path in (
+            ("00-spark.py", "/home/jovyan/.ipython/profile_default/startup/00-spark.py"),
+            ("jupyter_server_config.py", "/etc/jupyter/jupyter_server_config.py"),
+            ("lab_sync.py", "/etc/jupyter/lab_sync.py"),
+            ("jupyter-entrypoint.sh", "/usr/local/bin/jupyter-entrypoint.sh"))]
     # hostpath volumes come up root-owned — hand them to jovyan before Jupyter starts
     c.KubeSpawner.init_containers = [{
         "name": "work-perms", "image": c.KubeSpawner.image, "command": ["sh", "-c", "chown 1000:1000 /home/jovyan/work"],
