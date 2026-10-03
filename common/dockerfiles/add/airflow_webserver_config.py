@@ -2,7 +2,7 @@
 
 On when KEYCLOAK_ENABLED=1, otherwise Airflow's normal database login. Users are created
 on first sign-in; Keycloak groups map to Airflow roles and are re-synced every login
-(managers → Admin, learners → User). Learners have no email, so the username is the
+(managers → Admin, learners → Learner + their own lab_<user> role). Learners have no email, so the username is the
 identity (placeholder <user>@de.lan for FAB's unique-email column).
 
 Endpoints come from Keycloak's discovery document fetched on the INTERNAL address:
@@ -25,8 +25,8 @@ if os.environ.get("KEYCLOAK_ENABLED") == "1":
 
     AUTH_TYPE = AUTH_OAUTH
     AUTH_USER_REGISTRATION = True
-    AUTH_USER_REGISTRATION_ROLE = "User"
-    AUTH_ROLES_MAPPING = {"managers": ["Admin"], "learners": ["User"]}
+    AUTH_USER_REGISTRATION_ROLE = "Learner"
+    AUTH_ROLES_MAPPING = {"managers": ["Admin"], "learners": ["Learner"]}
     AUTH_ROLES_SYNC_AT_LOGIN = True
     OAUTH_PROVIDERS = [{
         "name": "keycloak",
@@ -41,8 +41,41 @@ if os.environ.get("KEYCLOAK_ENABLED") == "1":
         },
     }]
 
+    # Learner = the built-in User role WITHOUT the global "DAGs" permissions: a learner sees and
+    # runs only the DAGs shared with their own role lab_<user> (their <user>_* DAGs, set by the
+    # dag policy in airflow_local_settings.py) plus the platform DAGs (read-only).
+    LEARNER_ROLE = "Learner"
+    _GLOBAL_DAG = {("can_read", "DAGs"), ("can_edit", "DAGs"), ("can_delete", "DAGs")}
+
     class LabSecurityManager(FabAirflowSecurityManagerOverride):
-        """Username = identity; Keycloak groups → role mapping."""
+        """Username = identity; Keycloak groups → role mapping; learners also get lab_<user>."""
+
+        def _learner_role(self):
+            role = self.find_role(LEARNER_ROLE) or self.add_role(LEARNER_ROLE)
+            if not [p for p in role.permissions if p.resource.name != "DAGs" and not p.resource.name.startswith("DAG:")]:
+                # first sign-in (the DAG policy may have created the role empty): copy User's
+                for perm in self.find_role("User").permissions:
+                    if (perm.action.name, perm.resource.name) not in _GLOBAL_DAG:
+                        self.add_permission_to_role(role, perm)
+            return role
+
+        def sync_perm_for_dag(self, dag_id, access_control=None):
+            """The DAG policy names lab_<user> / Learner in access_control; create a missing role
+            here (trusted process — DAG parsing has no database access) instead of failing the DAG."""
+            for name in (access_control or {}):
+                if self.find_role(name) is None:
+                    self.add_role(name)
+            return super().sync_perm_for_dag(dag_id, access_control)
+
+        def auth_user_oauth(self, userinfo):
+            self._learner_role()                         # exists before the role sync needs it
+            user = super().auth_user_oauth(userinfo)
+            if user and not any(r.name == "Admin" for r in user.roles):
+                own = self.find_role(f"lab_{user.username}") or self.add_role(f"lab_{user.username}")
+                if own not in user.roles:
+                    user.roles.append(own)
+                    self.update_user(user)
+            return user
 
         def get_oauth_user_info(self, provider, resp):
             me = self.appbuilder.sm.oauth_remotes[provider].get("userinfo").json()

@@ -74,7 +74,9 @@ folder in Jupyter's file browser (your bucket's `files/src/dags/`); the lab's Ai
 from there within about **30 seconds**. One Airflow is shared by the whole class, so one rule
 keeps names apart: **every `dag_id` starts with your username and `_`** — `demouser_…` for the
 default account. (A DAG that breaks the rule shows up under Airflow's **import errors** with the
-name it expects.) Your `dags/` folder already holds one example: `load_sample_orders.py`.
+name it expects.) In the Airflow UI you see **your own DAGs** (you can run, edit and delete them)
+and the platform's DAGs (read-only) — other learners' DAGs and runs stay private to them.
+Your `dags/` folder already holds one example: `load_sample_orders.py`.
 
 ## Optional: Airflow on your own machine
 The professional workflow is: **write a DAG, test it locally on your own machine, and only *then*
