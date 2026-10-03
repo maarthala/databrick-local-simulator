@@ -91,7 +91,8 @@ else:
         async def delete_forever(self):
             """The Hub user is deleted (Manage learners → wipe / delete): drop their work volume
             too, like KubeSpawner's delete_pvc."""
-            await super().delete_forever()
+            from jupyterhub.utils import maybe_future
+            await maybe_future(super().delete_forever())
             name = self.format_volume_name("jupyterhub-user-{username}", self)
             try:
                 await self.docker("remove_volume", name)
