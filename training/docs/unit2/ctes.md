@@ -65,7 +65,7 @@ a small, self-contained transformation you can understand (and test) on its own.
     each CTE is the fastest way to understand a chain you didn't write.
 
 ## Lab
-> Run these in the **Trino CLI** or **Superset SQL Lab** (see [2.1](intro.md)). In Superset,
+> Run these in **SQLPad** or **Superset SQL Lab** (see [2.1](intro.md)). In Superset,
 > pick the **shopflow / public** schema and skip the `USE` line below.
 
 ```sql

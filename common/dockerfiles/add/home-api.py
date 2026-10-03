@@ -181,16 +181,21 @@ class Handler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/api/catalogs":
                 return self._json(200, lh.my_catalogs(name))
             if method == "POST" and path == "/api/catalogs":
-                return self._json(200, lh.create_catalog(name, (q.get("name") or "").strip().lower()))
+                out = lh.create_catalog(name, (q.get("name") or "").strip().lower())
+                _rules_now()
+                return self._json(200, out)
             if method == "GET" and path == "/api/catalogs/tree":
                 return self._json(200, lh.catalog_tree(name, q.get("catalog", "")))
             if method == "GET" and path == "/api/catalogs/shares":
                 return self._json(200, lh.list_shares(name, q.get("catalog", "")))
             if method == "POST" and path == "/api/catalogs/shares":
-                return self._json(200, lh.share(name, q.get("catalog", ""), q.get("grantee", "").strip(),
-                                                q.get("access", "read"), q.get("namespace", ""), q.get("table") or None))
+                out = lh.share(name, q.get("catalog", ""), q.get("grantee", "").strip(),
+                               q.get("access", "read"), q.get("namespace", ""), q.get("table") or None)
+                _rules_now()
+                return self._json(200, out)
             if method == "DELETE" and path == "/api/catalogs/shares":
                 lh.revoke(name, q.get("catalog", ""), q.get("role", ""))
+                _rules_now()
                 return self._json(200, {"revoked": q.get("role")})
             return self._json(404, {"error": "not found"})
         except PermissionError as e:
@@ -245,15 +250,29 @@ class Handler(BaseHTTPRequestHandler):
         print(f"[home-api] {self.address_string()} {fmt % args}", flush=True)
 
 
+def _rules_now():
+    """A share / revoke / new catalog shows up in Trino right away (not on the next loop)."""
+    try:
+        lh.publish_trino_rules()
+    except Exception as e:  # noqa: BLE001 — the loop retries
+        print(f"[home-api] trino rules: {e}", flush=True)
+
+
 def _trino_sync_loop():
-    """Learner catalogs live in Trino's memory — re-add them every minute (Trino restarts)."""
+    """Learner catalogs live in Trino's memory — re-add them (Trino restarts); and keep Trino's
+    access rules in step with Polaris (owners, shares) — every 30 s."""
     import time
+    n = 0
     while True:
         try:
-            lh.sync_trino()
+            if n % 2 == 0:
+                lh.sync_trino()
+            if lh.publish_trino_rules():
+                print("[home-api] trino access rules updated", flush=True)
         except Exception as e:
             print(f"[home-api] trino sync: {e}", flush=True)
-        time.sleep(60)
+        n += 1
+        time.sleep(30)
 
 
 if __name__ == "__main__":

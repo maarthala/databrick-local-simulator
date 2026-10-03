@@ -8,7 +8,7 @@ same stack runs on **Docker Compose** (one machine) and **Kubernetes** (a cluste
 
 ```mermaid
 flowchart TB
-  USER([👩‍💻 You<br/>browser · Trino CLI])
+  USER([👩‍💻 You<br/>browser])
 
   subgraph EDGE["Access — one entry per tool"]
     HOME[home<br/>landing portal]
@@ -116,7 +116,7 @@ single sign-on, register on the home portal) for every tool; see [0.3](../setup/
 | Keycloak (accounts) | http://localhost:8180 | `auth.de.lan` | admin console `admin` / `admin` |
 | Polaris Console | http://localhost:8189 | `polaris-console.de.lan` | lab account · `/login?local=1`: `root` / `s3cr3t` or a persona |
 | Polaris API | http://localhost:8185 | `polaris.de.lan` | client id/secret |
-| Trino | http://localhost:8007/ui/ | `trino.de.lan` | any user, no password |
+| Trino | http://localhost:8007/ui/ (laptop only) | — (internal; use SQLPad / Superset) | lab account, via SQLPad / Superset |
 | Superset | http://localhost:8004 | `superset.de.lan` | lab account |
 | SQLPad | http://localhost:8003 | `sqlpad.de.lan` | lab account |
 | Jupyter (JupyterHub) | http://localhost:8008 | `jupyter.de.lan` | your lab account (own Jupyter + own lakehouse) |

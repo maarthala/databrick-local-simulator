@@ -48,7 +48,7 @@ flowchart LR
 ## Lab
 Set your context and confirm the data is present before you start.
 
-> Run this in the **Trino CLI** or **Superset SQL Lab** (see [2.1](intro.md)). In Superset,
+> Run this in **SQLPad** or **Superset SQL Lab** (see [2.1](intro.md)). In Superset,
 > pick the **shopflow / public** schema and skip the `USE` line below.
 
 ```sql

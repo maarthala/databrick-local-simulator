@@ -70,12 +70,6 @@ spec:
             - { name: SQLPAD_CONNECTIONS__adventureworks__username, value: "learner" }
             - { name: SQLPAD_CONNECTIONS__adventureworks__password, value: "learner" }
             # OLAP — Lakehouse (Trino / Iceberg)
-            - { name: SQLPAD_CONNECTIONS__lakehouse__name,     value: "Lakehouse — OLAP (Trino/Iceberg)" }
-            - { name: SQLPAD_CONNECTIONS__lakehouse__driver,   value: "trino" }
-            - { name: SQLPAD_CONNECTIONS__lakehouse__host,     value: "trino" }
-            - { name: SQLPAD_CONNECTIONS__lakehouse__port,     value: "8080" }
-            - { name: SQLPAD_CONNECTIONS__lakehouse__username, value: "admin" }
-            - { name: SQLPAD_CONNECTIONS__lakehouse__catalog,  value: "iceberg" }
           ports:
             - { name: http, containerPort: 3000 }
           volumeMounts:

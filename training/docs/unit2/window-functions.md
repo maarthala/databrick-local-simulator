@@ -61,7 +61,7 @@ using up to three parts:
 Work against the ShopFlow source. We build a small base with a **CTE** (`WITH …` — covered
 in [2.4](ctes.md)), then apply windows.
 
-> Run these in the **Trino CLI** or **Superset SQL Lab** (see [2.1](intro.md)). In Superset,
+> Run these in **SQLPad** or **Superset SQL Lab** (see [2.1](intro.md)). In Superset,
 > pick the **shopflow / public** schema and skip the `USE` line below.
 
 ```sql

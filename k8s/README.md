@@ -76,7 +76,7 @@ deploy playbook runs it). The platform manager reads one with
 | RustFS console | `http://storage.de.lan/rustfs/console/` | lab account (own bucket) · root `admin` / secret `storage-root-password` |
 | Polaris Console | `http://polaris-console.de.lan` | lab account · `/login?local=1`: personas `analyst`/`engineer`/`lead` (secret `polaris-persona-secret`), admin `root` (secret `polaris-root-secret`) |
 | Polaris API | `http://polaris.de.lan` | OAuth2 client credentials (realm `POLARIS`) |
-| Trino (monitor UI) | `http://trino.de.lan/ui/` | any username, no password |
+| Trino | — (internal: only SQLPad, Superset, home-api and JupyterHub reach it) | manager: `kubectl -n de-stack port-forward svc/trino 8080` → `http://localhost:8080/ui/` as `manager` |
 | Superset | `http://superset.de.lan` | lab account |
 | SQLPad (SQL workbench) | `http://sqlpad.de.lan` | lab account |
 | Airflow | `http://airflow.de.lan` | lab account |
@@ -91,8 +91,10 @@ deploy playbook runs it). The platform manager reads one with
    Polaris, which enforces each learner's access.
    **Personas** (governance lessons): `http://polaris-console.de.lan/login?local=1` with
    `analyst` / `engineer` / `lead` with the secret `polaris-persona-secret` (admin `root`: `polaris-root-secret`).
-3. **Query the lake with SQL** — Trino (`iceberg` catalog) via the CLI, or Superset's SQL
-   Lab (Trino → Iceberg connection is pre-configured).
+3. **Query the lake with SQL** — SQLPad (each learner has a private connection
+   "Lakehouse (Trino) — <user>") or Superset's SQL Lab. Both pass the learner's identity to Trino,
+   whose access rules (generated from Polaris by home-api every 30 s, ConfigMap `trino-access`)
+   allow only the learner's own lake, shares, and read-only shared data.
 4. **Manage access** — create catalogs/namespaces/principals and grant/revoke in the Polaris
    Console, or via the REST API (see `common/polaris/seed-polaris.sh` for the API calls).
 5. **Schedule / notebooks** — Airflow loads DAGs from the `de-lab` repo (git-sync) **and**

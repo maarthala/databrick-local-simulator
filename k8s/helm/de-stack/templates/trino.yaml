@@ -9,6 +9,20 @@ data:
 {{ .Files.Get "files/trino/config.properties" | indent 4 }}
   jvm.config: |
 {{ .Files.Get "files/trino/jvm.config" | indent 4 }}
+  access-control.properties: |
+{{ .Files.Get "files/trino/access-control.properties" | indent 4 }}
+---
+# Who may query what. home-api rewrites rules.json from Polaris (owners, shares) through the
+# Kubernetes API and re-applies it within 30 s when a chart apply resets it to this start value
+# (only the platform's own users until then). Mounted as a directory so updates reach the pod.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-access
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+data:
+  rules.json: |
+    {"catalogs": [{"user": "lab|manager|admin", "allow": "owner"}]}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -50,6 +64,8 @@ spec:
           volumeMounts:
             - { name: cfg, mountPath: /etc/trino/config.properties, subPath: config.properties }
             - { name: cfg, mountPath: /etc/trino/jvm.config, subPath: jvm.config }
+            - { name: cfg, mountPath: /etc/trino/access-control.properties, subPath: access-control.properties }
+            - { name: access, mountPath: /etc/trino/access }
             - { name: catalog, mountPath: /etc/trino/catalog/iceberg.properties, subPath: iceberg.properties }
             - { name: catalog, mountPath: /etc/trino/catalog/shopflow.properties, subPath: shopflow.properties }
 {{- if .Values.adventureworks.enabled }}
@@ -62,6 +78,24 @@ spec:
       volumes:
         - { name: cfg, configMap: { name: trino-config } }
         - { name: catalog, configMap: { name: trino-catalog } }
+        - { name: access, configMap: { name: trino-access } }
+---
+# Learners don't talk to Trino directly: only the services that pass on who is signed in
+# (SQLPad, Superset) and the platform's own (home-api, JupyterHub provisioning) may connect.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: trino-clients
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "de-stack.selector" (dict "app" "trino") | nindent 6 }}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector: { matchExpressions: [{ key: app.kubernetes.io/name, operator: In, values: [sqlpad, superset, home-api, jupyterhub] }] }
+      ports:
+        - { port: 8080, protocol: TCP }
 ---
 apiVersion: v1
 kind: Service
@@ -72,22 +106,5 @@ spec:
   selector: {{- include "de-stack.selector" (dict "app" "trino") | nindent 4 }}
   ports:
     - { name: http, port: 8080, targetPort: 8080 }
-{{- if .Values.ingress.enabled }}
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: trino
-  labels: {{- include "de-stack.labels" . | nindent 4 }}
-spec:
-  ingressClassName: {{ .Values.ingress.className }}
-  rules:
-    - host: trino.{{ .Values.ingress.baseHost }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: trino, port: { number: 8080 } }
-{{- end }}
+# (no Ingress: the Trino UI is for the platform manager — kubectl port-forward svc/trino 8080)
 {{- end }}

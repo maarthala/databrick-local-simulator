@@ -34,7 +34,7 @@ A view stores **no data**, only the query. Every time someone reads it, the engi
 - **Limit what people see.** Expose only some columns or rows through a view (e.g. no emails).
 
 ## Lab
-> Run these in **SQLPad**, the **Trino CLI**, or **Superset SQL Lab** (see [2.1](intro.md)).
+> Run these in **SQLPad** or **Superset SQL Lab** (see [2.1](intro.md)).
 > Views are saved in your own lakehouse schema, `demouser_lake.my_lab` from
 > [2.1](intro.md#make-your-own-space-in-the-lakehouse). Create it if you dropped it:
 

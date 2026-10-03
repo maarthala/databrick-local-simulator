@@ -46,7 +46,7 @@ That one construct powers everything else in this lesson — labelling rows, cou
 them, and pivoting rows into columns are all just `CASE` wearing different hats.
 
 ## Lab
-> Run these in the **Trino CLI** or **Superset SQL Lab** (see [2.1](intro.md)). In Superset,
+> Run these in **SQLPad** or **Superset SQL Lab** (see [2.1](intro.md)). In Superset,
 > pick the **shopflow / public** schema and skip the `USE` line below.
 
 ```sql

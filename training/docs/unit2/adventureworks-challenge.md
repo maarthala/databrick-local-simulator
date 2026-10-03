@@ -47,7 +47,7 @@ couple of things differ from SQL Server / the docs:
 
 **How to run these:**
 
-=== "Trino CLI / Superset SQL Lab"
+=== "Superset SQL Lab (or the laptop Trino CLI)"
     Set the catalog + schema once, then reference other schemas as `schema.table`:
     ```sql
     USE adventureworks.sales;
@@ -56,8 +56,8 @@ couple of things differ from SQL Server / the docs:
     ```
 
 === "SQLPad"
-    Pick the **Lakehouse — OLAP (Trino/Iceberg)** connection, then fully-qualify with the
-    `adventureworks` catalog (it defaults to `iceberg`):
+    Pick the **Lakehouse (Trino) — demouser** connection (your username), then fully-qualify with the
+    `adventureworks` catalog (it defaults to your own `demouser_lake`):
     ```sql
     SELECT COUNT(*) FROM adventureworks.sales.salesorderheader;
     ```

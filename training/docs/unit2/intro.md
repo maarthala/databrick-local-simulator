@@ -58,34 +58,27 @@ flowchart TB
     query engine.
 
 ## Lab
-The stack is already running (see the [architecture](../unit0/architecture.md)). You'll run
-SQL a few ways in this course — use whichever fits (for read-only queries any of them work;
-for lessons that **write** data, use the Trino CLI or SQLPad — Superset is read-only):
+The stack is already running (see the [architecture](../unit0/architecture.md)). You run the
+Trino SQL in this course in your browser, signed in with your lab account. Trino always knows
+who you are, so you see your own lakehouse and the shared data, and nobody else's.
 
-**A. The Trino command-line client** — point the `trino` CLI at the server:
+**A. SQLPad: your main SQL workbench (reads *and* writes).** Open it at `http://localhost:8003`
+(local) / `sqlpad.de.lan` (k8s), sign in with your lab account, and pick the connection
+**Lakehouse (Trino) — demouser** (your own username). It reaches every Trino catalog you're allowed
+to use: `shopflow`, `adventureworks`, the shared `iceberg` lake and your own `demouser_lake`. The
+**ShopFlow — OLTP** and **AdventureWorks — OLTP** connections talk to Postgres directly. You
+don't need them for these lessons.
 
-```bash
-# Local
-trino --server http://localhost:8007
+**B. Superset SQL Lab: read-only, nice for charts.** Open Superset at `http://localhost:8004`
+(local) or `superset.de.lan` (k8s), go to **SQL → SQL Lab**, and pick the **shopflow** database
+with the **public** schema. Skip the `USE` line, because in SQL Lab you choose the schema from the
+dropdown instead. SQL Lab only runs `SELECT`, so use SQLPad for any lesson that creates or changes
+data (`CREATE`/`INSERT`/`UPDATE`/`MERGE`/DDL).
 
-# Kubernetes
-trino --server http://trino.de.lan
-```
-
-You'll get a `trino>` prompt; type SQL and end each statement with `;`. (Don't have the CLI yet?
-See [Prerequisites → the Trino CLI](../setup/prerequisites.md#2-the-trino-cli-recommended) for the
-one-line install on macOS, Windows, or Linux.)
-
-**B. Superset SQL Lab** — nothing to install, just a browser. Open Superset at
-`http://localhost:8004` (local) or `superset.de.lan` (k8s), sign in with your lab account, go to
-**SQL → SQL Lab**, and pick the **shopflow** database with the **public** schema. Then paste the
-queries below (skip the `USE` line — in SQL Lab you choose the schema from the dropdown instead).
-
-**C. SQLPad — a SQL workbench that can also *write*.** Superset SQL Lab is **read-only** (it only
-runs `SELECT`); when a lesson creates or changes data (`CREATE`/`INSERT`/`UPDATE`/`MERGE`/DDL),
-use **SQLPad** (or the Trino CLI). Open it at `http://localhost:8003` (local) / `sqlpad.de.lan`
-(k8s), sign in with your lab account, and pick a connection: **ShopFlow — OLTP**,
-**AdventureWorks — OLTP**, or **Lakehouse — OLAP (Trino/Iceberg)**.
+!!! note "What about the Trino CLI?"
+    On the team stack, Trino only accepts queries from SQLPad and Superset, because they tell it
+    who you are. If you run the stack **on your own laptop**, you can also use the `trino` CLI
+    (`trino --server http://localhost:8007`; see [Prerequisites](../setup/prerequisites.md#2-the-trino-cli-optional)).
 
 !!! note "SQLPad hides *empty* schemas"
     SQLPad's left schema sidebar only lists schemas that contain at least one **table** — so a
@@ -95,8 +88,8 @@ use **SQLPad** (or the Trino CLI). Open it at `http://localhost:8003` (local) / 
     caught up — the sidebar is just for browsing.
 
 !!! note "The `http://localhost:8007/ui/` page is *monitoring*, not a query editor"
-    That web UI shows running/finished queries and their stats — handy for seeing the engine
-    work, but you write SQL in the CLI or Superset, not there.
+    On the laptop stack, that web UI shows running and finished queries with their stats. It's
+    handy for watching the engine work, but you write SQL in SQLPad or Superset, not there.
 
 ### First — confirm it's working
 Before anything else, run this smoke test. It checks two things: that the **engine responds**,
@@ -121,8 +114,8 @@ Expected result of the second query:
 |--------|
 | 40000  |
 
-If the first query fails, your connection is wrong (check the `--server` URL, or that you're
-signed into Superset). If the first works but the second errors, the `shopflow` catalog or its
+If the first query fails, your connection is wrong (check that you picked the **Lakehouse (Trino)**
+connection in SQLPad, or that you're signed into Superset). If the first works but the second errors, the `shopflow` catalog or its
 data isn't available — confirm the stack is fully up and the data has been seeded. Once both
 succeed, you're ready.
 

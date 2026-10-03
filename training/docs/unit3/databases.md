@@ -1,21 +1,21 @@
 # 3.6 SQL from Python — Postgres & the lakehouse
 
 ## Concept
-You've run SQL in the Trino CLI and Superset ([Unit 2](../unit2/intro.md)). But the everyday
+You've run SQL in SQLPad and Superset ([Unit 2](../unit2/intro.md)). But the everyday
 data-engineering move is to run SQL **from Python** and pull the result straight into a pandas
 DataFrame — so you can then transform it, call an API, or load it somewhere else. Two connections
 matter, both on our stack:
 
 - **Postgres** — the raw ShopFlow OLTP source (`customers`, `products`, `orders`, `order_items`).
-- **Trino → the `iceberg` lakehouse** — the Bronze/Silver/Gold tables (once built in Unit 4).
+- **The lakehouse** (via Spark) — the Bronze/Silver/Gold tables (once built in Unit 4).
 
 ### How Python talks to a database
 Python can't speak a database's private language on its own — it needs a translator. Three
 layers do the work, and every cell below sits on top of them:
 
 - **A driver** — a small library that speaks the database's wire protocol (the exact bytes it
-  expects). For Postgres that driver is **psycopg2**; for the lakehouse it's the **Trino
-  client**. You rarely call the driver directly, but it's the thing actually sending SQL over the
+  expects). For Postgres that driver is **psycopg2**; for the lakehouse, Spark does this
+  job. You rarely call the driver directly, but it's the thing actually sending SQL over the
   network and decoding the reply.
 - **SQLAlchemy** — a layer *on top* of the driver that gives every database the **same** entry
   point: `create_engine(<URL>)`. Swap the URL and the same Python code talks to a different
@@ -168,52 +168,35 @@ pd.read_sql(f"SELECT * FROM {table}", pg)
   want, unless the index carries real data.
 - **The final `read_sql`** — reads the table straight back so you can confirm the write landed.
 
-### Query the lakehouse via Trino
-Here's the *"same Python, two homes"* payoff. The **same `create_engine` + `read_sql`**, just a
-`trino://` URL instead of a Postgres one — so you can query the governed `iceberg` lakehouse tables
-(built in [Unit 4](../unit4/spark-sql-gold.md)) from Python:
+### Query the lakehouse from Python
+The lakehouse tables (built in [Unit 4](../unit4/spark-sql-gold.md)) are read through **Spark**,
+not through a database driver. Your notebook already has a `spark` session, and `toPandas()` turns
+the result into the same kind of DataFrame you got from Postgres:
 
 ```python
-from sqlalchemy import create_engine
-
-# same create_engine() as Postgres — only the URL changes (catalog = iceberg, no password)
-lake = create_engine("trino://learner@trino:8080/iceberg")
-
 # the course's shared lake: a ready-made Gold mart (you build your own in Unit 4)
-daily = pd.read_sql(
-    "SELECT * FROM iceberg.gold.daily_sales ORDER BY order_date DESC LIMIT 14",
-    lake,
-)
+daily = spark.sql(
+    "SELECT * FROM shared.gold.daily_sales ORDER BY order_date DESC LIMIT 14"
+).toPandas()
 daily
 ```
 
 **Read it step by step:**
 
-- **`create_engine("trino://learner@trino:8080/iceberg")`** — the *same* `create_engine` you used
-  for Postgres, just a **`trino://`** URL of the shape `trino://<user>@<host>:<port>/<catalog>`.
-  `learner` is the user (Trino needs no password), `trino:8080` is the query engine, and `iceberg`
-  is the default **catalog** — the course's **shared** lake. The `trino` package ships the SQLAlchemy dialect that
-  makes this URL work — so pandas gets a real **engine**, exactly like Postgres.
-- **`pd.read_sql("SELECT * FROM iceberg.gold.daily_sales ...", lake)`** — the *identical* pandas
-  call as for Postgres. Only two things changed: the engine (`lake` instead of `pg`) and the
-  fully-qualified table name (`iceberg.gold.daily_sales`).
-- **What comes back** — again a plain DataFrame (the 14 most recent days of the Gold sales mart),
-  indistinguishable from one read out of Postgres.
-- **Your own lakehouse** is a catalog too: `demouser_lake` (e.g. `ravi_lake`). Once you've built
-  tables in [Unit 4](../unit4/fundamentals.md), the same engine reads them —
-  `pd.read_sql("SELECT * FROM demouser_lake.gold.daily_sales", lake)`.
+- **`spark.sql(...)`** runs the query on the Spark cluster. Spark goes through Polaris, so you see
+  only the tables you're allowed to see.
+- **`shared.gold.daily_sales`** is a table in the course's **shared** lake. `iceberg` is **your own**
+  lakehouse. Once you've built tables in [Unit 4](../unit4/fundamentals.md), read them with
+  `spark.sql("SELECT * FROM iceberg.gold.daily_sales").toPandas()`.
+- **`.toPandas()`** brings the result back into Python as a plain pandas DataFrame, the same as
+  `pd.read_sql` does for Postgres. Keep it small (use `LIMIT` or aggregate first), because the
+  whole result is copied into your notebook.
 
-!!! tip "Give pandas an *engine*, not a raw connection"
-    `pd.read_sql` officially supports a **SQLAlchemy engine** (or a URL string). If you instead pass
-    a raw DBAPI connection — e.g. `trino.dbapi.connect(...)` — it still returns the data, but pandas
-    prints `UserWarning: pandas only supports SQLAlchemy connectable…`. Using
-    `create_engine("trino://…")` keeps that warning away **and** keeps the Postgres and lakehouse
-    code identical.
-
-!!! tip "Postgres vs Trino from Python — which connection?"
-    Use the **Postgres** engine to read the *raw source*; use the **Trino** connection to read
-    the *lakehouse* (`iceberg.bronze/silver/gold`) — one Python skill, two data tiers. Both return
-    ordinary DataFrames you can then transform with [pandas](pandas.md).
+!!! tip "Postgres vs the lakehouse from Python: which connection?"
+    Use the **Postgres** engine to read the *raw source*, and **Spark** to read the *lakehouse*
+    (`iceberg` / `shared`). Both give you ordinary DataFrames that you can then transform with
+    [pandas](pandas.md). If you want to query the lakehouse with plain SQL instead, use
+    **SQLPad** ([Unit 2](../unit2/intro.md)).
 
 ## Challenge
 Using the **Postgres** connection, pull *delivered revenue per product category* into a
@@ -265,7 +248,7 @@ revenue. Sort by revenue, highest first.
 ## Key terms, at a glance
 | Term | Plain meaning |
 |---|---|
-| **Driver** | Library that speaks a DB's wire protocol — `psycopg2` (Postgres), Trino client (lakehouse) |
+| **Driver** | Library that speaks a DB's wire protocol — `psycopg2` (Postgres) |
 | **SQLAlchemy engine** | A reusable DB connection factory built by `create_engine(url)` — makes/pools connections on demand |
 | **Connection URL** | `dialect+driver://user:pass@host:port/database` — swap it to point at a different DB |
 | **`pd.read_sql`** | Run a query on an engine/connection → DataFrame |
@@ -273,10 +256,10 @@ revenue. Sort by revenue, highest first.
 | **Parameterised query** | Placeholders (`%(c)s`) + `params={...}` — pass values as *data*, never string-format them in |
 | **SQL injection** | The attack a parameterised query prevents: user input changing the query's shape |
 | **Pushdown** | Do filter/aggregate in the DB; return only the small result |
-| **`trino://` engine** | `create_engine("trino://user@host:port/catalog")` — a SQLAlchemy engine for the lakehouse (the `trino` package ships the dialect) |
+| **`toPandas()`** | Turns a Spark result into a pandas DataFrame — how Python reads the lakehouse |
 
 ## You can now…
 - Run SQL against Postgres from Python and get a DataFrame (`pd.read_sql`)
 - Write a DataFrame back to a database (`to_sql`)
-- Query the `iceberg` lakehouse via a Trino connection from Python
+- Read the lakehouse from Python with Spark (`spark.sql(...).toPandas()`)
 - Split work sensibly between the database (heavy SQL) and pandas (light shaping)

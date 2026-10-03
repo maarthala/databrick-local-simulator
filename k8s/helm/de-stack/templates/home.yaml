@@ -115,6 +115,7 @@ spec:
       annotations:
         {{- include "de-stack.labChecksum" . | nindent 8 }}
     spec:
+      serviceAccountName: home-api        # may update the trino-access ConfigMap (Trino's rules)
       containers:
         - name: home-api
           image: {{ .Values.homeApi.image }}
@@ -131,6 +132,7 @@ spec:
             - { name: TRINO_POLARIS_LOGIN, value: "trino_lab:$(TRINO_LAB_SECRET)" }
             - { name: SQLPAD_ADMIN_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: sqlpad-admin-password } } }
             - { name: SQLPAD_ADMIN, value: "{{ .Values.sqlpad.adminEmail }}:$(SQLPAD_ADMIN_PASSWORD)" }   # invites learners to SQLPad
+            - { name: TRINO_RULES_CONFIGMAP, value: trino-access }   # Trino's access rules, kept in step with Polaris
           ports:
             - { name: http, containerPort: 8000 }
           readinessProbe:
@@ -215,4 +217,32 @@ spec:
   ports:
     - { name: http, port: 4180, targetPort: 4180 }
 {{- end }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: home-api
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+---
+# home-api keeps Trino's access rules (ConfigMap trino-access) in step with Polaris — that one
+# ConfigMap and nothing else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: home-api-trino-rules
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["trino-access"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: home-api-trino-rules
+  labels: {{- include "de-stack.labels" . | nindent 4 }}
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: home-api-trino-rules }
+subjects:
+  - { kind: ServiceAccount, name: home-api, namespace: {{ .Release.Namespace }} }
 {{- end }}

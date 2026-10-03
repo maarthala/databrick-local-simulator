@@ -96,7 +96,7 @@ the SQLAlchemy URI, click **Test Connection** (you want to see *Connection looks
 
 !!! tip "Check it in SQL Lab first"
     **SQL Lab** is Superset's built-in query editor — a place to type raw SQL and see rows, exactly
-    like the Trino CLI. Before building any chart, use it to prove the plumbing works. Go to
+    like SQLPad. Before building any chart, use it to prove the plumbing works. Go to
     **SQL → SQL Lab**, pick the **ShopFlow Lakehouse** connection, and run:
 
     ```sql

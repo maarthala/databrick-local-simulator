@@ -12,7 +12,7 @@ each tool the way you would in a real job: through its web UI or its client.
 
 ```mermaid
 flowchart LR
-  YOU["💻 Your machine<br/>browser · trino CLI"] -->|http / SQL| STACK["🐳 The stack<br/>Trino · Superset · Airflow<br/>Jupyter · Polaris · RustFS"]
+  YOU["💻 Your machine<br/>browser"] -->|http / SQL| STACK["🐳 The stack<br/>Trino · Superset · Airflow<br/>Jupyter · Polaris · RustFS"]
 ```
 
 ## What you need
@@ -20,10 +20,10 @@ flowchart LR
 | # | Thing | Required? | Why |
 |---|---|---|---|
 | 1 | A modern **web browser** | ✅ Always | Every tool (Superset, Airflow, Jupyter, Polaris Console, RustFS) is a web UI |
-| 2 | The **Trino CLI** | ⭐ Recommended | The fastest way to run the SQL in [Unit 2](../unit2/intro.md) (or use Superset SQL Lab instead) |
+| 2 | The **Trino CLI** | Optional, laptop stack only | A terminal client for Trino. On a team stack you run SQL in SQLPad / Superset instead |
 | 3 | **Docker Desktop** + Git | ⚙️ Only if *you* run the stack | Needed to bring the platform up on your own laptop |
 
-Items 1–2 are all a learner needs when the stack is provided for you (a shared server, or an
+Item 1 is all a learner needs when the stack is provided for you (a shared server, or an
 instructor's machine). Item 3 is only for running the whole thing yourself.
 
 !!! note "One lab account for everything — and no hosts-file entry"
@@ -46,22 +46,17 @@ everything:
 
 ---
 
-## 2. The Trino CLI (recommended)
+## 2. The Trino CLI (optional)
 
-[Unit 2](../unit2/intro.md) runs SQL against the lakehouse. You have two ways to do it — pick either:
+[Unit 2](../unit2/intro.md) runs SQL against the lakehouse in **SQLPad** (or Superset SQL Lab),
+in the browser. Nothing to install, so you can skip this section.
 
-- **Trino CLI** — a small command-line client you install once (this section), or
-- **Superset SQL Lab** — nothing to install, just the browser at `http://localhost:8004`
-  (**SQL → SQL Lab**). If you'd rather not install anything, use this and skip ahead.
-
-The Trino CLI is a single self-contained program. Once installed you connect with:
+The Trino CLI only works when you run the stack **on your own laptop**. On a team stack, Trino
+accepts queries only from SQLPad and Superset, because they tell it who you are. Once installed,
+connect with:
 
 ```bash
-# Local (Docker)
-trino --server http://localhost:8007
-
-# Kubernetes
-trino --server http://trino.de.lan
+trino --server http://localhost:8007 --user demouser
 ```
 
 You'll get a `trino>` prompt — type SQL, end each statement with `;`, quit with `quit;`.
@@ -198,7 +193,7 @@ Run through this checklist once — if all three pass, you're ready for Unit 1.
    first login.
 2. **Single sign-on works** — open the **Governance** tile (Polaris Console). It signs you in with
    your lab account without asking again; your own lakehouse `<name>_lake` is there.
-3. **SQL works** — either in the Trino CLI or Superset SQL Lab:
+3. **SQL works**: in SQLPad (connection **Lakehouse (Trino) — demouser**) or Superset SQL Lab:
 
     ```sql
     SELECT 'ready!' AS status;
@@ -223,7 +218,7 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
 | Training course | https://maarthala.github.io/databrick-local-simulator/ | — (linked from the landing page) |
 | Jupyter (notebooks) | http://localhost:8008 | your lab account — your **own** Jupyter, and `iceberg` = your own lakehouse |
 | Spark master UI | http://localhost:8002 | — |
-| Trino | http://localhost:8007/ui/ (CLI: `:8007`) | any username, no password |
+| Trino | through SQLPad / Superset (laptop stack: UI http://localhost:8007/ui/, CLI `:8007`) | lab account (via SQLPad / Superset) |
 | SQLPad (SQL workbench) | http://localhost:8003 | lab account (**Sign in with Epireum lab account**) |
 | Superset (BI) | http://localhost:8004 | lab account (managers = Admin) |
 | Airflow | http://localhost:8001 (or the `AIRFLOW_HOST_PORT` you set) | lab account (managers = Admin) |
@@ -238,7 +233,7 @@ Everything in the stack, its URL, and how to sign in. (On Kubernetes swap `local
     with their own lab account, and use PostgreSQL as `learner` / `learner`.
 
 ## You can now…
-- Set up your machine to use the stack (browser, Trino CLI) on macOS, Windows, or Linux
+- Set up your machine to use the stack (a browser; optionally the Trino CLI) on macOS, Windows, or Linux
 - Sign in once with your lab account and reach every tool
 - Run the whole platform yourself with Docker, if it isn't already provided
 - Prove your setup works with the three-step verification checklist

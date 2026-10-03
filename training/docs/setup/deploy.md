@@ -2,7 +2,7 @@
 
 This page is for **whoever runs the platform** — you on your laptop (Docker Compose) or an operator
 on a cluster (Kubernetes). If someone already runs the stack for you and gave you URLs, you don't
-need this — go straight to [Prerequisites](prerequisites.md) (browser + the Trino CLI) and start
+need this — go straight to [Prerequisites](prerequisites.md) (just a browser) and start
 learning.
 
 !!! info "Two ways to run the *same* stack"

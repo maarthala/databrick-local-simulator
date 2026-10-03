@@ -36,6 +36,9 @@ S3_REGION = os.environ.get("AWS_REGION", "us-east-1")
 QUOTA_MB = int(os.environ.get("LEARNER_QUOTA_MB", "100"))      # per-learner bucket, hard limit
 SQLPAD = os.environ.get("SQLPAD_URL", "http://sqlpad:3000")
 SQLPAD_ADMIN = os.environ.get("SQLPAD_ADMIN", "admin@de.local:admin1234")
+SQLPAD_SHARED_CONNECTIONS = ("shopflow", "adventureworks")         # OLTP, PostgreSQL login `learner`
+TRINO_HOST = os.environ.get("TRINO_HOST", "trino")
+TRINO_PORT = os.environ.get("TRINO_PORT", "8080")
 NAMESPACES = ("bronze", "silver", "gold")
 TRINO = os.environ.get("TRINO_URL", "http://trino:8080")
 TRINO_LOGIN = os.environ.get("TRINO_POLARIS_LOGIN", "trino_lab:trino-lab-secret")   # Trino → learner catalogs
@@ -353,8 +356,26 @@ def invite_sqlpad(name, admin=False):
     users = {u["email"]: u for u in req("GET", "/api/users")}
     if user not in users:
         req("POST", "/api/users", {"email": user, "name": user, "role": role})
+        users = {u["email"]: u for u in req("GET", "/api/users")}
     elif users[user]["role"] != role:
         req("PUT", f"/api/users/{users[user]['id']}", {"role": role})
+    # Lakehouse SQL: a private Trino connection under the learner's own name (Trino's rules then
+    # apply to them); everyone shares only the OLTP connections (PostgreSQL login `learner`).
+    accesses = req("GET", "/api/connection-accesses")
+    for a in accesses:
+        if a["connectionId"] == "__EVERY_CONNECTION__" and a["userId"] == "__EVERYONE__":
+            req("PUT", f"/api/connection-accesses/{a['id']}/expire")
+    for conn in SQLPAD_SHARED_CONNECTIONS:
+        if not any(a["connectionId"] == conn and a["userId"] == "__EVERYONE__" for a in accesses):
+            req("POST", "/api/connection-accesses", {"connectionId": conn, "userId": "__EVERYONE__", "duration": 0})
+    label = f"Lakehouse (Trino) — {user}"
+    conns = {c["name"]: c for c in req("GET", "/api/connections")}
+    conn = conns.get(label) or req("POST", "/api/connections", {
+        "name": label, "driver": "trino", "host": TRINO_HOST, "port": TRINO_PORT,
+        "username": name, "catalog": f"{name}_lake"})
+    uid = users[user]["id"]
+    if role != "admin" and not any(a["connectionId"] == conn["id"] and a["userId"] == uid for a in accesses):
+        req("POST", "/api/connection-accesses", {"connectionId": conn["id"], "userId": uid, "duration": 0})
 
 
 def provision(name, manager=False):
@@ -708,3 +729,101 @@ def sync_trino():
     for c in _get(f"/api/management/v1/catalogs", t)["catalogs"]:
         if c["name"] != SHARED:
             trino_catalog(c["name"], t)
+
+
+# ---- Trino access rules (who may query what) --------------------------------------------
+# Learners reach Trino only through SQLPad (a private connection under their own name) and
+# Superset (queries as the signed-in user); on k8s a NetworkPolicy keeps everyone else out. The
+# rules below mirror Polaris: a learner gets their own catalogs, exactly what was shared with
+# them, the shared lake read-only and the OLTP sources read-only (they write there through the
+# PostgreSQL `learner` login). Rewritten by home-api whenever Polaris changes (Trino re-reads
+# the file every 30 s): a file locally, the ConfigMap trino-access on Kubernetes.
+TRINO_ADMINS = os.environ.get("TRINO_ADMIN_USERS", "lab|manager|admin")
+TRINO_RULES_PATH = os.environ.get("TRINO_RULES_PATH", "")          # local: a bind-mounted file
+TRINO_RULES_CONFIGMAP = os.environ.get("TRINO_RULES_CONFIGMAP", "")  # k8s: ConfigMap name
+_ALL = ["SELECT", "INSERT", "DELETE", "UPDATE", "OWNERSHIP", "GRANT_SELECT"]
+
+
+def trino_rules():
+    """Trino file-based access-control rules, built from Polaris (owners + shares)."""
+    t = _admin_token()
+    owned, shares = [], []                  # (user, catalog) / (user, catalog, ns, table, access)
+    for c in _get(f"{_M}/catalogs", t)["catalogs"]:
+        cat = c["name"]
+        if cat == SHARED:
+            continue
+        for r in _get(f"{_M}/catalogs/{cat}/catalog-roles", t).get("roles", []):
+            holders = [p["name"] for p in _get(f"{_M}/catalogs/{cat}/catalog-roles/{r['name']}/principal-roles", t).get("roles", [])]
+            if r["name"] == "owner":
+                owned += [(h, cat) for h in holders]
+            elif r["name"].startswith("share_"):
+                d = _describe_share(cat, r["name"], t)
+                shares += [(h, cat, d["namespace"], d["table"], d["access"]) for h in holders]
+    q = re.escape
+    catalogs = [{"user": TRINO_ADMINS, "allow": "owner"}]       # owner: may also (re)create catalogs
+    catalogs += [{"user": q(u), "catalog": q(c), "allow": "all"} for u, c in owned]
+    write = {(u, c) for u, c, _, _, a in shares if a == "write"}
+    catalogs += [{"user": q(u), "catalog": q(c), "allow": "all" if (u, c) in write else "read-only"}
+                 for u, c in sorted({(u, c) for u, c, *_ in shares})]
+    catalogs += [{"catalog": "iceberg|shopflow|adventureworks|system", "allow": "read-only"}]
+    schemas = [{"user": TRINO_ADMINS, "owner": True}]
+    schemas += [{"user": q(u), "catalog": q(c), "owner": True} for u, c in owned]
+    schemas += [{"owner": False}]
+    tables = [{"user": TRINO_ADMINS, "privileges": _ALL}]
+    tables += [{"user": q(u), "catalog": q(c), "privileges": _ALL} for u, c in owned]
+    for u, c, ns, tbl, access in shares:
+        tables.append({"user": q(u), "catalog": q(c), "schema": q(ns), "table": q(tbl) if tbl else ".*",
+                       "privileges": ["SELECT", "INSERT", "DELETE", "UPDATE"] if access == "write" else ["SELECT"]})
+    tables += [{"catalog": "iceberg|shopflow|adventureworks|system", "privileges": ["SELECT"]}]
+    functions = [{"user": TRINO_ADMINS, "privileges": ["EXECUTE", "GRANT_EXECUTE", "OWNERSHIP"]}]
+    functions += [{"user": q(u), "catalog": q(c), "privileges": ["EXECUTE", "GRANT_EXECUTE", "OWNERSHIP"]} for u, c in owned]
+    functions += [{"privileges": ["EXECUTE"]}]
+    return {
+        "catalogs": catalogs, "schemas": schemas, "tables": tables, "functions": functions,
+        "procedures": [{"user": TRINO_ADMINS, "privileges": ["EXECUTE", "GRANT_EXECUTE"]},
+                       {"privileges": ["EXECUTE"]}],
+        # everyone sees and kills their own queries; only admins see other people's SQL
+        "queries": [{"user": TRINO_ADMINS, "allow": ["execute", "kill", "view"]}, {"allow": ["execute"]}],
+        "system_information": [{"user": TRINO_ADMINS, "allow": ["read", "write"]}],
+    }
+
+
+def _k8s(method, path, body=None):
+    """Kubernetes API call with the pod's service account (in-cluster only)."""
+    import ssl
+    sa = "/var/run/secrets/kubernetes.io/serviceaccount"
+    req = urllib.request.Request(
+        f"https://kubernetes.default.svc{path}", method=method,
+        data=json.dumps(body).encode() if body is not None else None,
+        headers={"Authorization": "Bearer " + open(f"{sa}/token").read().strip(),
+                 "Content-Type": "application/merge-patch+json"})
+    ctx = ssl.create_default_context(cafile=f"{sa}/ca.crt")
+    with urllib.request.urlopen(req, context=ctx, timeout=30) as r:
+        return json.loads(r.read() or b"{}")
+
+
+_last_rules = None
+
+
+def publish_trino_rules():
+    """Write the current rules where Trino reads them (only when they changed)."""
+    global _last_rules
+    if not (TRINO_RULES_PATH or TRINO_RULES_CONFIGMAP):
+        return False
+    text = json.dumps(trino_rules(), indent=1, sort_keys=True)
+    if TRINO_RULES_CONFIGMAP:
+        # compare with the LIVE ConfigMap: a chart apply resets it to its start value
+        ns = open("/var/run/secrets/kubernetes.io/serviceaccount/namespace").read().strip()
+        path = f"/api/v1/namespaces/{ns}/configmaps/{TRINO_RULES_CONFIGMAP}"
+        if (_k8s("GET", path).get("data") or {}).get("rules.json") == text:
+            return False
+        _k8s("PATCH", path, {"data": {"rules.json": text}})
+        return True
+    if text == _last_rules:
+        return False
+    tmp = TRINO_RULES_PATH + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(text)
+    os.replace(tmp, TRINO_RULES_PATH)
+    _last_rules = text
+    return True
