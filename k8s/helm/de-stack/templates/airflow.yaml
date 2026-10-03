@@ -94,6 +94,11 @@ spec:
             # If any of them exits, the pod restarts.
             - |
               airflow db migrate || exit 1
+              # service account (no UI login — that's Keycloak): home-api's "Manage members" uses it
+              # to tidy a deleted member's Airflow role / history. Password: secret airflow-admin-password
+              airflow users create --username {{ .Values.airflow.adminUser }} --firstname Platform --lastname Service \
+                --email {{ .Values.airflow.adminUser }}@de.lan --role Admin --password "$AIRFLOW_ADMIN_PASSWORD" >/dev/null 2>&1
+              airflow users reset-password --username {{ .Values.airflow.adminUser }} --password "$AIRFLOW_ADMIN_PASSWORD" >/dev/null 2>&1
               airflow scheduler & airflow dag-processor & airflow triggerer & airflow api-server &
               wait -n; echo "an Airflow component exited — restarting"; exit 1
 {{- else }}
