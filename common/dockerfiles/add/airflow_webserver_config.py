@@ -52,11 +52,13 @@ if os.environ.get("KEYCLOAK_ENABLED") == "1":
 
         def _learner_role(self):
             role = self.find_role(LEARNER_ROLE) or self.add_role(LEARNER_ROLE)
-            if not [p for p in role.permissions if p.resource.name != "DAGs" and not p.resource.name.startswith("DAG:")]:
-                # first sign-in (the DAG policy may have created the role empty): copy User's
-                for perm in self.find_role("User").permissions:
-                    if (perm.action.name, perm.resource.name) not in _GLOBAL_DAG:
-                        self.add_permission_to_role(role, perm)
+            # User's permissions minus the global DAG ones — topped up on every sign-in (the DAG
+            # processor may have created the role first, holding only per-DAG grants)
+            have = {(p.action.name, p.resource.name) for p in role.permissions}
+            for perm in self.find_role("User").permissions:
+                key = (perm.action.name, perm.resource.name)
+                if key not in _GLOBAL_DAG and key not in have:
+                    self.add_permission_to_role(role, perm)
             return role
 
         def sync_perm_for_dag(self, dag_id, access_control=None):
