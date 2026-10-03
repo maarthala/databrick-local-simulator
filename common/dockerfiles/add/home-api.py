@@ -30,6 +30,7 @@ the logged-in user; nothing from the browser can point at another bucket.
   GET    /api/admin/members                              every lab account + lakehouse + bucket use
   POST   /api/admin/{create|password|reset|wipe|delete}  → {"job": id}
   GET    /api/admin/jobs?id=…                            → {"state": running|done|error, "result"|"error"}
+  GET    /api/admin/settings · POST {"registration": bool}  self-registration on the sign-in page
 
 Only reachable through oauth2-proxy (it is not published), so the identity headers can
 be trusted. Standard library only.
@@ -232,6 +233,16 @@ class Handler(BaseHTTPRequestHandler):
                 if job and job["state"] != "running":
                     _jobs.pop(q["id"], None)          # read once (a new password isn't kept around)
                 return self._json(200, job) if job else self._json(404, {"error": "no such job"})
+            if method == "GET" and path == "/api/admin/settings":
+                return self._json(200, labadmin.registration())
+            if method == "POST" and path == "/api/admin/settings":
+                if self.headers.get("X-Lab-Admin") != "1":
+                    return self._json(403, {"error": "missing X-Lab-Admin header"})
+                length = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(length) or b"{}") if length else {}
+                out = labadmin.set_registration(bool(body.get("registration")))
+                print(f"[home-api] manager {user}: self-registration {'on' if out['registration'] else 'off'}", flush=True)
+                return self._json(200, out)
             action = path.rsplit("/", 1)[-1]
             if method != "POST" or action not in _ACTIONS:
                 return self._json(404, {"error": "not found"})

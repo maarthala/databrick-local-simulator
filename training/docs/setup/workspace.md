@@ -17,7 +17,8 @@ Kubernetes. You land on the **Epireum's Data Engineering Lab** sign-in page:
 - **Want your own account** (or on a shared/class stack, where everyone needs their own)? Click
   **Register** and choose a **username** (3–30 lower-case letters/digits) and a password — no email
   needed. Then, wherever an example says `demouser`, use your username instead (`ravi_lake`,
-  `ravi-lake`, …).
+  `ravi-lake`, …). No **Register** link? Your manager has registration switched off; they turn it
+  on while a new batch signs up, or create your account for you.
 - **Managing the team?** Sign in as `manager` (managers are admins in every tool).
 
 !!! note "Shared stack? Don't share `demouser`"
@@ -158,7 +159,8 @@ Broke your lakehouse, or want a clean slate for the next unit? Ask your **platfo
 | **Reset lakehouse** | every table and view in your catalogs (bronze / silver / gold and the sample table come back) | your files, notebooks, DAGs, catalogs and shares |
 | **Wipe** | everything: tables, extra catalogs, the shares you gave, your bucket, your Jupyter files | your account; you're back to a new member's setup (lakehouse, sample table, starter files) |
 
-The same page lets managers create members, give someone a new password, and delete an account.
+The same page lets managers create members, give someone a new password, delete an account, and
+switch **self-registration** on or off (on while a new batch signs up, off otherwise).
 
 ## You can now…
 - Register, sign in once and reach every tool with your lab account

@@ -117,6 +117,10 @@ use, and
   table), starter files and a fresh Jupyter; extra catalogs deleted, the shares they gave revoked
 - **Delete** — the account and everything it owns
 
+- **Self-registration** on / off — the Register link on the sign-in page (Keycloak's realm
+  setting). Turn it on while a new batch signs up, off otherwise; managers can always create
+  accounts.
+
 Destructive actions ask you to type the username. Managers can't wipe/delete themselves or other
 managers. It runs in home-api (`labadmin.py`) with the Keycloak admin login and the JupyterHub
 service token `hub-admin-token` from `de-stack-secrets`.

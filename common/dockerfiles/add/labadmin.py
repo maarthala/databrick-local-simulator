@@ -12,6 +12,7 @@ plus the Keycloak admin (KEYCLOAK_ADMIN=user:password) and a JupyterHub service 
                              sample table), starter files, fresh Jupyter; extra catalogs deleted,
                              the shares they gave revoked (account kept)
   delete(user)               remove the account and everything it owns
+  registration() / set_registration(on)   self-registration on the sign-in page (Keycloak realm)
 """
 import json
 import os
@@ -330,6 +331,21 @@ def delete(user):
         _kc("DELETE", f"/admin/realms/{REALM}/users/{u['id']}", token=kc)
     lh.publish_trino_rules()
     return {"user": user, "catalogs": cats, "bucket": bucket, "jupyter_reset": jupyter}
+
+
+def registration():
+    """Is self-registration on? (Keycloak shows the Register link only when it is.)"""
+    st, realm = _kc("GET", f"/admin/realms/{REALM}", token=_kc_token())
+    if st != 200:
+        raise RuntimeError(f"read realm: HTTP {st}")
+    return {"registration": bool(realm.get("registrationAllowed"))}
+
+
+def set_registration(on):
+    st, body = _kc("PUT", f"/admin/realms/{REALM}", {"registrationAllowed": bool(on)}, token=_kc_token())
+    if st != 204:
+        raise RuntimeError(f"update realm: HTTP {st} {body!r}")
+    return registration()
 
 
 def _sqlpad_delete(who):
