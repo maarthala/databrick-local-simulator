@@ -89,7 +89,7 @@ else:
 
     class LabDockerSpawner(DockerSpawner):
         async def delete_forever(self):
-            """The Hub user is deleted (Manage learners → wipe / delete): drop their work volume
+            """The Hub user is deleted (Manage members → wipe / delete): drop their work volume
             too, like KubeSpawner's delete_pvc."""
             from jupyterhub.utils import maybe_future
             await maybe_future(super().delete_forever())
@@ -156,7 +156,7 @@ c.JupyterHub.services = [{
     "command": ["python3", "-m", "jupyterhub_idle_culler", "--timeout=3600",
                 "--url=http://localhost:8081/hub/api"],
 }]
-# the landing page's "Manage learners" (home-api): stop a learner's server and delete them
+# the landing page's "Manage members" (home-api): stop a learner's server and delete them
 # from the Hub — their work volume goes with them (wipe / delete)
 if env.get("HUB_ADMIN_TOKEN"):
     c.JupyterHub.load_roles.append({"name": "lab-admin", "services": ["lab-admin"],

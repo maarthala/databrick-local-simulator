@@ -103,12 +103,12 @@ deploy playbook runs it). The platform manager reads one with
    ShopFlow Bronze → Silver → Gold jobs over Spark Connect into `polaris_lake`). The lessons'
    ready-made tables (`shared.gold.daily_sales` in notebooks) come from it.
 
-### Manage learners (managers only)
+### Manage members (managers only)
 Signed in as a manager (Keycloak group `managers`, e.g. `manager`), the landing page shows
-**👥 Manage learners** (`/manage.html`): every lab account with its lakehouse, catalogs and bucket
+**👥 Manage members** (`/manage.html`): every lab account with its lakehouse, catalogs and bucket
 use, and
 
-- **Create learner** — account + lakehouse, bucket, SQLPad user (random password shown once; the
+- **Create member** — account + lakehouse, bucket, SQLPad user (random password shown once; the
   learner picks their own at first sign-in)
 - **New password** — same, for an existing account
 - **Reset lakehouse** — drop every table/view in their catalogs (bronze/silver/gold + the sample

@@ -1,9 +1,9 @@
-"""labadmin — the platform manager's learner admin, behind the "Manage learners" page
+"""labadmin — the platform manager's member admin, behind the "Manage members" page
 (home-api /api/admin/*, managers only). Uses home-api's admin logins: Polaris, storage, SQLPad,
 plus the Keycloak admin (KEYCLOAK_ADMIN=user:password) and a JupyterHub service token
 (HUB_ADMIN_TOKEN) to stop a learner's Jupyter and drop its volume.
 
-  learners()                 lab accounts, their lakehouse and bucket use
+  members()                  lab accounts, their lakehouse and bucket use
   create(user, password)     new lab account + lakehouse, bucket, SQLPad user
   set_password(user, pw)     new password (the learner picks their own at the next sign-in)
   reset_lakehouse(user)      drop every table/view in their catalogs (bronze/silver/gold and the
@@ -175,7 +175,7 @@ def _check(user, t=None):
 
 
 # ---- the actions ------------------------------------------------------------------------
-def learners():
+def members():
     t, kc = lh._admin_token(), _kc_token()
     st, users = _kc("GET", f"/admin/realms/{REALM}/users?max=1000&briefRepresentation=true", token=kc)
     st, mgrs = _kc("GET", f"/admin/realms/{REALM}/groups?search=managers", token=kc)

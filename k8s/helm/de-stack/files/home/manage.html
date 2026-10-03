@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manage learners — Epireum's Data Engineering Lab</title>
+  <title>Manage members — Epireum's Data Engineering Lab</title>
   <style>
     :root{
       --bg:#0b1020; --panel:#141b2e; --panel2:#1b2438; --line:#2a3550;
@@ -51,8 +51,8 @@
 </head>
 <body>
   <header id="lab-top"></header>
-  <script src="/lab-header.js?v=2"></script>
-  <div class="pagebar"><h1>👥 Manage learners <span class="dot">·</span> managers only</h1></div>
+  <script src="/lab-header.js?v=3"></script>
+  <div class="pagebar"><h1>👥 Manage members <span class="dot">·</span> managers only</h1></div>
   <main id="main">
     <div class="placeholder" id="loading">Loading…</div>
   </main>
@@ -110,17 +110,17 @@
         }}});
         result.appendChild(el('div', {class: 'row', style: 'margin-top:10px'}, [box, copy]));
         result.appendChild(el('div', {class: 'sub', style: 'margin-top:8px',
-          text: 'Shown once — pass it on to the learner. They choose their own password at the next sign-in.'}));
+          text: 'Shown once — pass it on to the member. They choose their own password at the next sign-in.'}));
       }
       result.hidden = false;
       window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
-    // ---- add a learner ------------------------------------------------------------------
+    // ---- add a member -------------------------------------------------------------------
     function addCard() {
       var u = el('input', {type: 'text', placeholder: 'username (a-z, 0-9, -)', autocomplete: 'off'});
       var p = el('input', {type: 'password', placeholder: 'password (optional — random)', autocomplete: 'new-password'});
-      var b = el('button', {class: 'primary', text: 'Create learner'});
+      var b = el('button', {class: 'primary', text: 'Create member'});
       b.addEventListener('click', function () {
         var user = u.value.trim().toLowerCase();
         if (!user) return u.focus();
@@ -130,10 +130,10 @@
         });
       });
       return el('div', {class: 'card'}, [
-        el('h3', {text: 'Add a learner'}),
+        el('h3', {text: 'Add a member'}),
         el('div', {class: 'row'}, [u, p, b]),
         el('div', {class: 'sub', style: 'margin-top:8px',
-          text: 'Creates the lab account with its own lakehouse, bucket and SQLPad user. Learners can also register themselves on the sign-in page.'})]);
+          text: 'Creates the lab account with its own lakehouse, bucket and SQLPad user. Members can also register themselves on the sign-in page.'})]);
     }
 
     // run an action from a button; `describe(result)` → [lines, password]
@@ -152,7 +152,7 @@
       });
     }
 
-    // ---- the learners table -------------------------------------------------------------
+    // ---- the members table --------------------------------------------------------------
     var ACTIONS = {
       password: {label: 'New password', title: 'New password for ', danger: false,
         describe: function (r) { return [['Signs in with this once, then picks their own.'], r.password]; }},
@@ -224,14 +224,14 @@
 
     var listCard = null;
     function load() {
-      return api('GET', '/api/admin/learners').then(function (j) {
+      return api('GET', '/api/admin/members').then(function (j) {
         me = j.me;
         if (!listCard) {
           main.innerHTML = '';
           main.appendChild(result);
           main.appendChild(addCard());
         }
-        var fresh = table(j.learners);
+        var fresh = table(j.members);
         if (listCard) main.replaceChild(fresh, listCard); else main.appendChild(fresh);
         listCard = fresh;
       }).catch(function (e) {

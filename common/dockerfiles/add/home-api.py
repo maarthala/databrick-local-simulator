@@ -25,9 +25,9 @@ the logged-in user; nothing from the browser can point at another bucket.
   POST   /api/catalogs/shares?catalog&grantee&access&namespace[&table]
   DELETE /api/catalogs/shares?catalog=…&role=…           revoke
 
-"Manage learners" — managers only (Keycloak group `managers`). Actions run in the background
+"Manage members" — managers only (Keycloak group `managers`). Actions run in the background
 (wipe / delete can take a minute); the page polls the job. JSON body {"user", "password"?}.
-  GET    /api/admin/learners                             every lab account + lakehouse + bucket use
+  GET    /api/admin/members                              every lab account + lakehouse + bucket use
   POST   /api/admin/{create|password|reset|wipe|delete}  → {"job": id}
   GET    /api/admin/jobs?id=…                            → {"state": running|done|error, "result"|"error"}
 
@@ -225,8 +225,8 @@ class Handler(BaseHTTPRequestHandler):
         if not self._manager():
             return self._json(403, {"error": "managers only"})
         try:
-            if method == "GET" and path == "/api/admin/learners":
-                return self._json(200, {"me": user, "learners": labadmin.learners()})
+            if method == "GET" and path == "/api/admin/members":
+                return self._json(200, {"me": user, "members": labadmin.members()})
             if method == "GET" and path == "/api/admin/jobs":
                 job = _jobs.get(q.get("id", ""))
                 if job and job["state"] != "running":
@@ -243,7 +243,7 @@ class Handler(BaseHTTPRequestHandler):
             if target == user and action in ("wipe", "delete", "reset"):
                 return self._json(400, {"error": "that's your own account — ask another manager"})
             if action in ("wipe", "delete") and any(
-                    l["user"] == target and l["manager"] for l in labadmin.learners()):
+                    l["user"] == target and l["manager"] for l in labadmin.members()):
                 return self._json(400, {"error": f"{target} is a manager — remove them from the "
                                                  "managers group in Keycloak first"})
             args = [target] + ([body["password"]] if body.get("password") and action in ("create", "password") else [])
