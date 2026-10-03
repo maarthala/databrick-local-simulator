@@ -36,7 +36,7 @@ data:
     quarkus.oidc.tenant-enabled=true
     quarkus.oidc.auth-server-url=http://keycloak:8080/realms/de-lab
     quarkus.oidc.client-id=polaris
-    quarkus.oidc.credentials.secret=polaris-secret
+    # quarkus.oidc.credentials.secret: env QUARKUS_OIDC_CREDENTIALS_SECRET (secret oidc-polaris-secret)
     quarkus.oidc.roles.role-claim-path=principal_roles
     polaris.oidc.principal-mapper.name-claim-path=principal_name
     polaris.oidc.principal-roles-mapper.mappings[0].regex=(.+)
@@ -97,6 +97,7 @@ spec:
             - { name: AWS_ACCESS_KEY_ID, value: "{{ .Values.storage.rootUser }}" }
             - { name: AWS_SECRET_ACCESS_KEY, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: storage-root-password } } }
             - { name: QUARKUS_DATASOURCE_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: pg-polaris-password } } }
+            - { name: QUARKUS_OIDC_CREDENTIALS_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: oidc-polaris-secret } } }
             # lenient env source (unmapped keys ignored) — declares the JDBC dialect
             - { name: POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE, value: postgresql }
           volumeMounts:

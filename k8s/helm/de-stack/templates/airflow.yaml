@@ -132,7 +132,7 @@ spec:
               value: '{"conn_type": "aws", "login": "{{ .Values.storage.rootUser }}", "password": "$(STORAGE_ROOT_PASSWORD)", "extra": {"endpoint_url": "http://storage:9000", "region_name": "us-east-1", "config_kwargs": {"s3": {"addressing_style": "path"}}}}'
 
             - { name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN, value: "postgresql+psycopg2://airflow:$(PG_AIRFLOW_PASSWORD)@postgres:5432/airflow" }
-            - { name: AIRFLOW__CORE__FERNET_KEY, value: "{{ .Values.airflow.fernetKey }}" }
+            - { name: AIRFLOW__CORE__FERNET_KEY, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: airflow-fernet-key } } }
             - { name: AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION, value: "true" }
             # rescan the DAGs bundle every 30s so git-synced DAGs appear quickly
             # (default 300s). Matches git-sync's pull period.
@@ -153,8 +153,9 @@ spec:
               value: '[{"name": "dags-folder", "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle", "kwargs": {}}, {"name": "learners", "classpath": "learner_dags.LearnerDagsBundle", "kwargs": {"refresh_interval": 30}}]'
             - { name: PYTHONPATH, value: "/opt/airflow/lab" }
 {{- end }}
-            - { name: AIRFLOW__API__SECRET_KEY, value: "{{ .Values.airflow.secretKey }}" }
-            - { name: AIRFLOW__WEBSERVER__SECRET_KEY, value: "{{ .Values.airflow.secretKey }}" }
+            - { name: AIRFLOW__API__SECRET_KEY, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: airflow-secret-key } } }
+            - { name: AIRFLOW__WEBSERVER__SECRET_KEY, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: airflow-secret-key } } }
+            - { name: KEYCLOAK_CLIENT_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: oidc-airflow-secret } } }
             - { name: AIRFLOW_CONN_SPARK_DEFAULT, value: "spark://spark-master:7077" }
             # Spark Connect endpoint so @task code can SparkSession.builder.getOrCreate()
             - { name: SPARK_REMOTE, value: "sc://spark-connect:15002" }

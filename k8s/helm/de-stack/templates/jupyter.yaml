@@ -79,9 +79,9 @@ spec:
             - { name: HUB_PUBLIC_URL, value: "http://jupyter.{{ .Values.ingress.baseHost }}" }
             - { name: KEYCLOAK_PUBLIC_URL, value: "http://auth.{{ .Values.ingress.baseHost }}" }
             - { name: KEYCLOAK_INTERNAL_URL, value: "http://keycloak:8080" }
-            - { name: OAUTH_CLIENT_SECRET, value: jupyterhub-secret }
+            - { name: OAUTH_CLIENT_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: oidc-jupyterhub-secret } } }
             # encrypts the stored Keycloak tokens (auth_state) — lets the Hub follow the login
-            - { name: JUPYTERHUB_CRYPT_KEY, value: {{ .Values.jupyter.cryptKey | quote }} }
+            - { name: JUPYTERHUB_CRYPT_KEY, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: jupyterhub-crypt-key } } }
             - { name: POLARIS_URL, value: "http://polaris:8181" }
             - { name: LEARNER_QUOTA_MB, value: {{ .Values.storage.learnerQuotaMB | quote }} }
             - { name: SINGLEUSER_IMAGE, value: {{ include "de-stack.image" (dict "root" $ "repo" .Values.jupyter.repo "tag" .Values.jupyter.tag) | quote }} }

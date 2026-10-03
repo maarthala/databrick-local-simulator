@@ -176,7 +176,7 @@ spec:
             - { name: OAUTH2_PROXY_HTTP_ADDRESS, value: "0.0.0.0:4180" }
             - { name: OAUTH2_PROXY_PROVIDER, value: keycloak-oidc }
             - { name: OAUTH2_PROXY_CLIENT_ID, value: de-lab-home }
-            - { name: OAUTH2_PROXY_CLIENT_SECRET, value: de-lab-home-secret }
+            - { name: OAUTH2_PROXY_CLIENT_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: oidc-home-secret } } }
             - { name: OAUTH2_PROXY_CODE_CHALLENGE_METHOD, value: S256 }
             - { name: OAUTH2_PROXY_OIDC_ISSUER_URL, value: "http://auth.{{ .Values.ingress.baseHost }}/realms/de-lab" }
             - { name: OAUTH2_PROXY_SKIP_OIDC_DISCOVERY, value: "true" }
@@ -190,7 +190,7 @@ spec:
             - { name: OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL, value: "true" }
             - { name: OAUTH2_PROXY_OIDC_EMAIL_CLAIM, value: preferred_username }   # registration asks no email
             - { name: OAUTH2_PROXY_SKIP_PROVIDER_BUTTON, value: "true" }
-            - { name: OAUTH2_PROXY_COOKIE_SECRET, value: {{ .Values.oauth2Proxy.cookieSecret | quote }} }
+            - { name: OAUTH2_PROXY_COOKIE_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: oauth2-cookie-secret } } }
             - { name: OAUTH2_PROXY_COOKIE_SECURE, value: "false" }
             - { name: OAUTH2_PROXY_COOKIE_NAME, value: _de_lab }
             # session (tokens) in Redis: the cookie holds only a ticket, so request headers stay small

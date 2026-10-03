@@ -66,7 +66,7 @@ spec:
             - { name: RUSTFS_IDENTITY_OPENID_CONFIG_URL, value: "http://keycloak:8080/realms/de-lab/.well-known/openid-configuration" }
             - { name: RUSTFS_IDENTITY_OPENID_ISSUER, value: "http://auth.{{ .Values.ingress.baseHost }}/realms/de-lab" }
             - { name: RUSTFS_IDENTITY_OPENID_CLIENT_ID, value: storage }
-            - { name: RUSTFS_IDENTITY_OPENID_CLIENT_SECRET, value: storage-secret }
+            - { name: RUSTFS_IDENTITY_OPENID_CLIENT_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: oidc-storage-secret } } }
             - { name: RUSTFS_IDENTITY_OPENID_CLAIM_NAME, value: policy }
             - { name: RUSTFS_IDENTITY_OPENID_SCOPES, value: "openid,profile" }
             - { name: RUSTFS_IDENTITY_OPENID_DISPLAY_NAME, value: "Epireum lab account" }

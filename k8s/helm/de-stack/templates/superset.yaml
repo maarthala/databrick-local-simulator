@@ -21,7 +21,8 @@ spec:
           image: {{ include "de-stack.image" (dict "root" $ "repo" .Values.superset.repo "tag" .Values.superset.tag) }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           env:
-            - { name: SUPERSET_SECRET_KEY, value: "your_secret_key" }
+            - { name: SUPERSET_SECRET_KEY, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: superset-secret-key } } }
+            - { name: KEYCLOAK_CLIENT_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: oidc-superset-secret } } }
             - { name: PG_SUPERSET_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: pg-superset-password } } }
             - { name: SUPERSET_ADMIN_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: superset-admin-password } } }
             # Superset's own metadata DB (superset_config.py reads SUPERSET_METADATA_DB_URI)

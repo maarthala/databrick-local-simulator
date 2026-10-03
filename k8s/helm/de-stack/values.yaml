@@ -120,9 +120,6 @@ airflow:
   repo: airflow-slim
   tag: "20261002-7"        # dated: re-importing :latest can leave the old image
   adminUser: airflow         # password: secret key airflow-admin-password
-  # Shared keys so apiserver/scheduler/dag-processor agree (from the compose cfg).
-  fernetKey: "gZg3prHNcfcl0KS9NH_Sane7PLxC0crWcoruuuBdfp4="
-  secretKey: "l7sViEv3ImrPg7KW5fwwvA=="
 jupyter:
   enabled: true
   # JupyterHub: Keycloak login, one Jupyter pod per learner (KubeSpawner) with their own
@@ -135,7 +132,6 @@ jupyter:
   userStorage: 1Gi           # per-learner work volume (PVC claim-<user>)
   userMemory: 1G
   hubStorage: 1Gi
-  cryptKey: "6f0629afdbf22af9fe90b7cf1dca8481cd80461546298146c8823bba1e226eee"   # encrypts stored Keycloak tokens (lab only)
 
 # ------------------------------------------------------------------ UIs
 superset:
@@ -163,7 +159,6 @@ keycloak:
                               # password: secret key keycloak-admin-password
 oauth2Proxy:
   image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.4
-  cookieSecret: "de-lab-k8s-cookie-secret-32chars"   # must be 16/24/32 bytes (lab only)
 homeApi:
   image: ghcr.io/maarthala/de-stack/home-api:20261002-7   # dated tags: re-importing :latest can leave the old image
 home:

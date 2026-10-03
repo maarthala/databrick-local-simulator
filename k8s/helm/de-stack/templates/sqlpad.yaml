@@ -48,7 +48,7 @@ spec:
             - { name: PUBLIC_URL,                 value: "http://sqlpad.{{ .Values.ingress.baseHost }}" }
             - { name: SQLPAD_OIDC_ISSUER,         value: "http://keycloak:8080/realms/de-lab" }
             - { name: SQLPAD_OIDC_CLIENT_ID,      value: sqlpad }
-            - { name: SQLPAD_OIDC_CLIENT_SECRET,  value: sqlpad-secret }
+            - { name: SQLPAD_OIDC_CLIENT_SECRET, valueFrom: { secretKeyRef: { name: {{ $.Values.secrets.name }}, key: oidc-sqlpad-secret } } }
             - { name: SQLPAD_OIDC_SCOPE,          value: "openid profile" }
             - { name: SQLPAD_OIDC_LINK_HTML,      value: "Sign in with Epireum lab account" }
             {{- end }}

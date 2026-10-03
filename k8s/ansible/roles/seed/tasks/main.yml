@@ -49,3 +49,23 @@
     executable: /bin/bash
   no_log: true
   changed_when: true
+
+- name: Give the Keycloak sign-in clients their private secrets (the realm import ships defaults)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    sec() { kubectl -n {{ namespace }} get secret de-stack-secrets -o jsonpath="{.data.$1}" | base64 -d; }
+    kubectl -n {{ namespace }} exec deploy/keycloak -- env ADMINPW="$(sec keycloak-admin-password)" \
+      S_HOME="$(sec oidc-home-secret)" S_JH="$(sec oidc-jupyterhub-secret)" S_AF="$(sec oidc-airflow-secret)" \
+      S_SS="$(sec oidc-superset-secret)" S_SQ="$(sec oidc-sqlpad-secret)" S_ST="$(sec oidc-storage-secret)" \
+      S_PO="$(sec oidc-polaris-secret)" sh -c '
+      K=/opt/keycloak/bin/kcadm.sh
+      $K config credentials --server http://localhost:8080 --realm master --user admin --password "$ADMINPW" >/dev/null
+      for pair in de-lab-home:S_HOME jupyterhub:S_JH airflow:S_AF superset:S_SS sqlpad:S_SQ storage:S_ST polaris:S_PO; do
+        cid=${pair%%:*}; val=$(eval echo \$${pair#*:})
+        id=$($K get clients -r de-lab -q clientId=$cid --fields id | grep -o "[0-9a-f-]\{36\}")
+        $K update clients/$id -r de-lab -s secret="$val"
+      done'
+  args:
+    executable: /bin/bash
+  no_log: true
+  changed_when: true
