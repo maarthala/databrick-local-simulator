@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<!-- Every learner's notebook / DAG runs inside the one Spark Connect app. FAIR scheduling in the
+     default pool shares the cores between concurrent jobs, so one long job can't make everyone
+     else wait (Spark's default is first-come-first-served). -->
+<allocations>
+  <pool name="default">
+    <schedulingMode>FAIR</schedulingMode>
+    <weight>1</weight>
+    <minShare>0</minShare>
+  </pool>
+</allocations>

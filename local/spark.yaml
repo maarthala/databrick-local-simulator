@@ -13,6 +13,7 @@ x-spark-common:
     volumes:
       - ./code:/code
       - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+      - ./configs/spark/fairscheduler.xml:/opt/spark/conf/fairscheduler.xml
       - ./configs/hive/hive-site.xml:/opt/spark/conf/hive-site.xml
     networks:
       - sparknet

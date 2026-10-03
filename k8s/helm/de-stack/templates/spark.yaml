@@ -38,6 +38,7 @@ spec:
             - { name: ui, containerPort: 8080 }
           volumeMounts:
             - { name: spark-conf, mountPath: /opt/spark/conf/spark-defaults.conf, subPath: spark-defaults.conf }
+            - { name: spark-conf, mountPath: /opt/spark/conf/fairscheduler.xml, subPath: fairscheduler.xml }
             - { name: hive-site, mountPath: /opt/spark/conf/hive-site.xml, subPath: hive-site.xml }
       volumes:
         - { name: spark-conf, configMap: { name: spark-config } }
@@ -73,6 +74,7 @@ spec:
             - { name: AWS_REGION, value: "us-east-1" }
           volumeMounts:
             - { name: spark-conf, mountPath: /opt/spark/conf/spark-defaults.conf, subPath: spark-defaults.conf }
+            - { name: spark-conf, mountPath: /opt/spark/conf/fairscheduler.xml, subPath: fairscheduler.xml }
             - { name: hive-site, mountPath: /opt/spark/conf/hive-site.xml, subPath: hive-site.xml }
       volumes:
         - { name: spark-conf, configMap: { name: spark-config } }

@@ -7,6 +7,8 @@ metadata:
 data:
   spark-defaults.conf: |
 {{ .Files.Get "files/spark/spark-defaults.conf" | indent 4 }}
+  fairscheduler.xml: |
+{{ .Files.Get "files/spark/fairscheduler.xml" | indent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap

@@ -49,6 +49,7 @@ x-airflow-common:
     - ../common/dockerfiles/add/lakehouse.py:/opt/airflow/lab/lakehouse.py:ro
     - ./configs/airflow.cfg:/opt/airflow/config/airflow.cfg
     - ./configs/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+    - ./configs/spark/fairscheduler.xml:/opt/spark/conf/fairscheduler.xml
     - ./init_scripts/airflow:/init_scripts
     # Shared task-log dir so the api-server (UI) can read logs written by the
     # scheduler/dag-processor directly — no cross-container fetch over port 8793.

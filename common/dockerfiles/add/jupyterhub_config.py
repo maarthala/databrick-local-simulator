@@ -49,6 +49,7 @@ SPAWNER = env.get("HUB_SPAWNER", "docker")
 c.JupyterHub.hub_ip = "0.0.0.0"
 c.JupyterHub.hub_connect_ip = env.get("HUB_CONNECT_IP", "jupyterhub")
 c.Spawner.mem_limit = env.get("SINGLEUSER_MEM", "1G")
+c.Spawner.cpu_limit = float(env.get("SINGLEUSER_CPU", "1"))       # one learner can't take the whole node
 c.Spawner.cmd = ["bash", "/usr/local/bin/jupyter-entrypoint.sh"]
 c.Spawner.default_url = "/lab"
 if SPAWNER == "kubernetes":

@@ -45,6 +45,7 @@ spec:
             - { name: ui, containerPort: 4040 }
           volumeMounts:
             - { name: spark-conf, mountPath: /opt/spark/conf/spark-defaults.conf, subPath: spark-defaults.conf }
+            - { name: spark-conf, mountPath: /opt/spark/conf/fairscheduler.xml, subPath: fairscheduler.xml }
             - { name: hive-site, mountPath: /opt/spark/conf/hive-site.xml, subPath: hive-site.xml }
       volumes:
         - { name: spark-conf, configMap: { name: spark-config } }

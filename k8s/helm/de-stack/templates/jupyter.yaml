@@ -87,6 +87,7 @@ spec:
             - { name: SINGLEUSER_IMAGE, value: {{ include "de-stack.image" (dict "root" $ "repo" .Values.jupyter.repo "tag" .Values.jupyter.tag) | quote }} }
             - { name: SINGLEUSER_PULL_POLICY, value: {{ .Values.global.imagePullPolicy }} }
             - { name: SINGLEUSER_MEM, value: {{ .Values.jupyter.userMemory | quote }} }
+            - { name: SINGLEUSER_CPU, value: {{ .Values.jupyter.userCpu | quote }} }
             - { name: SINGLEUSER_STORAGE, value: {{ .Values.jupyter.userStorage | quote }} }
             - { name: SINGLEUSER_STORAGE_CLASS, value: {{ .Values.global.storageClass }} }
             # passed on to every learner pod

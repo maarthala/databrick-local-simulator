@@ -131,6 +131,7 @@ jupyter:
   hubImage: ghcr.io/maarthala/de-stack/jupyterhub:20261002-7
   userStorage: 1Gi           # per-learner work volume (PVC claim-<user>)
   userMemory: 1G
+  userCpu: 1                 # CPU cap per learner pod
   hubStorage: 1Gi
 
 # ------------------------------------------------------------------ UIs
