@@ -65,8 +65,33 @@ helm template de-stack k8s/helm/de-stack | kubectl -n de-stack apply -f -
 ## 4. Access
 All UIs are at `https?://<name>.de.lan`. **Admin and service passwords are private**: they live in
 the Secret `de-stack-secrets`, created once with random values by `k8s/create-secrets.sh` (the
-deploy playbook runs it). The platform manager reads one with
-`kubectl -n de-stack get secret de-stack-secrets -o jsonpath='{.data.<key>}' | base64 -d`:
+deploy playbook runs it). None of the laptop defaults (`manager` / `manager` …) work here.
+
+### First sign-in after deploying
+Read the manager password and sign in at `http://de.lan` as **`manager`** — that's the account
+for 👥 **Manage members** (create members, self-registration on/off) and admin in every tool:
+
+```bash
+kubectl -n de-stack get secret de-stack-secrets -o jsonpath='{.data.manager-password}' | base64 -d; echo
+```
+
+The other admin logins work the same way — swap the key:
+
+| Login | Username | Secret key |
+|---|---|---|
+| Lab manager (landing page, Manage members, every tool) | `manager` | `manager-password` |
+| Keycloak admin console (`http://auth.de.lan/admin`) | `admin` | `keycloak-admin-password` |
+| Polaris Console admin (`/login?local=1`) | `root` | `polaris-root-secret` |
+| Polaris personas (Unit 6 lessons) | `analyst` / `engineer` / `lead` | `polaris-persona-secret` |
+| Storage (RustFS console) root | `admin` | `storage-root-password` |
+| SQLPad admin (password login) | `admin@de.local` | `sqlpad-admin-password` |
+| Superset admin (`/login/?local=1`) | `admin` | `superset-admin-password` |
+| PostgreSQL superuser | `postgres` | `postgres-password` |
+
+Members never need these: they sign in with their own lab account. On the MicroK8s node itself,
+use `microk8s kubectl`.
+
+### Services
 
 | Service | URL | Login |
 |---|---|---|

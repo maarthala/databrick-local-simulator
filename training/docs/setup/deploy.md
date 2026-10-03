@@ -135,8 +135,14 @@ learning.
     ```
     Open the landing page at **`http://de.lan`**. Members **register / sign in** there (Keycloak at
     `http://auth.de.lan`, realm `de-lab`); each gets their own lakehouse, bucket and Jupyter on first
-    login. All UIs live at `http(s)://<name>.de.lan` (jupyter, trino, superset, sqlpad, airflow,
-    spark, storage — the RustFS console, polaris-console) — the landing page links them.
+    login. All UIs live at `http(s)://<name>.de.lan` (jupyter, superset, sqlpad, airflow, spark,
+    storage — the RustFS console, polaris-console) — the landing page links them.
+
+    **First sign-in:** every admin password on Kubernetes is random (the laptop defaults don't
+    work). Read the manager's with
+    `kubectl -n de-stack get secret de-stack-secrets -o jsonpath='{.data.manager-password}' | base64 -d`
+    and sign in as **`manager`**; the other admin logins and their keys are listed in
+    [`k8s/README.md` → First sign-in after deploying](https://github.com/maarthala/databrick-local-simulator/blob/main/k8s/README.md#first-sign-in-after-deploying).
 
     **Fill the shared lake once:** in Airflow (`http://airflow.de.lan`, as `manager`) switch
     **`shopflow_medallion`** on and trigger it — Bronze → Silver → Gold in under a minute. (Same
