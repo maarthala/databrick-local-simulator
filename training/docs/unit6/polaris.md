@@ -50,8 +50,9 @@ principal demouser ──holds──► principal-role demouser
 A **principal** is *who*; a **principal-role** is the roles they hold; a **catalog-role** is a
 bundle of **grants** inside one catalog. Change a role once and everyone holding it changes.
 
-**Console:** <http://localhost:8189> (k8s: `http://polaris-console.de.lan`) → **Sign in with
-Epireum lab account**. Open your lakehouse from 🗂️ **My catalogs → Open in Polaris Console ↗**.
+**Console:** open your lakehouse from 🗂️ **My catalogs → Open in Polaris Console ↗** (it signs
+you in with your lab account). The Console's own catalog list is for admins only, so start from
+My catalogs.
 
 ## Lab — share your lakehouse with another user
 Sharing needs **two accounts**: the **owner** of the lakehouse and **another user** to share with.

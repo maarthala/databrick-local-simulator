@@ -191,8 +191,9 @@ Run through this checklist once — if all three pass, you're ready for Unit 1.
    the course examples use), **Register** your own, or use `manager` / `manager`. After signing in you see the lab's tools in four columns and,
    in the top bar, **"your lakehouse: <name>_lake ✓"** — your own private lakehouse, created on
    first login.
-2. **Single sign-on works** — open the **Governance** tile (Polaris Console). It signs you in with
-   your lab account without asking again; your own lakehouse `<name>_lake` is there.
+2. **Single sign-on works** — open **🗂️ My catalogs**, then **Open in Polaris Console ↗** next to
+   your lakehouse `<name>_lake`. The Console signs you in with your lab account without asking
+   again and shows your lakehouse.
 3. **SQL works**: in SQLPad (connection **Lakehouse (Trino) — demouser**) or Superset SQL Lab:
 
     ```sql

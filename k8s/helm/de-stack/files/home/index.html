@@ -53,6 +53,7 @@
       margin:2px 4px 4px; font-size:.78rem; font-weight:700; letter-spacing:2px;
       text-transform:uppercase; color:var(--muted);
     }
+    .card[hidden]{display:none}
     .card{
       background:var(--panel); border:1px solid var(--line); border-radius:14px;
       padding:18px 18px 20px; display:flex; gap:16px; align-items:flex-start; min-height:96px;
@@ -132,13 +133,15 @@
 
       <section class="col">
         <h4>Govern &amp; store</h4>
-        <a class="card" href="http://localhost:8189/?sso=1" target="_blank">
+        <!-- managers only (Polaris admin view of every catalog); members open their own catalogs
+             in the Console from My catalogs — the Console can't list catalogs for them -->
+        <a class="card" id="gov-tile" href="http://localhost:8189/?sso=1" target="_blank" hidden>
           <div class="ico">🗂️</div>
-          <div><h3>Governance</h3><p><b>Polaris Console</b> — governed Iceberg catalogs, roles &amp; grants.</p></div>
+          <div><h3>Governance</h3><p><b>Polaris Console</b> — every catalog, principal, role &amp; grant (managers).</p></div>
         </a>
         <a class="card mine" href="/catalogs.html">
           <div class="ico">🤝</div>
-          <div><h3>My catalogs</h3><p>Create catalogs and share namespaces or tables with other learners.</p></div>
+          <div><h3>My catalogs</h3><p>Your catalogs: create, share namespaces or tables with other members, open them in the Polaris Console.</p></div>
         </a>
         <a class="card" href="http://localhost:9001/rustfs/admin/v3/oidc/authorize/default" target="_blank">
           <div class="ico">🪣</div>
@@ -160,6 +163,7 @@
   <script>
     // Local: Airflow's host port is configurable (AIRFLOW_HOST_PORT in .env) — /api/me says which.
     document.addEventListener('lab:me', function (e) {
+      document.getElementById('gov-tile').hidden = (e.detail.groups || []).indexOf('managers') < 0;
       if (!/(^|\.)de\.lan$/.test(location.hostname) && e.detail.airflow_port) {
         document.getElementById('airflow-tile').href = 'http://localhost:' + e.detail.airflow_port;
       }
