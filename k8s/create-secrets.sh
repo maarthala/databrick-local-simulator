@@ -22,7 +22,7 @@ KEYS="postgres-password pg-airflow-password pg-polaris-password pg-keycloak-pass
   keycloak-admin-password manager-password sqlpad-admin-password superset-admin-password airflow-admin-password
   oidc-home-secret oidc-jupyterhub-secret oidc-airflow-secret oidc-superset-secret oidc-sqlpad-secret
   oidc-storage-secret oidc-polaris-secret oauth2-cookie-secret airflow-fernet-key airflow-secret-key
-  superset-secret-key jupyterhub-crypt-key"
+  superset-secret-key jupyterhub-crypt-key hub-admin-token"
 
 if existing=$($KUBECTL -n "$NAMESPACE" get secret "$NAME" -o jsonpath='{.data}' 2>/dev/null) && [ -n "$existing" ]; then
   added=0

@@ -64,6 +64,7 @@ if SPAWNER == "kubernetes":
     c.KubeSpawner.cpu_guarantee = 0.05
     # the learner's work volume — kept when the pod stops
     c.KubeSpawner.storage_pvc_ensure = True
+    c.KubeSpawner.delete_pvc = True                             # …and dropped with the Hub user (wipe / delete)
     c.KubeSpawner.pvc_name_template = "claim-{username}"
     c.KubeSpawner.storage_capacity = env.get("SINGLEUSER_STORAGE", "1Gi")
     c.KubeSpawner.storage_class = env.get("SINGLEUSER_STORAGE_CLASS", "microk8s-hostpath")
@@ -84,7 +85,20 @@ if SPAWNER == "kubernetes":
     c.KubeSpawner.extra_pod_config = {"enableServiceLinks": False}  # a "jupyter" Service would inject JUPYTER_PORT
     c.KubeSpawner.start_timeout = 300                           # first pull/unpack on the node can be slow
 else:
-    c.JupyterHub.spawner_class = "dockerspawner.DockerSpawner"
+    from dockerspawner import DockerSpawner
+
+    class LabDockerSpawner(DockerSpawner):
+        async def delete_forever(self):
+            """The Hub user is deleted (Manage learners → wipe / delete): drop their work volume
+            too, like KubeSpawner's delete_pvc."""
+            await super().delete_forever()
+            name = self.format_volume_name("jupyterhub-user-{username}", self)
+            try:
+                await self.docker("remove_volume", name)
+            except Exception as e:  # noqa: BLE001 — already gone
+                self.log.warning("remove volume %s: %s", name, e)
+
+    c.JupyterHub.spawner_class = LabDockerSpawner
     c.DockerSpawner.image = env.get("SINGLEUSER_IMAGE", "local-jupyter:latest")
     c.DockerSpawner.network_name = env.get("DOCKER_NETWORK", "local_sparknet")
     c.DockerSpawner.use_internal_ip = True
@@ -141,3 +155,9 @@ c.JupyterHub.services = [{
     "command": ["python3", "-m", "jupyterhub_idle_culler", "--timeout=3600",
                 "--url=http://localhost:8081/hub/api"],
 }]
+# the landing page's "Manage learners" (home-api): stop a learner's server and delete them
+# from the Hub — their work volume goes with them (wipe / delete)
+if env.get("HUB_ADMIN_TOKEN"):
+    c.JupyterHub.load_roles.append({"name": "lab-admin", "services": ["lab-admin"],
+                                    "scopes": ["admin:users", "admin:servers"]})
+    c.JupyterHub.services.append({"name": "lab-admin", "api_token": env["HUB_ADMIN_TOKEN"]})

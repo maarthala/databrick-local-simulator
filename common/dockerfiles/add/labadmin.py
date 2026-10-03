@@ -1,25 +1,21 @@
-"""labadmin — the platform manager's toolkit. Runs inside the home-api container (it already
-holds the Polaris / storage / SQLPad admin logins); the Keycloak admin login is passed in as
-KEYCLOAK_ADMIN=user:password for the one call (local: admin:admin).
+"""labadmin — the platform manager's learner admin, behind the "Manage learners" page
+(home-api /api/admin/*, managers only). Uses home-api's admin logins: Polaris, storage, SQLPad,
+plus the Keycloak admin (KEYCLOAK_ADMIN=user:password) and a JupyterHub service token
+(HUB_ADMIN_TOKEN) to stop a learner's Jupyter and drop its volume.
 
-  python /app/labadmin.py list                       learners, their lakehouse and bucket use
-  python /app/labadmin.py create <user> [password]   new lab account + lakehouse, ready to use
-  python /app/labadmin.py password <user> [password] new password (changed at the next sign-in)
-  python /app/labadmin.py reset-lakehouse <user>     drop every table in the learner's catalogs
-                                                     (bronze/silver/gold + sample table come back)
-  python /app/labadmin.py wipe <user>                reset-lakehouse + empty their bucket
-                                                     (starter files come back)
-  python /app/labadmin.py delete <user> --yes        remove the account and everything it owns
-
-No password given → a random one is printed. Accounts, catalogs and shares are kept by
-reset-lakehouse / wipe. Wrappers: `make learner-…` (local), k8s/lab-admin.sh (Kubernetes).
+  learners()                 lab accounts, their lakehouse and bucket use
+  create(user, password)     new lab account + lakehouse, bucket, SQLPad user
+  set_password(user, pw)     new password (the learner picks their own at the next sign-in)
+  reset_lakehouse(user)      drop every table/view in their catalogs (bronze/silver/gold and the
+                             sample table come back); files, catalogs and shares are kept
+  wipe(user)                 reset_lakehouse + empty bucket + fresh Jupyter (starter files back)
+  delete(user)               remove the account and everything it owns
 """
-import inspect
 import json
 import os
 import re
 import secrets
-import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -28,36 +24,43 @@ import lakehouse as lh
 
 KEYCLOAK = os.environ.get("KEYCLOAK_URL", "http://keycloak:8080")
 REALM = os.environ.get("KEYCLOAK_REALM", "de-lab")
+HUB_API = os.environ.get("HUB_API_URL", "http://jupyterhub:8081/hub/api")
 USERNAME = re.compile(r"^[a-z0-9][a-z0-9-]{1,30}$")
 _C = "/api/catalog/v1"
 
 
-# ---- Keycloak (admin REST API) ----------------------------------------------------------
-def _kc(method, path, body=None, token=None, form=None):
-    headers, data = {}, None
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
+class AdminError(Exception):
+    """A problem to show the manager (bad input, unknown user …)."""
+
+
+def _http(method, url, body=None, headers=None, form=None):
+    headers, data = dict(headers or {}), None
     if form is not None:
         data = urllib.parse.urlencode(form).encode()
         headers["Content-Type"] = "application/x-www-form-urlencoded"
     elif body is not None:
         data = json.dumps(body).encode()
         headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(KEYCLOAK + path, data=data, method=method, headers=headers)
+    req = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=15) as r:
+        with urllib.request.urlopen(req, timeout=20) as r:
             raw = r.read()
             return r.status, (json.loads(raw) if raw else None)
     except urllib.error.HTTPError as e:
-        return e.code, e.read()[:200]
+        return e.code, e.read()[:300]
+
+
+# ---- Keycloak (admin REST API) ----------------------------------------------------------
+def _kc(method, path, body=None, token=None):
+    return _http(method, KEYCLOAK + path, body, {"Authorization": f"Bearer {token}"})
 
 
 def _kc_token():
     user, pw = os.environ.get("KEYCLOAK_ADMIN", "admin:admin").split(":", 1)
-    st, body = _kc("POST", "/realms/master/protocol/openid-connect/token", form={
+    st, body = _http("POST", f"{KEYCLOAK}/realms/master/protocol/openid-connect/token", form={
         "grant_type": "password", "client_id": "admin-cli", "username": user, "password": pw})
     if st != 200:
-        sys.exit(f"Keycloak admin login failed (HTTP {st}) — check KEYCLOAK_ADMIN")
+        raise RuntimeError(f"Keycloak admin login: HTTP {st}")
     return body["access_token"]
 
 
@@ -67,8 +70,30 @@ def _kc_user(user, t):
     return body[0] if st == 200 and body else None
 
 
-def _password(pw):
-    return pw or secrets.token_urlsafe(9)
+# ---- JupyterHub: stop the learner's server and forget them (the spawner drops the volume) --
+def _hub(method, path):
+    token = os.environ.get("HUB_ADMIN_TOKEN", "")
+    return _http(method, HUB_API + path, headers={"Authorization": f"token {token}"}) if token else (0, None)
+
+
+def _hub_forget(user):
+    """Stop the learner's Jupyter and delete them from the Hub — with them goes their work
+    volume (Docker volume / PVC), so old notebooks can't sync back into a wiped bucket. The
+    Hub re-creates the user (fresh volume) at their next sign-in. False if it didn't work."""
+    st, info = _hub("GET", f"/users/{user}")
+    if st == 404:
+        return True                                   # never opened Jupyter
+    if st != 200:
+        return False
+    if (info or {}).get("servers"):
+        _hub("DELETE", f"/users/{user}/server")
+        for _ in range(60):                           # stopping is async (202)
+            st, info = _hub("GET", f"/users/{user}")
+            if st == 200 and not info.get("servers") and not info.get("pending"):
+                break
+            time.sleep(1)
+    st, _ = _hub("DELETE", f"/users/{user}")
+    return st in (204, 404)
 
 
 # ---- Polaris: tables of a catalog -------------------------------------------------------
@@ -86,19 +111,20 @@ def _namespaces(cat, t, parent=None):
     return out
 
 
-def _clear_catalog(cat, t):
-    """Drop every table and view in `cat`; drop namespaces other than bronze/silver/gold."""
+def _clear_catalog(cat, t, keep=True):
+    """Drop every table and view in `cat`, and every namespace but bronze/silver/gold (all of
+    them if not keep). The files are removed from the bucket afterwards."""
     dropped = 0
     for ns in _namespaces(cat, t):
         p = f"{_C}/{cat}/namespaces/{_ns_path(ns)}"
-        for kind in ("views", "tables"):          # files: removed from the bucket afterwards
+        for kind in ("views", "tables"):
             st, body = lh._call("GET", f"{p}/{kind}", token=t)
             for ident in (body or {}).get("identifiers", []) if st == 200 else []:
                 name = urllib.parse.quote(ident["name"], safe="")
                 lh._ok(lh._call("DELETE", f"{p}/{kind}/{name}", token=t)[0],
                        f"drop {cat}.{'.'.join(ns)}.{ident['name']}")
                 dropped += 1
-        if ns not in [[n] for n in lh.NAMESPACES]:
+        if not keep or ns not in [[n] for n in lh.NAMESPACES]:
             lh._ok(lh._call("DELETE", p, token=t)[0], f"drop namespace {cat}.{'.'.join(ns)}")
     return dropped
 
@@ -119,6 +145,21 @@ def _owned_catalogs(name, t):
     return [c["name"] for c in lh._get(f"{lh._M}/catalogs", t)["catalogs"] if lh._owned(name, c["name"], t)]
 
 
+def _bucket_mb(bucket):
+    import xml.etree.ElementTree as ET
+    total, token = 0, None
+    while True:
+        q = {"list-type": "2"}
+        if token:
+            q["continuation-token"] = token
+        with lh._s3("GET", bucket, query=q) as r:
+            root = ET.fromstring(r.read())
+        total += sum(int(c.findtext(f"{lh._NS}Size") or 0) for c in root.findall(f"{lh._NS}Contents"))
+        token = root.findtext(f"{lh._NS}NextContinuationToken")
+        if root.findtext(f"{lh._NS}IsTruncated") != "true":
+            return round(total / 1e6, 1)
+
+
 def _empty_prefix(bucket, prefix):
     keys = lh.list_all(bucket, prefix)
     for k in keys:
@@ -126,11 +167,24 @@ def _empty_prefix(bucket, prefix):
     return len(keys)
 
 
-# ---- commands ---------------------------------------------------------------------------
-def cmd_list():
+def _check(user, t=None):
+    if not USERNAME.match(user or ""):
+        raise AdminError("username: 2-31 characters of a-z, 0-9 and -")
+    if t and not _kc_user(user, t):
+        raise AdminError(f"no lab account {user}")
+
+
+# ---- the actions ------------------------------------------------------------------------
+def learners():
     t, kc = lh._admin_token(), _kc_token()
-    st, users = _kc("GET", f"/admin/realms/{REALM}/users?max=500", token=kc)
-    print(f"{'user':<20} {'lakehouse':<24} {'catalogs':>8} {'bucket MB':>9}")
+    st, users = _kc("GET", f"/admin/realms/{REALM}/users?max=1000&briefRepresentation=true", token=kc)
+    st, mgrs = _kc("GET", f"/admin/realms/{REALM}/groups?search=managers", token=kc)
+    gid = next((g["id"] for g in mgrs or [] if g["name"] == "managers"), None)
+    managers = set()
+    if gid:
+        _, members = _kc("GET", f"/admin/realms/{REALM}/groups/{gid}/members?max=1000", token=kc)
+        managers = {m["username"] for m in members or []}
+    out = []
     for u in sorted(users or [], key=lambda u: u["username"]):
         name = lh.lake_name(u["username"])
         try:
@@ -138,112 +192,84 @@ def cmd_list():
         except RuntimeError:
             cats = []
         try:
-            mb = sum(int(o["size"]) for o in _sizes(lh.bucket_name(name))) / 1e6
-            size = f"{mb:9.1f}"
+            mb = _bucket_mb(lh.bucket_name(name))
         except Exception:
-            size = f"{'—':>9}"
-        lake = f"{name}_lake" if f"{name}_lake" in cats else "— (not signed in yet)"
-        print(f"{u['username']:<20} {lake:<24} {len(cats):>8} {size}")
+            mb = None
+        out.append({"user": u["username"], "manager": u["username"] in managers,
+                    "enabled": u.get("enabled", True), "created": u.get("createdTimestamp"),
+                    "lakehouse": f"{name}_lake" if f"{name}_lake" in cats else None,
+                    "catalogs": cats, "bucket": lh.bucket_name(name), "bucket_mb": mb})
+    return out
 
 
-def _sizes(bucket):
-    import xml.etree.ElementTree as ET
-    out, token = [], None
-    while True:
-        q = {"list-type": "2"}
-        if token:
-            q["continuation-token"] = token
-        with lh._s3("GET", bucket, query=q) as r:
-            root = ET.fromstring(r.read())
-        out += [{"size": c.findtext(f"{lh._NS}Size")} for c in root.findall(f"{lh._NS}Contents")]
-        token = root.findtext(f"{lh._NS}NextContinuationToken")
-        if root.findtext(f"{lh._NS}IsTruncated") != "true":
-            return out
-
-
-def cmd_create(user, pw=None):
-    if not USERNAME.match(user):
-        sys.exit("username: 2-31 of a-z, 0-9, - (starting with a letter or digit)")
-    kc, pw = _kc_token(), _password(pw)
+def create(user, password=None):
+    _check(user)
+    kc, pw = _kc_token(), password or secrets.token_urlsafe(9)
     if _kc_user(user, kc):
-        sys.exit(f"{user} already exists — use `password` to give them a new one")
+        raise AdminError(f"{user} already exists")
     st, body = _kc("POST", f"/admin/realms/{REALM}/users", {
         "username": user, "enabled": True,
         "credentials": [{"type": "password", "value": pw, "temporary": True}]}, token=kc)
     if st != 201:
-        sys.exit(f"create {user} in Keycloak: HTTP {st} {body!r}")
-    lh.provision(lh.lake_name(user))
+        raise RuntimeError(f"create {user} in Keycloak: HTTP {st} {body!r}")
+    name = lh.lake_name(user)
+    lh.provision(name)
     lh.publish_trino_rules()
-    print(f"created {user}: lakehouse {lh.lake_name(user)}_lake, bucket {lh.bucket_name(lh.lake_name(user))}")
-    print(f"first-sign-in password (they choose a new one): {pw}")
+    return {"user": user, "password": pw, "lakehouse": f"{name}_lake", "bucket": lh.bucket_name(name)}
 
 
-def cmd_password(user, pw=None):
-    kc, pw = _kc_token(), _password(pw)
-    u = _kc_user(user, kc)
-    if not u:
-        sys.exit(f"no lab account {user}")
-    st, body = _kc("PUT", f"/admin/realms/{REALM}/users/{u['id']}/reset-password",
+def set_password(user, password=None):
+    kc = _kc_token()
+    _check(user, kc)
+    pw = password or secrets.token_urlsafe(9)
+    st, body = _kc("PUT", f"/admin/realms/{REALM}/users/{_kc_user(user, kc)['id']}/reset-password",
                    {"type": "password", "value": pw, "temporary": True}, token=kc)
     if st != 204:
-        sys.exit(f"reset password: HTTP {st} {body!r}")
-    print(f"{user}: new password (they choose their own at the next sign-in): {pw}")
+        raise RuntimeError(f"reset password: HTTP {st} {body!r}")
+    return {"user": user, "password": pw}
 
 
 def _reset(user, prefix):
     """Drop every table/view in the learner's catalogs, empty `prefix` of their bucket, then
     re-provision (bronze/silver/gold, starter files, sample table)."""
+    _check(user)
     name, t = lh.lake_name(user), lh._admin_token()
     cats = _owned_catalogs(name, t)
     if not cats:
-        sys.exit(f"{user} has no lakehouse yet (never signed in)")
+        raise AdminError(f"{user} has no lakehouse yet (never signed in)")
     for c in cats:
         lh.trino_catalog(c, t)                    # makes sure trino_lab holds its grant
     ct = _content_token()
     dropped = sum(_clear_catalog(c, ct) for c in cats)
     files = _empty_prefix(lh.bucket_name(name), prefix)
     lh.provision(name)
-    return cats, dropped, files
+    return {"user": user, "catalogs": cats, "dropped": dropped, "files_removed": files}
 
 
-def cmd_reset_lakehouse(user):
-    cats, dropped, files = _reset(user, "tables/")
-    print(f"{user}: {dropped} table(s)/view(s) dropped in {', '.join(cats)}; {files} table file(s) removed")
+def reset_lakehouse(user):
+    return _reset(user, "tables/")
 
 
-def cmd_wipe(user):
-    cats, dropped, files = _reset(user, "")
-    print(f"{user}: {dropped} table(s)/view(s) dropped in {', '.join(cats)}; bucket emptied "
-          f"({files} file(s)), starter files restored")
+def wipe(user):
+    jupyter = _hub_forget(user)                   # first: a running Jupyter would sync files back
+    out = _reset(user, "")
+    out["jupyter_reset"] = jupyter
+    return out
 
 
-def _best_effort(what, fn):
-    try:
-        fn()
-    except Exception as e:
-        print(f"  ({what}: {e})")
-
-
-def _sqlpad(method, path):
-    import base64
-    auth = "Basic " + base64.b64encode(lh.SQLPAD_ADMIN.encode()).decode()
-    r = urllib.request.Request(lh.SQLPAD + path, method=method, headers={"Authorization": auth})
-    with urllib.request.urlopen(r, timeout=10) as resp:
-        return json.loads(resp.read() or b"null")
-
-
-def cmd_delete(user, confirm=None):
-    if confirm != "--yes":
-        sys.exit(f"this removes {user}'s account, catalogs, tables and bucket — add --yes")
+def delete(user):
+    _check(user)
     name, t, kc = lh.lake_name(user), lh._admin_token(), _kc_token()
+    jupyter = _hub_forget(user)
     bucket, cats = lh.bucket_name(name), _owned_catalogs(name, t)
     ct = _content_token() if cats else None
     for cat in cats:                                     # tables, namespaces, roles, catalog
         lh.trino_catalog(cat, t)
-        _clear_catalog(cat, ct)
-        for ns in lh.NAMESPACES:
-            lh._call("DELETE", f"{_C}/{cat}/namespaces/{ns}", token=ct)
-        _best_effort(f"trino {cat}", lambda: lh._trino(f"DROP CATALOG IF EXISTS {cat}"))
+        _clear_catalog(cat, ct, keep=False)
+        try:
+            lh._trino(f"DROP CATALOG IF EXISTS {cat}")
+        except Exception as e:
+            print(f"[labadmin] trino drop {cat}: {e}", flush=True)
         st, body = lh._call("GET", f"{lh._M}/catalogs/{cat}/catalog-roles", token=t)
         for r in (body or {}).get("roles", []) if st == 200 else []:
             if r["name"] != "catalog_admin":
@@ -251,48 +277,41 @@ def cmd_delete(user, confirm=None):
         lh._ok(lh._call("DELETE", f"{lh._M}/catalogs/{cat}", token=t)[0], f"delete catalog {cat}")
     lh._call("DELETE", f"{lh._M}/principals/{name}", token=t)
     lh._call("DELETE", f"{lh._M}/principal-roles/{name}", token=t)
-    if _bucket_exists(bucket):                           # bucket, its policy and keys
+    try:                                                 # bucket, its policy and keys
+        lh._s3("HEAD", bucket).close()
         _empty_prefix(bucket, "")
-        _best_effort("bucket", lambda: lh._s3("DELETE", bucket).close())
+        lh._s3("DELETE", bucket).close()
+    except urllib.error.HTTPError:
+        pass
     who = lh.storage_user(name)
     for key in (f"{who}-files", f"{who}-jobs"):         # only exist once Jupyter / a job used them
         try:
             lh._admin("DELETE", "remove-user", {"accessKey": key})
         except urllib.error.HTTPError:
             pass
-    _best_effort("storage policy", lambda: lh._admin("DELETE", "remove-canned-policy", {"name": who}))
-    def sqlpad():                                        # SQLPad user + their Trino connection
-        for c in _sqlpad("GET", "/api/connections"):
-            if c["name"] == f"Lakehouse (Trino) — {who}":
-                _sqlpad("DELETE", f"/api/connections/{c['id']}")
-        for u in _sqlpad("GET", "/api/users"):
-            if u["email"] == who:
-                _sqlpad("DELETE", f"/api/users/{u['id']}")
-    _best_effort("sqlpad", sqlpad)
+    try:
+        lh._admin("DELETE", "remove-canned-policy", {"name": who})
+    except urllib.error.HTTPError:
+        pass
+    try:                                                 # SQLPad user + their Trino connection
+        _sqlpad_delete(who)
+    except Exception as e:
+        print(f"[labadmin] sqlpad {who}: {e}", flush=True)
     u = _kc_user(user, kc)
     if u:
         _kc("DELETE", f"/admin/realms/{REALM}/users/{u['id']}", token=kc)
     lh.publish_trino_rules()
-    print(f"{user}: deleted (account, {len(cats)} catalog(s), bucket {bucket})")
+    return {"user": user, "catalogs": cats, "bucket": bucket, "jupyter_reset": jupyter}
 
 
-def _bucket_exists(bucket):
-    try:
-        lh._s3("HEAD", bucket).close()
-        return True
-    except urllib.error.HTTPError:
-        return False
-
-
-COMMANDS = {"list": cmd_list, "create": cmd_create, "password": cmd_password,
-            "reset-lakehouse": cmd_reset_lakehouse, "wipe": cmd_wipe, "delete": cmd_delete}
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
-        sys.exit(__doc__)
-    fn, args = COMMANDS[sys.argv[1]], sys.argv[2:]
-    try:
-        inspect.signature(fn).bind(*args)
-    except TypeError:
-        sys.exit(__doc__)
-    fn(*args)
+def _sqlpad_delete(who):
+    import base64
+    auth = {"Authorization": "Basic " + base64.b64encode(lh.SQLPAD_ADMIN.encode()).decode()}
+    _, conns = _http("GET", f"{lh.SQLPAD}/api/connections", headers=auth)
+    for c in conns or []:
+        if c["name"] == f"Lakehouse (Trino) — {who}":
+            _http("DELETE", f"{lh.SQLPAD}/api/connections/{c['id']}", headers=auth)
+    _, users = _http("GET", f"{lh.SQLPAD}/api/users", headers=auth)
+    for u in users or []:
+        if u["email"] == who:
+            _http("DELETE", f"{lh.SQLPAD}/api/users/{u['id']}", headers=auth)

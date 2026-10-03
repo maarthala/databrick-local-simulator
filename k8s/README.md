@@ -103,20 +103,22 @@ deploy playbook runs it). The platform manager reads one with
    ShopFlow Bronze → Silver → Gold jobs over Spark Connect into `polaris_lake`). The lessons'
    ready-made tables (`shared.gold.daily_sales` in notebooks) come from it.
 
-### Manager toolkit
-`k8s/lab-admin.sh` (runs `labadmin.py` in the home-api pod; on the node add `KUBECTL="microk8s kubectl"`):
+### Manage learners (managers only)
+Signed in as a manager (Keycloak group `managers`, e.g. `manager`), the landing page shows
+**👥 Manage learners** (`/manage.html`): every lab account with its lakehouse, catalogs and bucket
+use, and
 
-| Command | Does |
-|---|---|
-| `list` | lab accounts, their lakehouse, catalogs, bucket use |
-| `create <user> [password]` | new lab account + lakehouse, bucket, SQLPad user (password changed at first sign-in) |
-| `password <user> [password]` | new password (changed at the next sign-in) |
-| `reset-lakehouse <user>` | drop every table/view in their catalogs; bronze/silver/gold + sample table come back |
-| `wipe <user>` | reset-lakehouse + empty their bucket and Jupyter volume; starter files come back |
-| `delete <user> --yes` | remove the account, catalogs, bucket, SQLPad user, Jupyter volume |
+- **Create learner** — account + lakehouse, bucket, SQLPad user (random password shown once; the
+  learner picks their own at first sign-in)
+- **New password** — same, for an existing account
+- **Reset lakehouse** — drop every table/view in their catalogs (bronze/silver/gold + the sample
+  table come back; files, catalogs, shares stay)
+- **Wipe** — reset + empty their bucket + a fresh Jupyter volume (starter files come back)
+- **Delete** — the account and everything it owns
 
-No password given → a random one is printed. Locally the same commands are `make learners`,
-`make learner-create U=… [P=…]`, `learner-password`, `learner-reset`, `learner-wipe`, `learner-delete`.
+Destructive actions ask you to type the username. Managers can't wipe/delete themselves or other
+managers. It runs in home-api (`labadmin.py`) with the Keycloak admin login and the JupyterHub
+service token `hub-admin-token` from `de-stack-secrets`.
 
 ### Learners' notebooks and DAGs (no git needed)
 Each learner's Jupyter keeps `notebooks/` and `dags/` mirrored to their own bucket

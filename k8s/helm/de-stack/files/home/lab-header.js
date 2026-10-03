@@ -1,7 +1,7 @@
 // The lab's top bar — the same on every page (home, My files, My catalogs).
 // A page puts <header id="lab-top"></header> where the bar goes and loads this script; it draws
-// the brand, who's signed in + their lakehouse, the page links (current one highlighted) and
-// Log out. /api/me (home-api, behind the Keycloak login) also creates the learner's lakehouse
+// the brand, who's signed in + their lakehouse, the page links (current one highlighted; managers
+// also get Manage learners) and Log out. /api/me (home-api, behind the Keycloak login) also creates the learner's lakehouse
 // on first call. Pages that need the same data listen for the "lab:me" event.
 (function () {
   var css = [
@@ -39,6 +39,7 @@
     '<div class="tag">Your gateway to a Data Engineering career</div></div></a>' +
     '<div class="me" id="me" hidden><span>Hi <b id="me-name"></b></span><span class="lake" id="me-lake"></span>' +
     link('/', '🏠 Home') + link('/files.html', '📁 My files') + link('/catalogs.html', '🗂️ My catalogs') +
+    '<span id="me-admin" hidden>' + link('/manage.html', '👥 Manage learners') + '</span>' +
     '<a class="btn" id="me-out" href="#">Log out</a></div>';
 
   var k8s = /(^|\.)de\.lan$/.test(location.hostname);
@@ -61,6 +62,8 @@
         lake.textContent = 'lakehouse not ready — ' + (me.detail || 'try again shortly');
         lake.className = 'lake err';
       }
+      // managers (Keycloak group) also get the learner admin page
+      document.getElementById('me-admin').hidden = (me.groups || []).indexOf('managers') < 0;
       document.getElementById('me').hidden = false;
       document.dispatchEvent(new CustomEvent('lab:me', {detail: me}));
     })

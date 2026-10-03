@@ -25,6 +25,12 @@ the logged-in user; nothing from the browser can point at another bucket.
   POST   /api/catalogs/shares?catalog&grantee&access&namespace[&table]
   DELETE /api/catalogs/shares?catalog=…&role=…           revoke
 
+"Manage learners" — managers only (Keycloak group `managers`). Actions run in the background
+(wipe / delete can take a minute); the page polls the job. JSON body {"user", "password"?}.
+  GET    /api/admin/learners                             every lab account + lakehouse + bucket use
+  POST   /api/admin/{create|password|reset|wipe|delete}  → {"job": id}
+  GET    /api/admin/jobs?id=…                            → {"state": running|done|error, "result"|"error"}
+
 Only reachable through oauth2-proxy (it is not published), so the identity headers can
 be trusted. Standard library only.
 """
@@ -35,6 +41,7 @@ import urllib.error
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import labadmin
 import lakehouse as lh
 from lakehouse import POLARIS, bucket_name, lake_name, provision
 
@@ -57,6 +64,9 @@ class _Body:
 
 _ready = set()            # learners already provisioned since start (skip the API calls)
 _lock = threading.Lock()
+_jobs = {}                # manager actions: id → {"state", "result" | "error", …}
+_ACTIONS = {"create": labadmin.create, "password": labadmin.set_password,
+            "reset": labadmin.reset_lakehouse, "wipe": labadmin.wipe, "delete": labadmin.delete}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -205,7 +215,51 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             return self._json(500, {"error": str(e)})
 
+    def _admin(self, method):
+        """All /api/admin* calls — managers only. Changes need the X-Lab-Admin header (a plain
+        cross-site form can't send it) and act on other accounts, never your own."""
+        path, q = self._route()
+        user = self._user()
+        if not user:
+            return self._json(401, {"error": "not logged in"})
+        if not self._manager():
+            return self._json(403, {"error": "managers only"})
+        try:
+            if method == "GET" and path == "/api/admin/learners":
+                return self._json(200, {"me": user, "learners": labadmin.learners()})
+            if method == "GET" and path == "/api/admin/jobs":
+                job = _jobs.get(q.get("id", ""))
+                if job and job["state"] != "running":
+                    _jobs.pop(q["id"], None)          # read once (a new password isn't kept around)
+                return self._json(200, job) if job else self._json(404, {"error": "no such job"})
+            action = path.rsplit("/", 1)[-1]
+            if method != "POST" or action not in _ACTIONS:
+                return self._json(404, {"error": "not found"})
+            if self.headers.get("X-Lab-Admin") != "1":
+                return self._json(403, {"error": "missing X-Lab-Admin header"})
+            length = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(length) or b"{}") if length else {}
+            target = (body.get("user") or "").strip().lower()
+            if target == user and action in ("wipe", "delete", "reset"):
+                return self._json(400, {"error": "that's your own account — ask another manager"})
+            if action in ("wipe", "delete") and any(
+                    l["user"] == target and l["manager"] for l in labadmin.learners()):
+                return self._json(400, {"error": f"{target} is a manager — remove them from the "
+                                                 "managers group in Keycloak first"})
+            args = [target] + ([body["password"]] if body.get("password") and action in ("create", "password") else [])
+            jid = __import__("secrets").token_hex(8)
+            _jobs[jid] = {"state": "running", "action": action, "user": target, "by": user}
+            threading.Thread(target=_run_job, args=(jid, _ACTIONS[action], args), daemon=True).start()
+            print(f"[home-api] manager {user}: {action} {target}", flush=True)
+            return self._json(202, {"job": jid})
+        except ValueError as e:
+            return self._json(400, {"error": str(e)})
+        except Exception as e:
+            return self._json(500, {"error": str(e)})
+
     def _dispatch(self, method):
+        if self.path.startswith("/api/admin"):
+            return self._admin(method)
         if self.path.startswith("/api/catalogs"):
             return self._catalogs(method)
         return self._files(method)
@@ -226,6 +280,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._files("GET")
         if self.path.startswith("/api/catalogs"):
             return self._catalogs("GET")
+        if self.path.startswith("/api/admin"):
+            return self._admin("GET")
         if self.path != "/api/me":
             return self._json(404, {"error": "not found"})
         user = self._user()
@@ -248,6 +304,19 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):               # quieter logs: one line per request
         print(f"[home-api] {self.address_string()} {fmt % args}", flush=True)
+
+
+def _run_job(jid, fn, args):
+    try:
+        result = fn(*args)
+        with _lock:
+            _ready.discard(lh.lake_name(args[0]))     # re-provision on their next visit
+        _jobs[jid].update(state="done", result=result)
+    except labadmin.AdminError as e:
+        _jobs[jid].update(state="error", error=str(e))
+    except Exception as e:  # noqa: BLE001 — shown on the page
+        print(f"[home-api] {_jobs[jid]['action']} {args[0]}: {e}", flush=True)
+        _jobs[jid].update(state="error", error=str(e))
 
 
 def _rules_now():
