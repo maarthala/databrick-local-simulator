@@ -8,7 +8,9 @@ plus the Keycloak admin (KEYCLOAK_ADMIN=user:password) and a JupyterHub service 
   set_password(user, pw)     new password (the learner picks their own at the next sign-in)
   reset_lakehouse(user)      drop every table/view in their catalogs (bronze/silver/gold and the
                              sample table come back); files, catalogs and shares are kept
-  wipe(user)                 reset_lakehouse + empty bucket + fresh Jupyter (starter files back)
+  wipe(user)                 back to a new member's setup: only <user>_lake (bronze/silver/gold +
+                             sample table), starter files, fresh Jupyter; extra catalogs deleted,
+                             the shares they gave revoked (account kept)
   delete(user)               remove the account and everything it owns
 """
 import json
@@ -250,11 +252,47 @@ def reset_lakehouse(user):
     return _reset(user, "tables/")
 
 
+def _drop_catalog(cat, t, ct):
+    """A catalog and everything in it: tables, namespaces, its Trino catalog, its roles
+    (owner, shares …). Returns how many tables/views were dropped."""
+    lh.trino_catalog(cat, t)
+    dropped = _clear_catalog(cat, ct, keep=False)
+    try:
+        lh._trino(f"DROP CATALOG IF EXISTS {cat}")
+    except Exception as e:
+        print(f"[labadmin] trino drop {cat}: {e}", flush=True)
+    st, body = lh._call("GET", f"{lh._M}/catalogs/{cat}/catalog-roles", token=t)
+    for r in (body or {}).get("roles", []) if st == 200 else []:
+        if r["name"] != "catalog_admin":
+            lh._call("DELETE", f"{lh._M}/catalogs/{cat}/catalog-roles/{r['name']}", token=t)
+    lh._ok(lh._call("DELETE", f"{lh._M}/catalogs/{cat}", token=t)[0], f"delete catalog {cat}")
+    return dropped
+
+
 def wipe(user):
+    """Back to a new member's setup: only <user>_lake (bronze/silver/gold + sample table), the
+    starter files, a fresh Jupyter — extra catalogs deleted, the shares they gave revoked. The
+    account stays; shares OTHER members gave them stay too (those are the other member's)."""
+    _check(user)
+    name, t = lh.lake_name(user), lh._admin_token()
+    lake, cats = f"{name}_lake", _owned_catalogs(name, t)
+    if lake not in cats:
+        raise AdminError(f"{user} has no lakehouse yet (never signed in)")
     jupyter = _hub_forget(user)                   # first: a running Jupyter would sync files back
-    out = _reset(user, "")
-    out["jupyter_reset"] = jupyter
-    return out
+    ct = _content_token()
+    extra = [c for c in cats if c != lake]
+    dropped = sum(_drop_catalog(c, t, ct) for c in extra)
+    lh.trino_catalog(lake, t)
+    dropped += _clear_catalog(lake, ct)
+    st, body = lh._call("GET", f"{lh._M}/catalogs/{lake}/catalog-roles", token=t)
+    shares = [r["name"] for r in (body or {}).get("roles", []) if st == 200 and r["name"].startswith("share_")]
+    for r in shares:
+        lh._call("DELETE", f"{lh._M}/catalogs/{lake}/catalog-roles/{r}", token=t)
+    files = _empty_prefix(lh.bucket_name(name), "")
+    lh.provision(name)
+    lh.publish_trino_rules()
+    return {"user": user, "dropped": dropped, "catalogs_removed": extra, "shares_revoked": len(shares),
+            "files_removed": files, "jupyter_reset": jupyter}
 
 
 def delete(user):
@@ -264,17 +302,7 @@ def delete(user):
     bucket, cats = lh.bucket_name(name), _owned_catalogs(name, t)
     ct = _content_token() if cats else None
     for cat in cats:                                     # tables, namespaces, roles, catalog
-        lh.trino_catalog(cat, t)
-        _clear_catalog(cat, ct, keep=False)
-        try:
-            lh._trino(f"DROP CATALOG IF EXISTS {cat}")
-        except Exception as e:
-            print(f"[labadmin] trino drop {cat}: {e}", flush=True)
-        st, body = lh._call("GET", f"{lh._M}/catalogs/{cat}/catalog-roles", token=t)
-        for r in (body or {}).get("roles", []) if st == 200 else []:
-            if r["name"] != "catalog_admin":
-                lh._call("DELETE", f"{lh._M}/catalogs/{cat}/catalog-roles/{r['name']}", token=t)
-        lh._ok(lh._call("DELETE", f"{lh._M}/catalogs/{cat}", token=t)[0], f"delete catalog {cat}")
+        _drop_catalog(cat, t, ct)
     lh._call("DELETE", f"{lh._M}/principals/{name}", token=t)
     lh._call("DELETE", f"{lh._M}/principal-roles/{name}", token=t)
     try:                                                 # bucket, its policy and keys

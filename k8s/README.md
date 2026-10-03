@@ -113,7 +113,8 @@ use, and
 - **New password** — same, for an existing account
 - **Reset lakehouse** — drop every table/view in their catalogs (bronze/silver/gold + the sample
   table come back; files, catalogs, shares stay)
-- **Wipe** — reset + empty their bucket + a fresh Jupyter volume (starter files come back)
+- **Wipe** — back to a new member's setup: only their lakehouse (bronze/silver/gold + sample
+  table), starter files and a fresh Jupyter; extra catalogs deleted, the shares they gave revoked
 - **Delete** — the account and everything it owns
 
 Destructive actions ask you to type the username. Managers can't wipe/delete themselves or other

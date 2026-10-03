@@ -161,9 +161,11 @@
         describe: function (r) { return [[r.dropped + ' table(s)/view(s) dropped in ' + r.catalogs.join(', ') +
           '. bronze / silver / gold and the sample table are back.']]; }},
       wipe: {label: 'Wipe', title: 'Wiped ', danger: true,
-        warn: 'Drops every table, empties their bucket and resets their Jupyter. Starter files come back; the account stays.',
-        describe: function (r) { return [[r.dropped + ' table(s)/view(s) dropped, ' + r.files_removed +
-          ' file(s) removed' + (r.jupyter_reset ? ', Jupyter reset' : ' (Jupyter could not be reset)') + '.']]; }},
+        warn: 'Back to a new member\'s setup: every table dropped, extra catalogs deleted, the shares they gave revoked, bucket emptied, Jupyter reset. Their lakehouse, starter files and sample table come back; the account stays.',
+        describe: function (r) { return [[r.dropped + ' table(s)/view(s) dropped, ' +
+          r.catalogs_removed.length + ' extra catalog(s) deleted, ' + r.shares_revoked + ' share(s) revoked, ' +
+          r.files_removed + ' file(s) removed' + (r.jupyter_reset ? ', Jupyter reset' : ' (Jupyter could not be reset)') +
+          '. Back to the default setup.']]; }},
       'delete': {label: 'Delete', title: 'Deleted ', danger: true,
         warn: 'Removes the account, its catalogs, tables, bucket and Jupyter files. This cannot be undone.',
         describe: function (r) { return [['Account, ' + r.catalogs.length + ' catalog(s) and bucket ' + r.bucket + ' removed.']]; }}
