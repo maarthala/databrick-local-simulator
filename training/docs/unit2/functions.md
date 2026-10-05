@@ -26,6 +26,10 @@ SHOW FUNCTIONS LIKE '%date%';
 The result lists every matching function with its argument types and a one-line description. The
 full catalogue is in the Trino docs ("Functions and operators").
 
+**`LIKE '%date%'`** matches text by pattern: `%` stands for "any characters, or none". So `'%date%'`
+means "contains `date` anywhere" and matches `date_trunc`, `date_add` and `current_date`. `'date%'`
+would mean "starts with `date`".
+
 ### 2 · Text
 ```sql
 SELECT full_name,
@@ -39,10 +43,16 @@ FROM shopflow.public.customers
 LIMIT 5;
 ```
 
+- **`upper(s)`** / **`lower(s)`**: the text in capitals / small letters (`'Ann Lee'` → `'ANN LEE'`).
+- **`length(s)`**: how many characters the text has (`'Ann Lee'` → `7`, the space counts).
 - **`split_part(s, sep, n)`**: the n-th piece after splitting on `sep`. Perfect for names, emails
-  and codes.
-- **`regexp_like` / `regexp_extract` / `regexp_replace`**: pattern matching when simple splits
-  aren't enough.
+  and codes. `split_part('Ann Lee', ' ', 1)` → `'Ann'`, and `split_part(email, '@', 2)` → the
+  part after the `@`, the domain.
+- **`regexp_like(s, pattern)`**: `true` if the text matches a **regular expression**, a pattern
+  language for text. Here `'^[^@]+@[^@]+$'` reads: `^` start, `[^@]+` one or more characters that
+  aren't `@`, then one `@`, then more non-`@` characters, `$` end. So `ann@shop.com` → `true`,
+  `ann@@shop` → `false`. Its siblings `regexp_extract` (pull out the matching part) and
+  `regexp_replace` (swap it for something else) help when simple splits aren't enough.
 - **`||`**: glue strings together (same as `concat(...)`).
 
 ### 3 · Dates and times
@@ -60,8 +70,19 @@ ORDER BY order_ts DESC
 LIMIT 5;
 ```
 
-`date_trunc` is the workhorse of reporting: it rounds a timestamp **down** to its month (or day,
-week, year), so `GROUP BY date_trunc('month', order_ts)` gives monthly totals.
+Each new function, for an order placed on `2024-03-11 14:07:22`:
+
+| Function | Result | What it does |
+|---|---|---|
+| `date_trunc('month', order_ts)` | `2024-03-01 00:00:00` | rounds **down** to the start of the month (or `'day'`, `'week'`, `'year'`) |
+| `day_of_week(order_ts)` | `1` | day of the week as a number: 1 = Monday … 7 = Sunday |
+| `format_datetime(order_ts, 'EEEE')` | `Monday` | the timestamp as text in a chosen format; `EEEE` = full day name, `yyyy-MM-dd` = `2024-03-11` |
+| `current_timestamp` | now | the date and time the query runs (no brackets) |
+| `date_diff('day', a, b)` | whole days from `a` to `b` | `b` minus `a` in the unit you name: `'day'`, `'hour'`, `'month'` |
+| `date_add('day', 30, order_ts)` | `2024-04-10 14:07:22` | adds 30 days; a negative number goes back in time |
+
+`date_trunc` is the workhorse of reporting: `GROUP BY date_trunc('month', order_ts)` gives monthly
+totals.
 
 ### 4 · Numbers
 ```sql
@@ -76,8 +97,11 @@ FROM shopflow.public.products
 LIMIT 5;
 ```
 
-`greatest` / `least` pick the largest or smallest of their arguments **within one row**. That's
-different from `max`/`min`, which work **across rows**.
+- **`ceil(x)`**: rounds **up** to the next whole number (`19.01` → `20`). Its opposite `floor(x)`
+  rounds down; `round(x, 1)` rounds to the nearest, here with 1 decimal.
+- **`greatest` / `least`**: pick the largest or smallest of their arguments **within one row**.
+  That's different from `max`/`min`, which work **across rows**. `greatest(price * 0.9, cost)`
+  gives the 10%-off price, but never less than what the product cost.
 
 ### 5 · Aggregate functions beyond SUM and COUNT
 ```sql
@@ -97,9 +121,15 @@ ORDER BY orders DESC;
   `SUM(CASE WHEN … THEN 1 ELSE 0 END)`.
 - **`approx_distinct`**: a fast **estimate** of `count(DISTINCT …)`, within about 2%. On billions of rows
   it's dramatically cheaper.
-- **`array_agg`**: collect a group's values into an **array**, which leads to…
+- **`array_agg`**: collect a group's values into an **array**, one list per group.
+  `array_agg(DISTINCT currency)` keeps each value once, e.g. `['EUR', 'USD']`.
+- **`array_join(array, ', ')`**: turn an array into one piece of text, with `', '` between the
+  elements: `['EUR', 'USD']` → `'EUR, USD'`. Together they list every currency used per channel.
+
+Arrays lead to…
 
 ### 6 · Arrays and lambdas
+An **array** is a list of values inside **one** column of **one** row, written `ARRAY[1, 2, 3]`.
 A **lambda** is a tiny unnamed function, written `x -> x * 10`: "take `x`, return `x * 10`".
 Array functions apply it to every element:
 
@@ -108,6 +138,12 @@ SELECT transform(ARRAY[1, 2, 3], x -> x * 10)                 AS times_ten,   --
        filter(ARRAY[5, 15, 25], x -> x > 10)                  AS over_ten,    -- [15, 25]
        reduce(ARRAY[1, 2, 3, 4], 0, (s, x) -> s + x, s -> s)   AS total;       -- 10
 ```
+
+- **`transform(array, lambda)`**: runs the lambda on every element and returns a new array of
+  the results, the same length.
+- **`filter(array, lambda)`**: keeps only the elements where the lambda returns `true`, so the
+  array can get shorter.
+- **`reduce(...)`**: folds the array into a single value, explained next.
 
 **Read `reduce` part by part:** `reduce(array, start, step, finish)` folds a whole array into
 **one** value, carrying a running value `s` along the way:
@@ -147,6 +183,19 @@ ORDER BY big_lines DESC
 LIMIT 5;
 ```
 
+**`cardinality(array)`** returns **how many elements an array has**:
+
+```sql
+SELECT cardinality(ARRAY[932.88, 1108.45, 52.38, 324.69]) AS four,   -- 4
+       cardinality(ARRAY[])                               AS zero;   -- 0
+```
+
+It's the array version of `count`, but they work at different levels. `count(*)` counts **rows**
+across a group. `cardinality` counts the **elements inside one array**, within a single row. After
+`array_agg`, each customer is one row holding an array, so `cardinality` is the right tool.
+`cardinality(filter(...))` runs from the inside out: `filter` first shrinks the array, then
+`cardinality` counts what's left.
+
 **Follow one customer through it.** Customer 1529 bought four lines, so step 1 gives them:
 
 | customer_id | line_values |
@@ -185,6 +234,9 @@ LIMIT 5;
 
 - **`WITH FUNCTION name(args) RETURNS type RETURN expression`**: declare it, then use it in the
   `SELECT` below.
+- Each argument gets a **type**: `decimal(10,2)` is an exact number with up to 10 digits, 2 of them
+  after the decimal point (right for money). `RETURNS double` means the answer is a floating-point
+  number (fast, slightly approximate), which is why the expression `CAST`s to `double`.
 - It lives **only for this query**, just like a CTE.
 
 !!! info "Why not `CREATE FUNCTION` and keep it?"
@@ -211,7 +263,9 @@ LIMIT 5;
 | **Scalar function** | one value in → one value out, per row |
 | **Aggregate function** | many rows in → one value per group |
 | **Lambda** | a tiny inline function: `x -> x * 2` |
+| **Array** | a list of values inside one column of one row: `ARRAY[1, 2, 3]` |
 | **Higher-order function** | a function that takes a lambda (`transform`, `filter`, `reduce`) |
+| **`cardinality`** | the number of elements in an array |
 | **UDF** | user-defined function: one you write yourself |
 | **`WITH FUNCTION`** | a SQL UDF that lives for one query (Trino) |
 
@@ -230,6 +284,7 @@ Function **names** vary a little by engine; the **ideas** are identical everywhe
 | `approx_distinct(x)` | `approx_count_distinct(x)` | `APPROX_COUNT_DISTINCT(x)` | `APPROX_COUNT_DISTINCT(x)` |
 | `date_diff('day', a, b)` | `datediff(b, a)` | `DATEDIFF(day, a, b)` | `DATEDIFF(day, a, b)` |
 | `transform(arr, x -> …)` | `transform(arr, x -> …)` | `TRANSFORM(arr, x -> …)` | n/a |
+| `cardinality(arr)` | `size(arr)` | `ARRAY_SIZE(arr)` | n/a |
 | `WITH FUNCTION` (inline) | `CREATE FUNCTION … RETURN` (saved in the catalog) | `CREATE FUNCTION` (SQL / Python) | `CREATE FUNCTION` |
 
 In **Databricks** and **Snowflake**, SQL functions can be **saved** in the catalog and governed like
