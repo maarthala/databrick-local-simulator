@@ -123,7 +123,13 @@ Step by step, `s` goes `0 → 1 → 3 → 6 → 10`. Each element is added to th
 `total = 10`. Change `step` to change the logic: `(s, x) -> s * x` with `start` = `1` gives the
 product (`24`), and `(s, x) -> greatest(s, x)` gives the largest value.
 
-On real data: each customer's order values, then how many were big orders:
+**Now on real data.** Which customers buy the most expensive items? Each order has one or more
+**order lines** (one product, a quantity and a price). The query works in two steps:
+
+1. **Collect:** for each customer, `array_agg` gathers the value of every line they ever bought
+   (`quantity × unit_price`) into **one array**, so each customer becomes one row.
+2. **Count:** `cardinality` counts the elements of an array. `filter` with the lambda `v -> v > 500`
+   keeps only the lines worth more than 500, and `cardinality` then counts those.
 
 ```sql
 WITH per_customer AS (
@@ -140,6 +146,28 @@ FROM per_customer
 ORDER BY big_lines DESC
 LIMIT 5;
 ```
+
+**Follow one customer through it.** Customer 1529 bought four lines, so step 1 gives them:
+
+| customer_id | line_values |
+|---|---|
+| 1529 | `[932.88, 1108.45, 52.38, 324.69]` |
+
+Step 2: `cardinality(line_values)` = **4** lines. `filter(…, v -> v > 500)` keeps
+`[932.88, 1108.45]`, so `big_lines` = **2**.
+
+**The end result:** the five customers with the most lines over 500. Your numbers will differ, because
+ShopFlow keeps adding orders:
+
+| customer_id | lines | big_lines |
+|---|---|---|
+| 15 | 250 | 151 |
+| 3 | 233 | 145 |
+| 32 | 229 | 141 |
+| 34 | 231 | 141 |
+| 75 | 244 | 140 |
+
+Read the first row as: customer 15 bought 250 lines, and 151 of them were worth more than 500.
 
 ### 7 · Your own function: `WITH FUNCTION`
 When a calculation repeats, give it a name. Trino lets you define a **SQL function inline**, at the
