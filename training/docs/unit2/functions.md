@@ -109,6 +109,20 @@ SELECT transform(ARRAY[1, 2, 3], x -> x * 10)                 AS times_ten,   --
        reduce(ARRAY[1, 2, 3, 4], 0, (s, x) -> s + x, s -> s)   AS total;       -- 10
 ```
 
+**Read `reduce` part by part:** `reduce(array, start, step, finish)` folds a whole array into
+**one** value, carrying a running value `s` along the way:
+
+| Part | Here | Meaning |
+|---|---|---|
+| `array` | `ARRAY[1, 2, 3, 4]` | the values to walk through |
+| `start` | `0` | the running value `s` begins at 0 |
+| `step` | `(s, x) -> s + x` | for each element `x`: new `s` = old `s` + `x` |
+| `finish` | `s -> s` | what to return at the end, here `s` unchanged |
+
+Step by step, `s` goes `0 → 1 → 3 → 6 → 10`. Each element is added to the running total, so
+`total = 10`. Change `step` to change the logic: `(s, x) -> s * x` with `start` = `1` gives the
+product (`24`), and `(s, x) -> greatest(s, x)` gives the largest value.
+
 On real data: each customer's order values, then how many were big orders:
 
 ```sql
