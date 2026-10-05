@@ -38,7 +38,8 @@ SQLPAD = os.environ.get("SQLPAD_URL", "http://sqlpad:3000")
 SQLPAD_ADMIN = os.environ.get("SQLPAD_ADMIN", "admin@de.local:admin1234")
 SQLPAD_SHARED_CONNECTIONS = ("shopflow", "adventureworks")         # OLTP, PostgreSQL login `learner`
 TRINO_HOST = os.environ.get("TRINO_HOST", "trino")
-TRINO_PORT = os.environ.get("TRINO_PORT", "8080")
+# k8s injects TRINO_PORT=tcp://<ip>:8080 for the `trino` Service — keep only the number
+TRINO_PORT = os.environ.get("TRINO_PORT", "8080").rsplit(":", 1)[-1]
 NAMESPACES = ("bronze", "silver", "gold")
 TRINO = os.environ.get("TRINO_URL", "http://trino:8080")
 TRINO_LOGIN = os.environ.get("TRINO_POLARIS_LOGIN", "trino_lab:trino-lab-secret")   # Trino → learner catalogs
@@ -380,7 +381,7 @@ def invite_sqlpad(name, admin=False):
     conn = conns.get(label)
     if conn is None:
         conn = req("POST", "/api/connections", body)
-    elif (conn.get("data") or {}).get("host") != TRINO_HOST:
+    elif {k: (conn.get("data") or {}).get(k) for k in body["data"]} != body["data"]:
         conn = req("PUT", f"/api/connections/{conn['id']}", body)
     uid = users[user]["id"]
     if role != "admin" and not any(a["connectionId"] == conn["id"] and a["userId"] == uid for a in accesses):
