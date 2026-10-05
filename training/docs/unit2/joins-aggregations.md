@@ -44,7 +44,7 @@ Two ideas to hold onto before we start:
 These labs run on the raw ShopFlow source via the `shopflow` catalog. (After Unit 4, the
 same SQL works on `iceberg.silver.*` — just change the schema.)
 
-> Run these in **SQLPad** or **Superset SQL Lab** (see [2.1](intro.md)). In Superset,
+> Run these in **SQLPad** on the **Lakehouse (Trino) — &lt;your username&gt;** connection (not *ShopFlow — OLTP*) or **Superset SQL Lab** (see [2.1](intro.md)). In Superset,
 > pick the **shopflow / public** schema and skip the `USE` line below.
 
 ```sql

@@ -56,7 +56,7 @@ If the path points at something that isn't there, the function returns **`NULL`*
 erroring — which is what makes flattening ragged data painless.
 
 ## Lab
-> Run these in **SQLPad** (see [2.1](intro.md)) — the write steps need a
+> Run these in **SQLPad** on the **Lakehouse (Trino) — &lt;your username&gt;** connection (not *ShopFlow — OLTP*) (see [2.1](intro.md)) — the write steps need a
 > tool that can write (Superset SQL Lab is read-only). They go to **your own** catalog
 > `demouser_lake` (fully qualified).
 

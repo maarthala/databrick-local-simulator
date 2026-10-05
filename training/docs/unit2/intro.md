@@ -67,7 +67,12 @@ who you are, so you see your own lakehouse and the shared data, and nobody else'
 **Lakehouse (Trino) — demouser** (your own username). It reaches every Trino catalog you're allowed
 to use: `shopflow`, `adventureworks`, the shared `iceberg` lake and your own `demouser_lake`. The
 **ShopFlow — OLTP** and **AdventureWorks — OLTP** connections talk to Postgres directly, read-only
-(it plays the shop's production database). You don't need them for these lessons.
+(it plays the shop's production database). You don't need them for these lessons, and course SQL
+like `TRY_CAST` or `USE` fails there, because Postgres doesn't speak Trino's SQL.
+
+The left sidebar shows only your own lake (`<username>_lake`). `shopflow` and `adventureworks` aren't
+listed there, but you can still query them by full name, e.g. `shopflow.public.orders`. Run
+`SHOW CATALOGS;` to see everything you can reach.
 
 **B. Superset SQL Lab: read-only, nice for charts.** Open Superset at `http://localhost:8004`
 (local) or `superset.de.lan` (k8s), go to **SQL → SQL Lab**, and pick the **shopflow** database

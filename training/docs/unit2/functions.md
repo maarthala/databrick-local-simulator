@@ -16,7 +16,7 @@ Functions come in a few kinds:
 | **Your own** (user-defined) | whatever you define | whatever you define | `WITH FUNCTION margin_pct(...)` |
 
 ## Lab
-> Run these in **SQLPad** or **Superset SQL Lab** (see [2.1](intro.md)).
+> Run these in **SQLPad** on the **Lakehouse (Trino) — &lt;your username&gt;** connection (not *ShopFlow — OLTP*) or **Superset SQL Lab** (see [2.1](intro.md)).
 
 ### 1 · Find the function you need
 ```sql
