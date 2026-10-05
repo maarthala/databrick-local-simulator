@@ -372,10 +372,16 @@ def invite_sqlpad(name, admin=False):
         if not any(a["connectionId"] == conn and a["userId"] == "__EVERYONE__" for a in accesses):
             req("POST", "/api/connection-accesses", {"connectionId": conn, "userId": "__EVERYONE__", "duration": 0})
     label = f"Lakehouse (Trino) — {user}"
+    # SQLPad keeps driver settings only under "data"; top-level fields are silently dropped
+    # (the connection then fails with "Invalid URL"), so send them there and repair old ones.
+    body = {"name": label, "driver": "trino", "data": {
+        "host": TRINO_HOST, "port": TRINO_PORT, "username": name, "catalog": f"{name}_lake"}}
     conns = {c["name"]: c for c in req("GET", "/api/connections")}
-    conn = conns.get(label) or req("POST", "/api/connections", {
-        "name": label, "driver": "trino", "host": TRINO_HOST, "port": TRINO_PORT,
-        "username": name, "catalog": f"{name}_lake"})
+    conn = conns.get(label)
+    if conn is None:
+        conn = req("POST", "/api/connections", body)
+    elif (conn.get("data") or {}).get("host") != TRINO_HOST:
+        conn = req("PUT", f"/api/connections/{conn['id']}", body)
     uid = users[user]["id"]
     if role != "admin" and not any(a["connectionId"] == conn["id"] and a["userId"] == uid for a in accesses):
         req("POST", "/api/connection-accesses", {"connectionId": conn["id"], "userId": uid, "duration": 0})
