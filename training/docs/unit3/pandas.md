@@ -440,7 +440,125 @@ amount   90.0  95.0  420.0
 !!! note "Transpose vs pivot"
     **`.T`** flips the **whole** table, labels and all — no grouping, no aggregation. If you want
     to turn the **values** of a column into new columns (e.g. one column per month with revenue in
-    the cells), that's a **pivot** (`df.pivot_table(...)`), a different tool.
+    the cells), that's a **pivot** — next section.
+
+### Pivot — turn values into columns (and `melt` back)
+A **pivot** takes the **distinct values of one column** and makes each of them a **new column**,
+filling the cells with an aggregate. It's the spreadsheet "pivot table", and the SQL
+`SUM(CASE WHEN status = 'delivered' THEN amount END) …` written for you. Here: revenue per country,
+split by status.
+
+```python
+p = df.pivot_table(index="country", columns="status",
+                   values="amount", aggfunc="sum", fill_value=0)
+p
+```
+
+```
+status   cancelled  delivered
+country
+DE             0.0       90.0
+UK            40.0       55.0
+US             0.0      420.0
+```
+
+**Read it step by step:**
+
+- **`index="country"`** — what becomes the **rows**: one row per distinct country (the `GROUP BY`).
+- **`columns="status"`** — whose **values** become the **new columns**: `cancelled`, `delivered`.
+- **`values="amount"`** — which column fills the cells.
+- **`aggfunc="sum"`** — how to combine several rows that land in the same cell. US has two
+  delivered orders (120 + 300), so its cell is **420**. Other choices: `"mean"`, `"count"`,
+  `"max"`, … (the default is `"mean"`).
+- **`fill_value=0`** — what to put where **no row exists** (DE and US have no cancelled orders).
+  Without it those cells would be `NaN` (missing).
+- The labels **`status`** (above the columns) and **`country`** (above the index) are just the
+  **names** of the two axes, so you can see where each came from.
+
+**Add totals with `margins`** — an extra row and column with the grand totals:
+
+```python
+df.pivot_table(index="country", columns="status", values="amount",
+               aggfunc="sum", fill_value=0, margins=True, margins_name="Total")
+```
+
+```
+status   cancelled  delivered  Total
+country
+DE             0.0       90.0   90.0
+UK            40.0       55.0   95.0
+US             0.0      420.0  420.0
+Total         40.0      565.0  605.0
+```
+
+- **`margins=True`** — add the totals row and column; **`margins_name="Total"`** labels them (the
+  default label is `All`).
+
+**Count instead of sum** — how many orders per country and status:
+
+```python
+df.pivot_table(index="country", columns="status", values="order_id",
+               aggfunc="count", fill_value=0)
+```
+
+```
+status   cancelled  delivered
+country
+DE               0          1
+UK               1          1
+US               0          2
+```
+
+!!! warning "`pivot()` vs `pivot_table()`"
+    There is also a plain **`df.pivot(index=..., columns=..., values=...)`**. It **only reshapes —
+    it never aggregates**, so every `(index, column)` pair must appear **once**. Our data has two
+    `US / delivered` rows, so it fails:
+
+    ```
+    ValueError: Index contains duplicate entries, cannot reshape
+    ```
+
+    Rule of thumb: use **`pivot_table()`** — it works whether or not there are duplicates.
+
+**`melt` — the reverse (unpivot).** Pivoting makes data **wide** (one column per status). Most
+tools — Spark, SQL tables, charts — prefer it **long** (one row per country *and* status).
+**`melt()`** turns the columns back into rows:
+
+```python
+wide = p.reset_index()          # country back to an ordinary column
+wide.columns.name = None        # drop the leftover "status" axis label
+long = wide.melt(id_vars="country", var_name="status", value_name="amount")
+long
+```
+
+```
+  country     status  amount
+0      DE  cancelled     0.0
+1      UK  cancelled    40.0
+2      US  cancelled     0.0
+3      DE  delivered    90.0
+4      UK  delivered    55.0
+5      US  delivered   420.0
+```
+
+- **`p.reset_index()`** — move `country` out of the index into a normal column (`melt` works on
+  columns).
+- **`wide.columns.name = None`** — remove the `status` **axis name** the pivot left above the
+  columns, so it doesn't clash with the new `status` column we're about to create.
+- **`melt(id_vars="country", ...)`** — **`id_vars`** = the column(s) to **keep as-is**; every
+  **other** column (`cancelled`, `delivered`) is unfolded into rows.
+- **`var_name="status"`** — name of the new column holding the **old column names**;
+  **`value_name="amount"`** — name of the new column holding their **values**.
+
+!!! note "Transpose vs pivot vs melt"
+    | Tool | What it does |
+    |---|---|
+    | **`.T`** | Flip the **whole** table — rows ↔ columns. No grouping. |
+    | **`pivot_table()`** | **Long → wide**: a column's **values** become new columns, cells **aggregated**. |
+    | **`melt()`** | **Wide → long**: columns become rows (unpivot). |
+
+    In Spark the same ideas are `df.groupBy("country").pivot("status").sum("amount")` and
+    `df.unpivot(...)`; in SQL, `PIVOT` / `UNPIVOT` (or `CASE WHEN`).
 
 ### Handle missing data
 Real data has gaps. pandas represents a missing value as **`NaN`** / `None` (its `NULL`), and gives
