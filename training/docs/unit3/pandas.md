@@ -395,8 +395,8 @@ amount    120.0  40.0  300.0
 - **`set_index("order_id")`** — move the `order_id` column into the **index** (the row labels),
   so after `.T` the columns are named `1, 2, 3` by order id instead of by position.
 
-**Where it really helps — summaries.** `describe()` gives one column per statistic-ed column and
-one row per statistic; with many columns that's hard to read. `.T` turns it into **one row per
+**Where it really helps — summaries.** `describe()` gives one column per data column and one row
+per statistic; with many columns that's hard to read. `.T` turns it into **one row per
 column**:
 
 ```python
