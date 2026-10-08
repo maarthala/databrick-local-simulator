@@ -170,6 +170,89 @@ big_us    = df[(df["country"] == "US") & (df["amount"] > 100)]   # & = and, | = 
     binds tighter than `==`, **each condition needs its own parentheses**:
     `(df["country"] == "US") & (df["amount"] > 100)`. Forget them and you'll get a confusing error.
 
+### More filters: `isin`, `between`, `str.contains`, `query()` — and `.filter()`
+Writing every condition as `==` / `>` gets clumsy fast. pandas has shortcuts that each **build a
+mask** for you, plus `query()`, which lets you write the condition as a SQL-like string.
+
+```python
+df[df["country"].isin(["UK", "DE"])]           # IN ('UK', 'DE')
+df[df["amount"].between(50, 150)]              # BETWEEN 50 AND 150
+df[~df["status"].str.contains("cancel")]       # NOT LIKE '%cancel%'
+df.query('country == "US" and amount > 100')   # the whole WHERE as one string
+```
+
+**Read it step by step:**
+
+- **`df["country"].isin(["UK", "DE"])`** — **`isin(list)`** is `True` when the value is **one of**
+  the list's items — the pandas `IN (...)`. Output: rows 1, 3, 4 (UK, DE, UK).
+
+    ```
+       order_id country  amount     status
+    1         2      UK    40.0  cancelled
+    3         4      DE    90.0  delivered
+    4         5      UK    55.0  delivered
+    ```
+
+- **`df["amount"].between(50, 150)`** — **`between(low, high)`** is `True` when
+  `low <= value <= high` — **both ends included**, exactly like SQL `BETWEEN`. Output: orders 1, 4, 5
+  (120, 90, 55); 40 and 300 fall outside.
+- **`~df["status"].str.contains("cancel")`** — **`.str`** unlocks **text functions** on a column of
+  strings; **`.str.contains("cancel")`** is `True` when the text **contains** that piece (like
+  `LIKE '%cancel%'`). The **`~`** flips the mask (**not**) → every order **except** the cancelled
+  one: orders 1, 3, 4, 5.
+- **`df.query('country == "US" and amount > 100')`** — **`query()`** takes the condition as a
+  **string** and uses the column names directly — no `df[...]` repeated, and inside the string you
+  **may** write plain `and` / `or` / `not`. Same result as `big_us` above:
+
+    ```
+       order_id country  amount     status
+    0         1      US   120.0  delivered
+    2         3      US   300.0  delivered
+    ```
+
+!!! tip "Use a Python variable in `query()` with `@`"
+    Inside the string, a bare name means a **column**. Put **`@`** in front to mean a **Python
+    variable** instead:
+
+    ```python
+    min_amt = 80
+    df.query("amount >= @min_amt")      # orders 1, 3, 4 (120, 300, 90)
+    ```
+
+**`.filter()` — careful, it picks *columns*, not rows.** If you come from Spark, where
+`df.filter(...)` is the `WHERE`, this one surprises everyone: pandas' **`.filter()`** keeps the
+**columns** (labels) whose **names** match, and never looks at the data.
+
+```python
+df.filter(items=["order_id", "amount"])   # exactly these columns
+df.filter(like="ount")                    # names CONTAINING "ount"
+df.filter(regex="^(c|s)")                 # names matching a regular expression
+```
+
+- **`items=[...]`** — keep exactly the listed columns → `order_id`, `amount` (same as
+  `df[["order_id", "amount"]]`).
+- **`like="ount"`** — keep columns whose **name contains** `"ount"` → `country`, `amount`.
+- **`regex="^(c|s)"`** — keep columns whose name matches a **regular expression** (a text pattern):
+  **`^`** = "starts with", **`(c|s)`** = "`c` or `s`" → `country`, `status`.
+
+To filter rows **and** pick columns, chain the two — mask first, then `.filter()`:
+
+```python
+df[df["amount"] > 100].filter(items=["order_id", "amount"])
+```
+
+```
+   order_id  amount
+0         1   120.0
+2         3   300.0
+```
+
+!!! note "Spark `.filter()` vs pandas `.filter()`"
+    | You want | Spark | pandas |
+    |---|---|---|
+    | Keep **rows** (`WHERE`) | `df.filter(col("amount") > 100)` | `df[df["amount"] > 100]` or `df.query("amount > 100")` |
+    | Keep **columns** (`SELECT`) | `df.select("order_id", "amount")` | `df[["order_id", "amount"]]` or `df.filter(items=[...])` |
+
 ### Add & transform columns
 New columns are computed from existing ones. The key idea is **vectorisation**: an operation like
 `df["amount"] * 1.2` runs on the **whole column at once**, not row by row — it's both shorter to
