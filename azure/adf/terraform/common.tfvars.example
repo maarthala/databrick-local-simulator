@@ -1,4 +1,4 @@
-# Single shared variables file for ALL stacks (base-setup, sql, sql-seed).
+# Single shared variables file for ALL stacks (base-setup, sql, sql-seed, fabric).
 # Copy to common.tfvars (gitignored) and pass it to every stack:
 #   cd base-setup && terraform apply -var-file=../common.tfvars
 #   cd sql        && terraform apply -var-file=../common.tfvars
@@ -18,8 +18,13 @@ resource_group_name = "rg-adf"        # ONE resource group for ALL resources
 sql_admin_login    = "sqladmin"
 sql_admin_password = "qwert@123456" # change for anything real
 
-# --- Git integration (base-setup/) ---
+# --- Git integration (base-setup/ ADF, and fabric/ when enable_git = true) ---
 git_account_name    = "maarthala"
 git_repository_name = "azure-learning"
 git_branch_name     = "main"
 git_root_folder     = "/adf"
+
+# --- Fabric (fabric/) — existing free Trial capacity, never created/billed ---
+capacity_display_name = "Trial-XXXXXXXX"
+enable_git            = false # true = sync workspace to GitHub under /fabric
+# GitHub PAT for fabric/: export TF_VAR_github_token=... (never put it in this file)
