@@ -346,6 +346,102 @@ df["status"].value_counts()        # counts per distinct value — super handy
   sorted most-frequent first. It's `GROUP BY status → COUNT(*)` in a single call — a fast way to
   see the distribution of a categorical column.
 
+### Transpose — flip rows and columns
+**Transposing** swaps the two axes: every **row becomes a column** and every **column becomes a
+row**. It's mostly a **reading aid** — a wide table (many columns, few rows) is much easier to scan
+when it's turned on its side.
+
+```python
+small = df[["order_id", "country", "amount"]].head(3)
+small.T                     # .T = transpose (same as small.transpose())
+```
+
+**Read it step by step:**
+
+- **`df[["order_id", "country", "amount"]].head(3)`** — a small 3-row × 3-column piece to flip (so
+  the output stays readable):
+
+    ```
+       order_id country  amount
+    0         1      US   120.0
+    1         2      UK    40.0
+    2         3      US   300.0
+    ```
+
+- **`small.T`** — **`.T`** is the **transpose** (an attribute, no parentheses; `small.transpose()`
+  is the same thing as a method). The old **column names** become the **index** (row labels), and
+  the old **index** `0, 1, 2` becomes the **column names**:
+
+    ```
+                  0     1      2
+    order_id      1     2      3
+    country      US    UK     US
+    amount    120.0  40.0  300.0
+    ```
+
+Make the columns meaningful by setting a real key as the index **first** — then those keys become
+the column headers after the flip:
+
+```python
+small.set_index("order_id").T
+```
+
+```
+order_id      1     2      3
+country      US    UK     US
+amount    120.0  40.0  300.0
+```
+
+- **`set_index("order_id")`** — move the `order_id` column into the **index** (the row labels),
+  so after `.T` the columns are named `1, 2, 3` by order id instead of by position.
+
+**Where it really helps — summaries.** `describe()` gives one column per statistic-ed column and
+one row per statistic; with many columns that's hard to read. `.T` turns it into **one row per
+column**:
+
+```python
+df[["amount"]].describe().T
+```
+
+```
+        count   mean         std   min   25%   50%    75%    max
+amount    5.0  121.0  104.785495  40.0  55.0  90.0  120.0  300.0
+```
+
+And to lay a `groupby` result out **horizontally**, one column per group:
+
+```python
+df.groupby("country")["amount"].sum().to_frame().T
+```
+
+```
+country    DE    UK     US
+amount   90.0  95.0  420.0
+```
+
+- **`df.groupby("country")["amount"].sum()`** — total `amount` per country, as a **Series**
+  (index = country).
+- **`.to_frame()`** — turn that Series into a one-column **DataFrame** (a Series has only one axis,
+  so there's nothing to flip until it's a DataFrame).
+- **`.T`** — flip it: the countries become the **columns**, `amount` the single row.
+
+!!! warning "Transposing mixed types turns everything into `object`"
+    Each pandas column has **one** dtype. After a flip, a column holds one value **from every old
+    column** — here a number, a country code and an amount — so pandas falls back to the generic
+    **`object`** type:
+
+    ```python
+    small.T.dtypes      # 0 object / 1 object / 2 object
+    ```
+
+    Fine for **looking at** data; don't do maths on a transposed mixed table. Transpose to read,
+    keep the original for work.
+
+!!! note "Transpose vs pivot"
+    **`.T`** flips the **whole** table, labels and all — no grouping, no aggregation. If you want
+    to turn the **values** of a column into new columns (e.g. one column per month with revenue in
+    the cells), that's a **pivot** (`df.pivot_table(...)`), a different tool.
+
 ### Handle missing data
 Real data has gaps. pandas represents a missing value as **`NaN`** / `None` (its `NULL`), and gives
 you three tools: **detect** them (`isna`), **drop** the affected rows (`dropna`), or **fill** them
