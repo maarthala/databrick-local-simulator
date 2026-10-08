@@ -143,6 +143,9 @@ SELECT count(*) FROM customers_tmp
 ```
 The view disappears when the kernel stops; a catalog table persists and is shared.
 
+> **Next:** the data you just registered is rarely clean — [3.9.1 Data cleaning](data-cleaning.md)
+> takes two messy Bronze tables to clean Silver.
+
 ## 🎯 This runs unchanged on Azure, Databricks, Snowflake & Fabric
 Upload to **ADLS / S3**, then `CREATE TABLE … AS SELECT` or `writeTo(...).createOrReplace()` into
 **the Databricks catalog** / **Snowflake** / **Fabric** — the exact same read-then-register

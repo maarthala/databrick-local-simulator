@@ -107,6 +107,7 @@ nav:
       - "3.7 Spark from a notebook": unit3/spark.md
       - "3.8 Query tables with %%sql": unit3/sql-magic.md
       - "3.9 Upload a file & register it as a table": unit3/upload-register.md
+      - "3.9.1 Data cleaning (messy Bronze → clean Silver)": unit3/data-cleaning.md
   - "4 · Spark":
       - "4.1 Spark fundamentals": unit4/fundamentals.md
       - "4.2 Read the lake (Bronze)": unit4/read-bronze.md
