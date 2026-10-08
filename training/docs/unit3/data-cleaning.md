@@ -18,14 +18,16 @@ The usual order of work:
 | 7 | **Write Silver** | Save the clean result as a governed table |
 
 `bronze.sample_orders` (your starter table, [0.3](../setup/workspace.md)) is a clean copy of the
-shop database — there's nothing to fix in it. So in this lab you first **create two deliberately
-messy tables**, `bronze.messy_customers` and `bronze.messy_orders`, packed with the problems real
-files have, and then clean them into Silver.
+shop database — there's nothing to fix in it. So in this lab you work like on a real job: someone
+hands you **two messy CSV files**. You **upload** them to your bucket, **load** them into Bronze
+with SQL, and then **clean** them into Silver.
 
 ```mermaid
 flowchart LR
-  MC[bronze.messy_customers] --> CC["🥈 silver.clean_customers"]
-  MO[bronze.messy_orders] --> CO["🥈 silver.clean_orders"]
+  F1[/messy_customers.csv/] --> MC[bronze.messy_customers]
+  F2[/messy_orders.csv/] --> MO[bronze.messy_orders]
+  MC --> CC["🥈 silver.clean_customers"]
+  MO --> CO["🥈 silver.clean_orders"]
   CC -. "known customers?" .-> CO
   MO --> RO["🗄️ silver.rejected_orders"]
 ```
@@ -35,73 +37,120 @@ flowchart LR
 
 ## Lab
 
-### 1 · Create the messy tables
-Each value is stored as **text** (`STRING`), just as it would be after loading a CSV without a
-schema. One `%%sql` cell per table:
+### 1 · Download the two files
+Click each link — the file downloads to your computer:
+
+- [:material-download: **messy_customers.csv**](../assets/data/messy_customers.csv){: download="messy_customers.csv" } — 10 customers
+- [:material-download: **messy_orders.csv**](../assets/data/messy_orders.csv){: download="messy_orders.csv" } — 13 orders
+
+Open one in a text editor and have a look — a few lines of `messy_orders.csv`:
+
+```
+order_id,customer_id,order_ts,channel,status,amount,currency
+101,1,2024-11-04 17:42:17,web,delivered,120.50,USD
+102,2,2024-11-05 09:10:00, Web ,Delivered,$45.00,usd
+103,3,05/11/2024 14:30,APP,DELIVERED ,"1,250.00",GBP
+...
+110,2,,N/A,placed,,USD
+```
+
+The value `"1,250.00"` has **quotes** because it contains a comma — the comma that separates
+columns in a CSV. Without the quotes it would split into two columns.
+
+### 2 · Upload them to My files
+On the lab home page open **📁 My files** (your bucket, `<username>-lake`):
+
+1. Go into **`files`** → **`source`**.
+2. Click **＋ New folder**, name it **`cleaning`**, and open it.
+3. Click **⬆ Upload** (or drag the files in) and pick both CSVs.
+
+Click a file to check it — My files shows a CSV as a table. The files are now at:
+
+```
+s3a://demouser-lake/files/source/cleaning/messy_customers.csv
+s3a://demouser-lake/files/source/cleaning/messy_orders.csv
+```
+
+Signed in with your own account? Use **your** bucket instead of `demouser-lake` (shown at the top
+of My files, e.g. `ravi-lake`) — in the SQL below too.
+
+### 3 · Create the Bronze tables with SQL
+The same two-step pattern as [3.9](upload-register.md): a **temporary view** over the file, then
+a **table** from the view. One statement per `%%sql` cell — four cells:
+
+```sql
+%%sql
+CREATE OR REPLACE TEMPORARY VIEW messy_customers_csv USING csv
+OPTIONS (path 's3a://demouser-lake/files/source/cleaning/messy_customers.csv', header 'true')
+```
 
 ```sql
 %%sql
 CREATE OR REPLACE TABLE iceberg.bronze.messy_customers USING iceberg AS
-SELECT * FROM VALUES
-  ('1',  'Ravi Kumar',      'ravi@shopflow.com',   'IN',             '2024-01-15'),
-  ('2',  '  anna SCHMIDT ', ' ANNA@ShopFlow.com',  'de',             '2024-02-03'),
-  ('3',  'Tom Baker',       'tom@shopflow',        'United Kingdom', '15/03/2024'),
-  ('4',  'Maria Lopez',     'N/A',                 'USA',            '2024-04-01'),
-  ('5',  'Li Wei',          '',                    'U.S.',           'null'),
-  ('2',  'Anna Schmidt',    'anna@shopflow.com',   'DE',             '2024-02-03'),
-  ('6',  'Sara Ali',        'sara@shopflow.com',   'UK',             '2024-05-20'),
-  ('6',  'Sara Ali',        'sara@shopflow.com',   'UK',             '2024-05-20'),
-  (NULL, 'Ghost Row',       'ghost@shopflow.com',  'UK',             '2024-06-01'),
-  ('7',  'Ken Sato',        'ken@shopflow.com',    'gb',             '2099-01-01')
-AS t(customer_id, full_name, email, country, signup_date)
+SELECT * FROM messy_customers_csv
+```
+
+```sql
+%%sql
+CREATE OR REPLACE TEMPORARY VIEW messy_orders_csv USING csv
+OPTIONS (path 's3a://demouser-lake/files/source/cleaning/messy_orders.csv', header 'true')
 ```
 
 ```sql
 %%sql
 CREATE OR REPLACE TABLE iceberg.bronze.messy_orders USING iceberg AS
-SELECT * FROM VALUES
-  ('101', '1',  '2024-11-04 17:42:17', 'web',         'delivered',  '120.50',   'USD'),
-  ('102', '2',  '2024-11-05 09:10:00', ' Web ',       'Delivered',  '$45.00',   'usd'),
-  ('103', '3',  '05/11/2024 14:30',    'APP',         'DELIVERED ', '1,250.00', 'GBP'),
-  ('104', '4',  '2024-11-06 11:00:00', 'app',         'canceled',   '80',       'EUR'),
-  ('105', '99', '2024-11-06 12:00:00', 'web',         'placed',     '60.00',    'USD'),
-  ('106', '5',  '2024-11-07 08:00:00', 'marketplace', 'shipped',    'abc',      'USD'),
-  ('107', '6',  '2024-11-07 10:00:00', 'web',         'delivered',  '-30.00',   'USD'),
-  ('108', '7',  'not a date',          'web',         'placed',     '25.00',    'INR'),
-  ('109', '1',  '2030-01-01 00:00:00', 'app',         'placed',     '10.00',    'XXX'),
-  ('101', '1',  '2024-11-04 17:42:17', 'web',         'delivered',  '120.50',   'USD'),
-  ('104', '4',  '2024-11-08 16:00:00', 'app',         'cancelled',  '80',       'EUR'),
-  (NULL,  '2',  '2024-11-09 10:00:00', 'web',         'placed',     '15.00',    'USD'),
-  ('110', '2',  '',                    'N/A',         'placed',     '',         'USD')
-AS t(order_id, customer_id, order_ts, channel, status, amount, currency)
+SELECT * FROM messy_orders_csv
 ```
 
 **Read it step by step:**
 
-- **`CREATE OR REPLACE TABLE … USING iceberg AS SELECT …`** — create the table from a query's
-  result (re-running the cell replaces it). Same idea as `CREATE TABLE … AS` in [3.9](upload-register.md).
-- **`SELECT * FROM VALUES (…), (…)`** — **`VALUES`** is a tiny inline table: each `( … )` is one
-  row. Handy for test data without any file.
-- **`AS t(customer_id, full_name, …)`** — give that inline table a name (`t`) and **name its
-  columns**, in order.
-- **`NULL`** — a real "no value". Note `'null'` (in quotes) is just the **text** n-u-l-l — one of
-  the problems you'll fix.
+- **`CREATE OR REPLACE TEMPORARY VIEW … USING csv OPTIONS (path …, header 'true')`** — a view
+  that reads the CSV file; **`header 'true'`** takes the column names from row 1. **`OR REPLACE`**
+  lets you re-run the cell.
+- **No `inferSchema`** — on purpose. Every column stays **`string`**, exactly as written in the
+  file. Bronze keeps the data **as it arrived**; turning text into numbers and dates is the
+  cleaning job (step 6), where *you* decide what to do with `'abc'`.
+- **`CREATE OR REPLACE TABLE iceberg.bronze.… USING iceberg AS SELECT * FROM …_csv`** — copy the
+  view into a real Iceberg table in your `bronze` namespace (re-running replaces it).
+- **Empty fields become `NULL` already** — the CSV reader turns an empty value (`,,`) into a
+  real `NULL`. But text like `N/A` or `null` stays **text**: the reader can't know it means "empty".
 
-The problems hidden in there:
+Check that both arrived:
+
+```sql
+%%sql
+SELECT 'messy_customers' AS tbl, count(*) AS n FROM iceberg.bronze.messy_customers
+UNION ALL SELECT 'messy_orders', count(*) FROM iceberg.bronze.messy_orders
+```
+
+```
++---------------+---+
+|            tbl|  n|
++---------------+---+
+|messy_customers| 10|
+|   messy_orders| 13|
++---------------+---+
+```
+
+- **`UNION ALL`** — stack the results of two queries on top of each other (same columns), so
+  both counts show in one result. `'messy_customers' AS tbl` is a fixed text column that labels
+  each row.
+
+The problems hidden in the files:
 
 | Problem | Example |
 |---|---|
 | Stray spaces, mixed case | `'  anna SCHMIDT '`, `' Web '`, `'DELIVERED '` |
-| "Empty" written as text | `''`, `'N/A'`, `'null'` |
+| "Empty" written as text | `'N/A'`, `'null'` (and truly empty fields → `NULL`) |
 | Many spellings, one meaning | `UK` / `gb` / `United Kingdom`; `USA` / `U.S.`; `canceled` / `cancelled` |
 | Numbers as formatted text | `'$45.00'`, `'1,250.00'`, `'abc'` |
 | Several date formats, bad dates | `'15/03/2024'`, `'05/11/2024 14:30'`, `'not a date'` |
 | Impossible values | amount `-30.00`, order in `2030`, sign-up in `2099`, currency `XXX`, email `tom@shopflow` |
 | Duplicates | Sara twice (exact); Anna twice (different formatting); order 101 twice; order 104 in two versions |
-| Missing key | a customer and an order with `NULL` id |
+| Missing key | a customer and an order with no id |
 | Broken link | order 105 belongs to customer `99`, who doesn't exist |
 
-### 2 · Profile — look before you touch
+### 4 · Profile — look before you touch
 ```python
 from pyspark.sql import functions as F
 
@@ -146,7 +195,7 @@ raw_o.groupBy("order_id").count().filter(F.col("count") > 1).show()
     `distinct()` on text columns and a duplicate-key check catch most problems in seconds — always
     run them before writing any cleaning code, so you clean what's *really* there.
 
-### 3 · Tidy text: trim spaces, turn "empty" text into real `NULL`
+### 5 · Tidy text: trim spaces, turn "empty" text into real `NULL`
 The same fix applies to **every** column, so write it once as a small function:
 
 ```python
@@ -189,9 +238,10 @@ o.select([F.count_if(F.col(x).isNull()).alias(x) for x in o.columns]).show()
   (build a list in one line): one expression per column. **`isNull()`** is true for `NULL`;
   **`F.count_if(cond)`** counts the rows where it's true; **`.alias(x)`** names the result after
   the column. So the output is the **number of missing values per column** — one each in
-  `order_id`, `order_ts` (the `''`), `channel` (the `'N/A'`), `amount` (the `''`).
+  `order_id`, `order_ts` and `amount` (empty in the file), and `channel` — the `'N/A'` that
+  `tidy()` just turned into a real `NULL`.
 
-### 4 · Standardize and fix types — customers
+### 6 · Standardize and fix types — customers
 ```python
 country = F.upper(F.regexp_replace("country", r"\.", ""))
 
@@ -243,7 +293,7 @@ c = (c
 - **`F.current_date()`** — today's date. A sign-up date **after today** is impossible, so the last
   `withColumn` keeps it only when `<= today` (else `NULL`) → Ken's `2099-01-01` is cleared.
 
-### 5 · Remove duplicates — customers
+### 7 · Remove duplicates — customers
 ```python
 c = c.filter(F.col("customer_id").isNotNull())   # 9 rows (ghost row gone)
 c = c.dropDuplicates()                           # 7 rows
@@ -268,7 +318,7 @@ c.orderBy("customer_id").show(truncate=False)
 - **`.isNotNull()`** — true when there **is** a value; the filter drops the row with no id (a row
   you can't identify can't be cleaned or joined).
 - **`.dropDuplicates()`** — with no arguments: remove rows that are identical in **every** column.
-  It removes Sara's copy — and **Anna's** too, because after step 4 her two messy rows became
+  It removes Sara's copy — and **Anna's** too, because after step 6 her two messy rows became
   identical.
 - **`.dropDuplicates(["customer_id"])`** — keep **one row per `customer_id`** (whichever Spark
   meets first). A safety net: the id must be unique in Silver.
@@ -279,7 +329,7 @@ c.orderBy("customer_id").show(truncate=False)
     `'Anna Schmidt'` look different. Clean first, and duplicates that were hiding become
     identical.
 
-### 6 · Standardize, fix types, remove duplicates — orders
+### 8 · Standardize, fix types, remove duplicates — orders
 ```python
 o = (o
      .withColumn("order_id",    F.col("order_id").try_cast("int"))
@@ -330,7 +380,7 @@ o = (o.withColumn("rn", F.row_number().over(latest))
 - **`.filter(F.col("rn") == 1)`** — keep only the newest version; **`.drop("rn")`** removes the
   helper column. Order 104 is now the `2024-11-08 16:00:00` version.
 
-### 7 · Validate — and quarantine what fails
+### 9 · Validate — and quarantine what fails
 Bad rows don't get deleted: they get a **reason** and go to a **reject table**, so someone can fix
 the source. First, can each order find its customer?
 
@@ -402,7 +452,7 @@ bad.select("order_id", "customer_id", "order_ts", "amount", "reject_reason") \
 - **`.select(...)`** on `good` — keep the Silver columns in a fixed order, without the helper
   columns.
 
-### 8 · Write Silver — and check it
+### 10 · Write Silver — and check it
 ```python
 spark.sql("CREATE NAMESPACE IF NOT EXISTS iceberg.silver")
 
@@ -464,10 +514,11 @@ ORDER BY n DESC, reject_reason
 ## Challenge
 1. Add a rule: an order is rejected when its customer has **no valid email** (hint: also bring
    `email` into `known`). Which orders move to the reject table?
-2. Fix order **109** in `messy_orders` (set its date to `2024-11-10 10:00:00`), re-run, and see
-   which reason it gets now.
+2. Fix order **109** in `messy_orders.csv` (set its date to `2024-11-10 10:00:00`), upload it
+   again to the same folder (it replaces the old file), re-run steps 3–10, and see which reason it
+   gets now.
 3. Profile `bronze.sample_orders`: count the `NULL`s per column with the `count_if` line from
-   step 3. Which column has them, and is that a problem or does it mean something?
+   step 5. Which column has them, and is that a problem or does it mean something?
 
 ## 🎯 This runs unchanged on Azure, Databricks, Snowflake & Fabric
 `trim`, `when`, `try_cast`, `try_to_timestamp`, `dropDuplicates`, `row_number` over a window and a
@@ -478,7 +529,8 @@ and [8.4 Data quality checks & quarantine](../recipes/data-quality.md).
 
 ## You can now…
 - **Profile** a table: types, distinct values, duplicate keys, missing values per column
-- **Tidy** text: trim spaces and turn `''` / `N/A` / `null` text into real `NULL`
+- **Load** downloaded files into Bronze: upload to My files, then a CSV view + `CREATE TABLE … AS` in SQL
+- **Tidy** text: trim spaces and turn `N/A` / `null` text into real `NULL`
 - **Standardize** spellings and codes with `lower`/`upper`/`initcap`, `regexp_replace`, `when`
 - **Fix types** safely with `try_cast`, `try_to_date`, `try_to_timestamp` and `coalesce` over formats
 - **De-duplicate** — exact copies with `dropDuplicates()`, latest version with `row_number()` over a window

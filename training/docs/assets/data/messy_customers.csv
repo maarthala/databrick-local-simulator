@@ -1,0 +1,11 @@
+customer_id,full_name,email,country,signup_date
+1,Ravi Kumar,ravi@shopflow.com,IN,2024-01-15
+2,  anna SCHMIDT , ANNA@ShopFlow.com,de,2024-02-03
+3,Tom Baker,tom@shopflow,United Kingdom,15/03/2024
+4,Maria Lopez,N/A,USA,2024-04-01
+5,Li Wei,,U.S.,null
+2,Anna Schmidt,anna@shopflow.com,DE,2024-02-03
+6,Sara Ali,sara@shopflow.com,UK,2024-05-20
+6,Sara Ali,sara@shopflow.com,UK,2024-05-20
+,Ghost Row,ghost@shopflow.com,UK,2024-06-01
+7,Ken Sato,ken@shopflow.com,gb,2099-01-01

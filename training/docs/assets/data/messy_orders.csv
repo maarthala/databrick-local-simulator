@@ -1,0 +1,14 @@
+order_id,customer_id,order_ts,channel,status,amount,currency
+101,1,2024-11-04 17:42:17,web,delivered,120.50,USD
+102,2,2024-11-05 09:10:00, Web ,Delivered,$45.00,usd
+103,3,05/11/2024 14:30,APP,DELIVERED ,"1,250.00",GBP
+104,4,2024-11-06 11:00:00,app,canceled,80,EUR
+105,99,2024-11-06 12:00:00,web,placed,60.00,USD
+106,5,2024-11-07 08:00:00,marketplace,shipped,abc,USD
+107,6,2024-11-07 10:00:00,web,delivered,-30.00,USD
+108,7,not a date,web,placed,25.00,INR
+109,1,2030-01-01 00:00:00,app,placed,10.00,XXX
+101,1,2024-11-04 17:42:17,web,delivered,120.50,USD
+104,4,2024-11-08 16:00:00,app,cancelled,80,EUR
+,2,2024-11-09 10:00:00,web,placed,15.00,USD
+110,2,,N/A,placed,,USD
