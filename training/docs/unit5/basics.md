@@ -386,6 +386,61 @@ bash_report  →  rows from XCom: 4
 
 In the Grid, click the `extract` square → **XCom** tab to see the stored value.
 
+??? question "If the value is in XCom anyway, why pass it as an argument? Why not pull it inside the task?"
+    You **can** pull it yourself inside the task:
+
+    ```python
+    from airflow.sdk import get_current_context
+
+    @task
+    def report():
+        ti = get_current_context()["ti"]
+        stats = ti.xcom_pull(task_ids="extract")      # fetch it yourself
+        print(f"{stats['rows']} orders, total {stats['total']:.2f}")
+
+    extract() >> report()                             # …but now YOU must set the order
+    ```
+
+    - **`get_current_context()["ti"]`** — the running task instance (more in step 6);
+      **`ti.xcom_pull(task_ids="extract")`** fetches what `extract` returned.
+
+    That works — but passing the value as an **argument** is the better default, for three reasons:
+
+    **1. The order comes for free.** `report(stats)` tells Airflow that `report` needs `extract`'s
+    result, so `extract` always runs first. Pull inside the task and **forget the `>>`**, and
+    Airflow sees two unrelated tasks and starts them **at the same time**. We tried it:
+
+    ```
+    extract   success
+    report    failed    pulled: None
+                        TypeError: 'NoneType' object is not subscriptable
+    ```
+
+    `report` ran before `extract` had stored anything, got `None`, and crashed.
+
+    **2. The value doesn't exist yet when the DAG file is read.** Airflow reads the file long
+    before anything runs, only to learn the shape of the graph. At that moment `extract` hasn't
+    run — so `stats = extract()` can't be the dict. It's a **placeholder** (an *XComArg*) meaning
+    *"whatever `extract` returns, later"*. Passing it to `report(stats)` tells Airflow: *when you
+    run `report`, fill this in with the real value*. Each task runs later as a **separate
+    process**, maybe on another machine, so ordinary Python variables can't carry a value from one
+    task to the next — XCom carries it, and the argument says where to deliver it.
+
+    **3. Clearer and easy to test.** `def report(stats)` shows at a glance what the task needs, and
+    you can test it as a plain function, without Airflow — **`.function`** is the original Python
+    function behind the task:
+
+    ```python
+    report.function({"rows": 4, "total": 1495.5})     # → 4 orders, total 1495.50
+    ```
+
+    | | `report(stats)` | `ti.xcom_pull(...)` inside the task |
+    |---|---|---|
+    | `extract` runs before `report` | automatic | only if you add `>>` |
+    | What the task needs | visible in its arguments | hidden in the code |
+    | Test without Airflow | easy | needs Airflow |
+    | Use for | the normal case | values from a task that isn't directly before this one, or from a classic operator like `BashOperator` |
+
 !!! warning "XCom is for small values — never for data"
     XCom lives in Airflow's own database. Pass **small** things: a count, a date, a **table name**,
     a **file path**. Never a DataFrame or thousands of rows. For real data, the first task
