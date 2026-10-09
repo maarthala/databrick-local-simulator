@@ -9,13 +9,17 @@ The usual order of work:
 
 | # | Step | Question it answers |
 |---|---|---|
-| 1 | **Profile** | What's actually in here? |
-| 2 | **Tidy text** | Stray spaces? `""`, `N/A`, `null` written as text? |
-| 3 | **Standardize** | `Web` / ` web ` / `WEB` — one spelling? `UK` / `United Kingdom` — one code? |
-| 4 | **Fix types** | Numbers and dates stored as text? Several date formats? |
-| 5 | **Remove duplicates** | Same row twice? Two versions of the same order? |
-| 6 | **Validate & quarantine** | Negative amounts, future dates, unknown customers → a **reject table** |
-| 7 | **Write Silver** | Save the clean result as a governed table |
+| 1 | **Fix column names** | `Customer ID`, ` Full Name `, `EMAIL` — one naming style? |
+| 2 | **Profile** | What's actually in here? |
+| 3 | **Tidy text** | Stray spaces? `""`, `N/A`, `null` written as text? |
+| 4 | **Standardize** | `Web` / ` web ` / `WEB` — one spelling? `UK` / `United Kingdom` — one code? |
+| 5 | **Fix types** | Numbers and dates stored as text? Several date formats? |
+| 6 | **Fill missing values** | Which gaps get a default, which stay `NULL`? |
+| 7 | **Remove duplicates** | Same row twice? Two versions of the same order? |
+| 8 | **Split & extract** | First and last name in one field? The domain hidden in an email? |
+| 9 | **Validate & quarantine** | Negative amounts, future dates, unknown customers → a **reject table** |
+| 10 | **Flag outliers** | Valid, but suspiciously large or small? |
+| 11 | **Write Silver** | Save the clean result as a governed table |
 
 `bronze.sample_orders` (your starter table, [0.3](../setup/workspace.md)) is a clean copy of the
 shop database — there's nothing to fix in it. So in this lab you work like on a real job: someone
@@ -109,9 +113,12 @@ SELECT * FROM messy_orders_csv
   lets you re-run the cell.
 - **No `inferSchema`** — on purpose. Every column stays **`string`**, exactly as written in the
   file. Bronze keeps the data **as it arrived**; turning text into numbers and dates is the
-  cleaning job (step 6), where *you* decide what to do with `'abc'`.
+  cleaning job (step 7), where *you* decide what to do with `'abc'`.
 - **`CREATE OR REPLACE TABLE iceberg.bronze.… USING iceberg AS SELECT * FROM …_csv`** — copy the
   view into a real Iceberg table in your `bronze` namespace (re-running replaces it).
+- **Column names are copied as they are** — `Customer ID`, ` Full Name `, `EMAIL`, spaces and
+  all. Iceberg allows that, but such names are awkward to type in every query; you'll fix them in
+  step 4.
 - **Empty fields become `NULL` already** — the CSV reader turns an empty value (`,,`) into a
   real `NULL`. But text like `N/A` or `null` stays **text**: the reader can't know it means "empty".
 
@@ -140,23 +147,76 @@ The problems hidden in the files:
 
 | Problem | Example |
 |---|---|
+| Messy column names | `Customer ID`, ` Full Name `, `EMAIL`, `Signup Date` |
 | Stray spaces, mixed case | `'  anna SCHMIDT '`, `' Web '`, `'DELIVERED '` |
 | "Empty" written as text | `'N/A'`, `'null'` (and truly empty fields → `NULL`) |
-| Many spellings, one meaning | `UK` / `gb` / `United Kingdom`; `USA` / `U.S.`; `canceled` / `cancelled` |
+| Many spellings, one meaning | `UK` / `gb` / `United Kingdom`; `U.S.`; `canceled` / `cancelled` |
 | Numbers as formatted text | `'$45.00'`, `'1,250.00'`, `'abc'` |
 | Several date formats, bad dates | `'15/03/2024'`, `'05/11/2024 14:30'`, `'not a date'` |
 | Impossible values | amount `-30.00`, order in `2030`, sign-up in `2099`, currency `XXX`, email `tom@shopflow` |
 | Duplicates | Sara twice (exact); Anna twice (different formatting); order 101 twice; order 104 in two versions |
+| Missing values | Li Wei has no country and no email |
+| Two facts in one field | first + last name in `full_name`; the company domain inside `email` |
+| Outlier | order 103 at `1,250.00` — valid, but ten times the others |
 | Missing key | a customer and an order with no id |
 | Broken link | order 105 belongs to customer `99`, who doesn't exist |
 
-### 4 · Profile — look before you touch
+### 4 · Fix column names
+Load the two tables and look at the column names first:
+
 ```python
 from pyspark.sql import functions as F
+import re
 
 raw_c = spark.table("iceberg.bronze.messy_customers")
 raw_o = spark.table("iceberg.bronze.messy_orders")
+raw_c.columns
+```
 
+```
+['Customer ID', ' Full Name ', 'EMAIL', 'Country', 'Signup Date']
+```
+
+Spaces, capitals, a stray space at both ends of ` Full Name `. Every query would need
+`` `Customer ID` `` in backticks. The usual convention is **snake_case**: lower-case words joined
+by `_`. Write it once as a function and apply it to **every** column:
+
+```python
+def snake_case(name):
+    return re.sub(r"[^a-z0-9]+", "_", name.strip().lower()).strip("_")
+
+raw_c = raw_c.toDF(*[snake_case(c) for c in raw_c.columns])
+raw_o = raw_o.toDF(*[snake_case(c) for c in raw_o.columns])
+raw_c.columns
+```
+
+```
+['customer_id', 'full_name', 'email', 'country', 'signup_date']
+```
+
+**Read it step by step:**
+
+- **`spark.table("…")`** — load a catalog table as a DataFrame (same as `spark.sql("SELECT * FROM …")`).
+- **`.columns`** — the DataFrame's column names, as a Python list.
+- **`import re`** — Python's built-in **regular expression** module (text patterns).
+- **`name.strip().lower()`** — Python string methods: **`strip()`** cuts spaces at both ends,
+  **`lower()`** makes it lower-case → `' Full Name '` → `'full name'`.
+- **`re.sub(r"[^a-z0-9]+", "_", …)`** — replace every run of characters that are **not** a
+  letter or digit (**`[^…]`** = "none of these", **`+`** = "one or more") with `_` →
+  `'full name'` → `'full_name'`.
+- **`.strip("_")`** — remove any `_` left at the start or end.
+- **`raw_c.toDF(*[...])`** — **`toDF`** gives the DataFrame **new column names**, in order. The
+  list comprehension builds one new name per old one, and the **`*`** unpacks the list into
+  separate arguments (`toDF("customer_id", "full_name", …)`).
+- The orders file already had clean names — applying the same function there is harmless, and
+  means the code still works if the next file arrives with messy headers.
+
+!!! tip "Rename in Silver, not in Bronze"
+    Bronze keeps the names exactly as the file had them; the rename happens on the way to
+    Silver. If the source changes a header next month, you'll see it in Bronze.
+
+### 5 · Profile — look before you touch
+```python
 raw_c.count()                                      # 10
 raw_c.printSchema()                                # every column: string
 raw_c.select("country").distinct().show()
@@ -164,7 +224,6 @@ raw_o.groupBy("channel", "status").count().orderBy("channel").show()
 raw_o.groupBy("order_id").count().filter(F.col("count") > 1).show()
 ```
 
-- **`spark.table("…")`** — load a catalog table as a DataFrame (same as `spark.sql("SELECT * FROM …")`).
 - **`printSchema()`** — list the columns and their types. Here all are `string` — nothing is a
   real number or date yet.
 - **`.select("country").distinct()`** — keep one column, then **`distinct()`** drops repeated rows
@@ -178,14 +237,14 @@ raw_o.groupBy("order_id").count().filter(F.col("count") > 1).show()
     |            DE|
     |            de|
     |            IN|
-    |           USA|
     |          U.S.|
     |            UK|
     |United Kingdom|
+    |          NULL|
     +--------------+
     ```
 
-    Eight spellings for **four** countries.
+    Seven spellings for **four** countries — plus a `NULL`: Li Wei has no country.
 - **`.groupBy("channel", "status").count()`** — how many rows per combination; **`.orderBy("channel")`**
   sorts the result. You'll spot `' Web '`, `'APP'`, `'N/A'`, `'canceled'` next to `'cancelled'`.
 - **`.groupBy("order_id").count().filter(F.col("count") > 1)`** — the classic **duplicate-key
@@ -195,7 +254,7 @@ raw_o.groupBy("order_id").count().filter(F.col("count") > 1).show()
     `distinct()` on text columns and a duplicate-key check catch most problems in seconds — always
     run them before writing any cleaning code, so you clean what's *really* there.
 
-### 5 · Tidy text: trim spaces, turn "empty" text into real `NULL`
+### 6 · Tidy text: trim spaces, turn "empty" text into real `NULL`
 The same fix applies to **every** column, so write it once as a small function:
 
 ```python
@@ -241,7 +300,7 @@ o.select([F.count_if(F.col(x).isNull()).alias(x) for x in o.columns]).show()
   `order_id`, `order_ts` and `amount` (empty in the file), and `channel` — the `'N/A'` that
   `tidy()` just turned into a real `NULL`.
 
-### 6 · Standardize and fix types — customers
+### 7 · Standardize and fix types — customers
 ```python
 country = F.upper(F.regexp_replace("country", r"\.", ""))
 
@@ -293,7 +352,49 @@ c = (c
 - **`F.current_date()`** — today's date. A sign-up date **after today** is impossible, so the last
   `withColumn` keeps it only when `<= today` (else `NULL`) → Ken's `2099-01-01` is cleared.
 
-### 7 · Remove duplicates — customers
+### 8 · Fill missing values — or decide not to
+Count what's still missing after standardizing:
+
+```python
+c.select([F.count_if(F.col(x).isNull()).alias(x) for x in c.columns]).show()
+```
+
+```
++-----------+---------+-----+-------+-----------+
+|customer_id|full_name|email|country|signup_date|
++-----------+---------+-----+-------+-----------+
+|          1|        0|    3|      1|          2|
++-----------+---------+-----+-------+-----------+
+```
+
+For each gap there are three choices: **fill** it with a default, **keep** the `NULL`, or
+**reject** the row. It's a business decision per column:
+
+| Column | Missing | Decision | Why |
+|---|---|---|---|
+| `customer_id` | 1 | **reject** (step 9) | a customer you can't identify is useless |
+| `country` | 1 | **fill** with `'UNKNOWN'` | reports group by country; a visible `UNKNOWN` group beats rows silently missing from a `GROUP BY` |
+| `email` | 3 | **keep** `NULL` + add a flag | inventing an email would be wrong; a `has_email` flag makes it easy to filter |
+| `signup_date` | 2 | **keep** `NULL` | a made-up date would distort "customers per month" |
+
+```python
+c = c.fillna({"country": "UNKNOWN"})
+c = c.withColumn("has_email", F.col("email").isNotNull())
+```
+
+- **`fillna({"country": "UNKNOWN"})`** — replace `NULL` with a value, per column. The **dict**
+  (`{column: value}`) says which columns to fill and with what; columns not in it are left alone.
+  Li Wei's country is now `UNKNOWN`.
+- **`F.col("email").isNotNull()`** as a new column — a **boolean** (`true`/`false`) per row:
+  `has_email` is `false` for Tom, Maria and Li.
+
+!!! info "Other ways to fill"
+    - **`F.coalesce(F.col("country"), F.lit("UNKNOWN"))`** — the same fill as an expression,
+      handy inside a longer `withColumn` chain.
+    - Numbers: fill with `0` only when *missing really means zero* (e.g. no discount). A missing
+      **price** is not zero — keep it `NULL` or reject the row.
+
+### 9 · Remove duplicates — customers
 ```python
 c = c.filter(F.col("customer_id").isNotNull())   # 9 rows (ghost row gone)
 c = c.dropDuplicates()                           # 7 rows
@@ -302,23 +403,23 @@ c.orderBy("customer_id").show(truncate=False)
 ```
 
 ```
-+-----------+------------+-----------------+-------+-----------+
-|customer_id|full_name   |email            |country|signup_date|
-+-----------+------------+-----------------+-------+-----------+
-|1          |Ravi Kumar  |ravi@shopflow.com|IN     |2024-01-15 |
-|2          |Anna Schmidt|anna@shopflow.com|DE     |2024-02-03 |
-|3          |Tom Baker   |NULL             |GB     |2024-03-15 |
-|4          |Maria Lopez |NULL             |US     |2024-04-01 |
-|5          |Li Wei      |NULL             |US     |NULL       |
-|6          |Sara Ali    |sara@shopflow.com|GB     |2024-05-20 |
-|7          |Ken Sato    |ken@shopflow.com |GB     |NULL       |
-+-----------+------------+-----------------+-------+-----------+
++-----------+------------+-----------------+-------+-----------+---------+
+|customer_id|full_name   |email            |country|signup_date|has_email|
++-----------+------------+-----------------+-------+-----------+---------+
+|1          |Ravi Kumar  |ravi@shopflow.com|IN     |2024-01-15 |true     |
+|2          |Anna Schmidt|anna@shopflow.com|DE     |2024-02-03 |true     |
+|3          |Tom Baker   |NULL             |GB     |2024-03-15 |false    |
+|4          |Maria Lopez |NULL             |US     |2024-04-01 |false    |
+|5          |Li Wei      |NULL             |UNKNOWN|NULL       |false    |
+|6          |Sara Ali    |sara@shopflow.com|GB     |2024-05-20 |true     |
+|7          |Ken Sato    |ken@shopflow.com |GB     |NULL       |true     |
++-----------+------------+-----------------+-------+-----------+---------+
 ```
 
 - **`.isNotNull()`** — true when there **is** a value; the filter drops the row with no id (a row
   you can't identify can't be cleaned or joined).
 - **`.dropDuplicates()`** — with no arguments: remove rows that are identical in **every** column.
-  It removes Sara's copy — and **Anna's** too, because after step 6 her two messy rows became
+  It removes Sara's copy — and **Anna's** too, because after step 7 her two messy rows became
   identical.
 - **`.dropDuplicates(["customer_id"])`** — keep **one row per `customer_id`** (whichever Spark
   meets first). A safety net: the id must be unique in Silver.
@@ -329,7 +430,50 @@ c.orderBy("customer_id").show(truncate=False)
     `'Anna Schmidt'` look different. Clean first, and duplicates that were hiding become
     identical.
 
-### 8 · Standardize, fix types, remove duplicates — orders
+### 10 · Split & extract — one fact per column
+`full_name` holds two facts (first and last name), and `email` hides a third (the company
+domain). Pull them out into their own columns so they can be filtered and grouped:
+
+```python
+c = (c
+     .withColumn("first_name",   F.split("full_name", " ").getItem(0))
+     .withColumn("last_name",    F.element_at(F.split("full_name", " "), -1))
+     .withColumn("email_domain", F.regexp_extract("email", r"@(.+)$", 1)))
+
+c.select("customer_id", "full_name", "first_name", "last_name", "email", "email_domain") \
+ .orderBy("customer_id").show(truncate=False)
+```
+
+```
++-----------+------------+----------+---------+-----------------+------------+
+|customer_id|full_name   |first_name|last_name|email            |email_domain|
++-----------+------------+----------+---------+-----------------+------------+
+|1          |Ravi Kumar  |Ravi      |Kumar    |ravi@shopflow.com|shopflow.com|
+|2          |Anna Schmidt|Anna      |Schmidt  |anna@shopflow.com|shopflow.com|
+|3          |Tom Baker   |Tom       |Baker    |NULL             |NULL        |
+|4          |Maria Lopez |Maria     |Lopez    |NULL             |NULL        |
+|5          |Li Wei      |Li        |Wei      |NULL             |NULL        |
+|6          |Sara Ali    |Sara      |Ali      |sara@shopflow.com|shopflow.com|
+|7          |Ken Sato    |Ken       |Sato     |ken@shopflow.com |shopflow.com|
++-----------+------------+----------+---------+-----------------+------------+
+```
+
+- **`F.split("full_name", " ")`** — cut the text at every space into an **array** (a list
+  inside one cell): `'Ravi Kumar'` → `["Ravi", "Kumar"]`.
+- **`.getItem(0)`** — the array's **first** element (counting starts at 0) → `Ravi`.
+- **`F.element_at(array, -1)`** — an element by position; **`-1`** means "the **last** one". Using
+  the last word (not the second) means a middle name won't end up as the surname.
+- **`F.regexp_extract("email", r"@(.+)$", 1)`** — find a pattern and return a **piece** of it.
+  The pattern: **`@`**, then **`(.+)`** = "one or more of any character", up to **`$`** (the end).
+  The **round brackets** mark the piece you want — **group 1** (the last argument) → everything
+  after the `@`. No email → `NULL`.
+- **`\`** at the end of a Python line — the statement **continues on the next line**.
+
+!!! tip "Keep the original column"
+    `full_name` stays next to the new columns. Name splitting is a best guess (two-word last
+    names, names without spaces), so keep the source value to check against and to fix later.
+
+### 11 · Standardize, fix types, remove duplicates — orders
 ```python
 o = (o
      .withColumn("order_id",    F.col("order_id").try_cast("int"))
@@ -380,7 +524,7 @@ o = (o.withColumn("rn", F.row_number().over(latest))
 - **`.filter(F.col("rn") == 1)`** — keep only the newest version; **`.drop("rn")`** removes the
   helper column. Order 104 is now the `2024-11-08 16:00:00` version.
 
-### 9 · Validate — and quarantine what fails
+### 12 · Validate — and quarantine what fails
 Bad rows don't get deleted: they get a **reason** and go to a **reject table**, so someone can fix
 the source. First, can each order find its customer?
 
@@ -452,7 +596,55 @@ bad.select("order_id", "customer_id", "order_ts", "amount", "reject_reason") \
 - **`.select(...)`** on `good` — keep the Silver columns in a fixed order, without the helper
   columns.
 
-### 10 · Write Silver — and check it
+### 13 · Flag outliers
+An outlier is a value that's **valid but unusual** — order 103 at 1,250.00 next to orders of
+45 to 120. It may be a real big order, or a typo (125.00 with an extra zero). Don't delete it —
+**flag** it so someone can check.
+
+A common rule is the **IQR rule** (interquartile range):
+
+1. **Q1** = the value a quarter of the way up the sorted amounts; **Q3** = three quarters up.
+2. **IQR** = `Q3 − Q1` — the spread of the middle half.
+3. Anything below `Q1 − 1.5 × IQR` or above `Q3 + 1.5 × IQR` is an outlier.
+
+```python
+q1, q3 = good.select(F.percentile_approx("amount", [0.25, 0.75]).alias("q")).first()["q"]
+iqr = float(q3) - float(q1)
+low, high = float(q1) - 1.5 * iqr, float(q3) + 1.5 * iqr
+print(q1, q3, iqr, low, high)       # 45.00 120.50 75.5 -68.25 233.75
+
+good = good.withColumn("is_outlier", (F.col("amount") < low) | (F.col("amount") > high))
+good.select("order_id", "amount", "is_outlier").orderBy("order_id").show()
+```
+
+```
++--------+-------+----------+
+|order_id| amount|is_outlier|
++--------+-------+----------+
+|     101| 120.50|     false|
+|     102|  45.00|     false|
+|     103|1250.00|      true|
+|     104|  80.00|     false|
++--------+-------+----------+
+```
+
+- **`F.percentile_approx("amount", [0.25, 0.75])`** — the values at 25 % and 75 % of the sorted
+  `amount` column, returned as an array `[Q1, Q3]`. *Approx* because on billions of rows an exact
+  answer is expensive; on small data it's exact.
+- **`.first()["q"]`** — **`first()`** brings the first (only) result row back to Python;
+  **`["q"]`** picks its `q` field. **`q1, q3 = …`** unpacks the two-element array into two
+  variables.
+- **`float(...)`** — the amounts are `decimal` values; turning them into ordinary Python numbers
+  lets us multiply by `1.5`.
+- **`print(...)`** — show the numbers: anything above **233.75** is unusual here.
+- **`(… < low) | (… > high)`** — a boolean column: `true` when the amount is outside the range.
+  Only order 103 is flagged; it **stays** in `clean_orders`.
+
+!!! info "Why compute it on the clean orders?"
+    The rule runs on `good`, after validation. With the `-30.00` and the unparseable amounts
+    still in, Q1 and Q3 would shift and the limits would be wrong.
+
+### 14 · Write Silver — and check it
 ```python
 spark.sql("CREATE NAMESPACE IF NOT EXISTS iceberg.silver")
 
@@ -509,16 +701,18 @@ ORDER BY n DESC, reject_reason
 
 !!! check "Check your work"
     `spark.table("iceberg.silver.clean_orders").printSchema()` shows real types now —
-    `order_id: integer`, `order_ts: timestamp`, `amount: decimal(10,2)` — instead of all `string`.
+    `order_id: integer`, `order_ts: timestamp`, `amount: decimal(10,2)`, `is_outlier: boolean` —
+    instead of all `string`. `clean_customers` has the new `has_email`, `first_name`,
+    `last_name` and `email_domain` columns.
 
 ## Challenge
 1. Add a rule: an order is rejected when its customer has **no valid email** (hint: also bring
    `email` into `known`). Which orders move to the reject table?
 2. Fix order **109** in `messy_orders.csv` (set its date to `2024-11-10 10:00:00`), upload it
-   again to the same folder (it replaces the old file), re-run steps 3–10, and see which reason it
+   again to the same folder (it replaces the old file), re-run steps 3–14, and see which reason it
    gets now.
 3. Profile `bronze.sample_orders`: count the `NULL`s per column with the `count_if` line from
-   step 5. Which column has them, and is that a problem or does it mean something?
+   step 6. Which column has them, and is that a problem or does it mean something?
 
 ## 🎯 This runs unchanged on Azure, Databricks, Snowflake & Fabric
 `trim`, `when`, `try_cast`, `try_to_timestamp`, `dropDuplicates`, `row_number` over a window and a
@@ -530,8 +724,12 @@ and [8.4 Data quality checks & quarantine](../recipes/data-quality.md).
 ## You can now…
 - **Profile** a table: types, distinct values, duplicate keys, missing values per column
 - **Load** downloaded files into Bronze: upload to My files, then a CSV view + `CREATE TABLE … AS` in SQL
+- **Fix column names** to snake_case with one small function and `toDF`
 - **Tidy** text: trim spaces and turn `N/A` / `null` text into real `NULL`
 - **Standardize** spellings and codes with `lower`/`upper`/`initcap`, `regexp_replace`, `when`
 - **Fix types** safely with `try_cast`, `try_to_date`, `try_to_timestamp` and `coalesce` over formats
+- **Fill** missing values with `fillna` — or deliberately keep `NULL` and add a flag
+- **Split & extract** text with `split`, `element_at` and `regexp_extract`
+- **Flag outliers** with the IQR rule and `percentile_approx`
 - **De-duplicate** — exact copies with `dropDuplicates()`, latest version with `row_number()` over a window
 - **Validate** with clear reasons and **quarantine** bad rows instead of dropping them

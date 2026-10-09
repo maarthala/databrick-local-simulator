@@ -1,9 +1,9 @@
-customer_id,full_name,email,country,signup_date
+Customer ID, Full Name ,EMAIL,Country,Signup Date
 1,Ravi Kumar,ravi@shopflow.com,IN,2024-01-15
 2,  anna SCHMIDT , ANNA@ShopFlow.com,de,2024-02-03
 3,Tom Baker,tom@shopflow,United Kingdom,15/03/2024
-4,Maria Lopez,N/A,USA,2024-04-01
-5,Li Wei,,U.S.,null
+4,Maria Lopez,N/A,U.S.,2024-04-01
+5,Li Wei,,,null
 2,Anna Schmidt,anna@shopflow.com,DE,2024-02-03
 6,Sara Ali,sara@shopflow.com,UK,2024-05-20
 6,Sara Ali,sara@shopflow.com,UK,2024-05-20
