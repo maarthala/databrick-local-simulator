@@ -311,6 +311,273 @@ Everything here — authoring, triggering, watching, reading logs — happens in
     *safe*. Our echo tasks are trivially idempotent; you'll design the real Spark jobs this way in
     [5.3](schedule.md).
 
+### 4. Pass data between tasks (XCom)
+Tasks often need a value from an earlier task — a row count, a file name, a date. Each task may
+run on a different machine, so they can't share Python variables. Airflow passes small values
+through **XCom** (*cross-communication*): a task **pushes** a value, Airflow stores it in its
+database, and a later task **pulls** it.
+
+The easiest way is the **TaskFlow** style: write tasks as plain Python functions. Create
+`dags/xcom_demo.py`:
+
+```python
+from airflow.sdk import dag, task
+from airflow.providers.standard.operators.bash import BashOperator
+import pendulum
+
+
+@dag(
+    dag_id="demouser_xcom_demo",          # own account? use your username instead of demouser
+    schedule=None,
+    start_date=pendulum.datetime(2026, 1, 1, tz="UTC"),
+    catchup=False,
+    tags=["unit5"],
+)
+def xcom_demo():
+
+    @task
+    def extract():
+        amounts = [120.50, 45.00, 1250.00, 80.00]          # pretend we read today's orders
+        return {"rows": len(amounts), "total": sum(amounts)}
+
+    @task
+    def report(stats: dict):
+        print(f"{stats['rows']} orders, total {stats['total']:.2f}")
+
+    stats = extract()
+    report(stats)
+
+    bash_report = BashOperator(
+        task_id="bash_report",
+        bash_command="echo 'rows from XCom: {{ ti.xcom_pull(task_ids=\"extract\")[\"rows\"] }}'",
+    )
+    stats >> bash_report
+
+
+xcom_demo()
+```
+
+**Read it step by step:**
+
+- **`@dag(...)` above `def xcom_demo():`** — the **TaskFlow** way to define a DAG: the same
+  arguments as `with DAG(...)`, written as a **decorator** (a `@…` line that adds behaviour to the
+  function below it). The last line, **`xcom_demo()`**, calls the function once so Airflow registers
+  the DAG — don't forget it.
+- **`@task` above `def extract():`** — turns a Python function into a **task**; its `task_id` is the
+  function name (`extract`).
+- **`return {...}`** — whatever a `@task` function **returns** is **pushed to XCom** automatically.
+  Here a small dict: `{"rows": 4, "total": 1495.5}`.
+- **`stats = extract()`** — in the DAG body this doesn't run the function; it **wires** the task
+  and gives you a handle to its future result.
+- **`report(stats)`** — passing that handle as an argument does two things: `report` runs **after**
+  `extract` (no `>>` needed), and at run time Airflow **pulls** the value from XCom and hands it in
+  as `stats`.
+- **`{{ ti.xcom_pull(task_ids="extract")["rows"] }}`** — the same value in a **template**, for
+  classic operators like `BashOperator`: **`ti`** is the running *task instance*,
+  **`xcom_pull(task_ids="extract")`** fetches what `extract` returned, and **`["rows"]`** picks one
+  field. **`stats >> bash_report`** makes sure `extract` has finished first.
+
+Trigger it. The logs show:
+
+```
+report       →  4 orders, total 1495.50
+bash_report  →  rows from XCom: 4
+```
+
+In the Grid, click the `extract` square → **XCom** tab to see the stored value.
+
+!!! warning "XCom is for small values — never for data"
+    XCom lives in Airflow's own database. Pass **small** things: a count, a date, a **table name**,
+    a **file path**. Never a DataFrame or thousands of rows. For real data, the first task
+    **writes a table** (e.g. `iceberg.bronze.orders`) and returns its **name**; the next task reads
+    the table.
+
+### 5. Conditional flow (branching)
+Sometimes the next step depends on the data: *new orders arrived → process them; nothing new →
+skip*. A **branch** task decides at run time which task(s) run next; the others are **skipped**.
+Create `dags/branch_demo.py`:
+
+```python
+from airflow.sdk import dag, task
+import pendulum
+
+
+@dag(
+    dag_id="demouser_branch_demo",
+    schedule=None,
+    start_date=pendulum.datetime(2026, 1, 1, tz="UTC"),
+    catchup=False,
+    tags=["unit5"],
+)
+def branch_demo():
+
+    @task
+    def count_new_orders():
+        return 0                      # pretend: no new orders today (try 25 later)
+
+    @task.branch
+    def any_new(n: int):
+        if n > 0:
+            return "process_orders"
+        return "skip_processing"
+
+    @task
+    def process_orders():
+        print("processing the new orders")
+
+    @task
+    def skip_processing():
+        print("nothing new today")
+
+    @task(trigger_rule="none_failed_min_one_success")
+    def finish():
+        print("pipeline finished")
+
+    decision = any_new(count_new_orders())
+    decision >> [process_orders(), skip_processing()] >> finish()
+
+
+branch_demo()
+```
+
+```mermaid
+flowchart LR
+  C[count_new_orders] --> B{"any_new<br/>(branch)"}
+  B -- "n > 0" --> P[process_orders]
+  B -- "n = 0" --> S[skip_processing]
+  P --> F[finish]
+  S --> F
+```
+
+**Read it step by step:**
+
+- **`count_new_orders()`** returns `0` → pushed to XCom (step 4).
+- **`@task.branch`** — a special task that **returns the `task_id`** of the path to follow.
+  **`any_new(count_new_orders())`** feeds it the count; `0` → it returns `"skip_processing"`.
+- **`decision >> [process_orders(), skip_processing()]`** — both tasks come after the branch (a
+  **list** in `>>` means "all of these"). At run time only the one the branch named runs; the other
+  is marked **skipped** (pink in the Grid).
+- **`>> finish()`** — both paths join again in `finish`.
+- **`trigger_rule="none_failed_min_one_success"`** — **when** `finish` may run. By default a task
+  runs only when **all** tasks before it **succeeded** (`all_success`). One of them is always
+  *skipped* here, so with the default `finish` would be **skipped too** — we tried it. This rule
+  says: *run if nothing failed and at least one task before me succeeded*.
+
+Trigger it. The task states:
+
+```
+count_new_orders  success
+any_new           success    → Following branch {'skip_processing'}
+process_orders    skipped
+skip_processing   success    → nothing new today
+finish            success    → pipeline finished
+```
+
+Change `return 0` to `return 25`, save, wait ~30 s and trigger again — now `process_orders` runs
+and `skip_processing` is skipped.
+
+!!! info "Trigger rules you'll meet"
+    | `trigger_rule=` | The task runs when the tasks before it… |
+    |---|---|
+    | `all_success` (default) | all succeeded |
+    | `none_failed_min_one_success` | none failed, at least one succeeded — the usual rule **after a branch** |
+    | `all_done` | all finished, whatever the result — e.g. a clean-up task |
+    | `one_failed` | at least one failed — e.g. send an alert |
+
+!!! tip "Stop the rest of the pipeline: `@task.short_circuit`"
+    A simpler kind of condition: **`@task.short_circuit`** returns `True` (carry on) or `False`
+    (skip **everything** after it). Handy for *"nothing new today → stop here"* when there's no
+    other path to take.
+
+### 6. Other important concepts: retries, parameters, one task per item
+Three things almost every real DAG uses. Create `dags/concepts_demo.py`:
+
+```python
+from airflow.sdk import dag, task, Param, get_current_context
+import pendulum
+
+
+@dag(
+    dag_id="demouser_concepts_demo",
+    schedule=None,
+    start_date=pendulum.datetime(2026, 1, 1, tz="UTC"),
+    catchup=False,
+    default_args={"retries": 2, "retry_delay": pendulum.duration(seconds=10)},
+    params={"country": Param("GB", type="string", enum=["GB", "US", "DE", "IN"])},
+    tags=["unit5"],
+)
+def concepts_demo():
+
+    @task
+    def flaky_download():
+        ti = get_current_context()["ti"]
+        print(f"attempt {ti.try_number}")
+        if ti.try_number < 2:
+            raise ConnectionError("simulated network hiccup")
+        print("downloaded")
+
+    @task(execution_timeout=pendulum.duration(minutes=5))
+    def show_country():
+        params = get_current_context()["params"]
+        print(f"building the report for {params['country']}")
+
+    @task
+    def load(table: str):
+        print(f"loading {table}")
+
+    flaky_download() >> show_country() >> load.expand(table=["customers", "orders", "products"])
+
+
+concepts_demo()
+```
+
+**Retries — survive a hiccup**
+
+- **`default_args={...}`** — settings applied to **every** task in the DAG.
+- **`"retries": 2`** — if a task fails, try it again up to 2 more times;
+  **`"retry_delay": pendulum.duration(seconds=10)`** — wait 10 seconds before each retry.
+- **`get_current_context()["ti"]`** — inside a task, **`get_current_context()`** gives the run's
+  details; **`["ti"]`** is the task instance, and **`ti.try_number`** is the attempt (1, 2, …).
+- **`raise ConnectionError(...)`** — fail on purpose on attempt 1, to see a retry. In the Grid the
+  square turns **yellow** (*up for retry*), then **green**. The log has both attempts:
+
+    ```
+    attempt 1   → ConnectionError: simulated network hiccup
+    attempt 2   → downloaded
+    ```
+
+- **`execution_timeout=pendulum.duration(minutes=5)`** — **fail** the task if it runs longer than
+  5 minutes, instead of hanging forever. Set it on anything that talks to another system.
+
+**Parameters — choose values when you trigger**
+
+- **`params={"country": Param("GB", type="string", enum=[...])}`** — a **run parameter** with a
+  default (`GB`), a type, and the allowed values (**`enum`**).
+- When you click **▶ Trigger**, Airflow shows a form with a **country** drop-down. Pick `US` →
+  the task reads it with **`get_current_context()["params"]`** and logs
+  `building the report for US`.
+
+**One task per item — `expand` (dynamic task mapping)**
+
+- **`load.expand(table=[...])`** — run the `load` task **once per item** in the list: three
+  **mapped** tasks, `[0]`, `[1]`, `[2]`, running in parallel. The logs say `loading customers`,
+  `loading orders`, `loading products`.
+- The list can also come from an earlier task (via XCom) — e.g. *"one load task per file that
+  arrived today"*, however many there are.
+
+!!! info "More concepts, and where you'll meet them"
+    | Concept | What it is | Where |
+    |---|---|---|
+    | **Schedule & backfill** | cron schedules, `{{ ds }}`, running missed days | [5.3](schedule.md) |
+    | **Sensor** | a task that **waits** for something (a file, a table) | [8.2](../recipes/file-trigger.md) |
+    | **Task groups** | fold related tasks into one box in the Graph (`@task_group`) | Airflow docs |
+    | **Assets** | start a DAG when **another DAG updates a table**, instead of on a clock | Airflow docs |
+    | **Callbacks** | run a function on failure — e.g. send a Slack/e-mail alert (`on_failure_callback`) | Airflow docs |
+
+!!! note "Clean up"
+    Delete `xcom_demo.py`, `branch_demo.py` and `concepts_demo.py` from `dags/` when you're done —
+    Airflow stops loading them within about a minute.
+
 ## Challenge
 Add a third task `count_tasks` that runs *after* `show_run` and prints how many tasks the DAG has.
 Wire the order `say_hello >> show_run >> count_tasks`. You're doing two things: making a third
@@ -368,6 +635,14 @@ Wire the order `say_hello >> show_run >> count_tasks`. You're doing two things: 
 | **DAG run** | One execution of the whole DAG — one pass through all its tasks |
 | **Idempotent** | Re-running the same task/run gives the same result (safe to retry & backfill) |
 | **Template (`{{ … }}`)** | Value filled in at run time (`run_id`, `ds`, …) |
+| **`@dag` / `@task`** | TaskFlow: a Python function becomes the DAG / a task |
+| **XCom** | Small values passed from one task to the next (a `@task`'s `return` value) |
+| **`@task.branch`** | Returns the `task_id` to run next; the other paths are skipped |
+| **Trigger rule** | When a task may run, based on the tasks before it (`all_success`, `none_failed_min_one_success`, …) |
+| **Retries / `retry_delay`** | Try a failed task again, after a pause |
+| **`execution_timeout`** | Fail a task that runs too long |
+| **Params** | Values you choose when you trigger a run (`Param`) |
+| **`.expand()`** | Dynamic task mapping — one task per item in a list |
 
 ## You can now…
 - Explain what an orchestrator does — order, schedule, retries, backfills — and the four problems
@@ -376,3 +651,6 @@ Wire the order `say_hello >> show_run >> count_tasks`. You're doing two things: 
 - Define a DAG with `dag_id`, `schedule`, `start_date`, and `catchup`, and wire task order with `>>`
 - Write, trigger, and inspect a multi-task DAG in the Airflow UI, reading task states in the Grid
 - Use templating (`{{ run_id }}`) and know when `{{ ds }}` applies
+- Pass small values between tasks with **XCom** — and know to pass table names, not data
+- Build a **conditional flow** with `@task.branch`, and join the paths with a **trigger rule**
+- Add **retries**, a **timeout**, **run parameters** and **one task per item** (`expand`)
