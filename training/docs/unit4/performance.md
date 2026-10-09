@@ -65,6 +65,9 @@ df.repartition(8, "customer_id")
 **Use `coalesce`** to reduce files before a write (avoid the small-files problem).
 **Use `repartition`** to *increase* parallelism or to co-locate rows by a key (balances skew).
 
+> Step by step, with every output: **[4.11 Partitions: `coalesce` & `repartition`](partitions.md)** —
+> including why one file can be several partitions.
+
 ## `spark.conf.set` — tuning knobs at runtime
 `spark.conf.set("key", value)` changes a Spark SQL setting for your session — no restart. The ones
 worth knowing:
@@ -145,6 +148,7 @@ helps on small clusters.
     - **[4.9 How Spark runs](spark-architecture.md)** — driver vs executors, the query lifecycle,
       how executors read the source in parallel, and the *route* of a join (broadcast vs sort-merge).
     - **[4.10 Data skew & salting](skew.md)** — why one hot key stalls the whole job, and how to fix it.
+    - **[4.11 Partitions](partitions.md)** — `coalesce` vs `repartition` in depth, files ↔ partitions.
     - **[4.7 Table maintenance](table-maintenance.md)** — fix the small-files problem at the table level
       (`OPTIMIZE`, Z-order, `VACUUM`).
 

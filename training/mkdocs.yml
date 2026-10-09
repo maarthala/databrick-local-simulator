@@ -123,6 +123,7 @@ nav:
       - "4.8 Spark performance & tuning": unit4/performance.md
       - "4.9 How Spark runs (architecture & query lifecycle)": unit4/spark-architecture.md
       - "4.10 Data skew & salting": unit4/skew.md
+      - "4.11 Partitions: coalesce & repartition": unit4/partitions.md
   - "5 · Orchestration (Airflow)":
       - "5.1 Airflow basics": unit5/basics.md
       - "5.2 Build the medallion DAG": unit5/medallion-dag.md
