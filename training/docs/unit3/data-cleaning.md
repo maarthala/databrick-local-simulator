@@ -628,6 +628,34 @@ good.select("order_id", "amount", "is_outlier").orderBy("order_id").show()
 +--------+-------+----------+
 ```
 
+<figure markdown>
+<svg viewBox="0 0 800 200" width="100%" role="img" aria-label="Order amounts on a number line from 0 to 1,250: orders 101, 102 and 104 lie between 45 and 120.50, inside the normal range that ends at 233.75; order 103 at 1,250 lies far outside and is flagged as an outlier" style="max-width:800px;font-family:inherit;font-size:13px">
+  <rect x="40" y="40" width="129.4" height="95" fill="currentColor" opacity="0.08"/>
+  <text x="40" y="32" fill="currentColor">normal range</text>
+  <rect x="64.9" y="106" width="41.8" height="28" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="64.9" y="99" fill="currentColor" text-anchor="middle">Q1</text>
+  <text x="106.7" y="99" fill="currentColor" text-anchor="middle">Q3</text>
+  <line x1="169.4" y1="40" x2="169.4" y2="135" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="176" y="72" fill="currentColor">upper limit = Q3 + 1.5 × IQR = 233.75</text>
+  <line x1="40" y1="120" x2="760" y2="120" stroke="currentColor" stroke-width="1.5"/>
+  <circle cx="64.9" cy="120" r="6" fill="currentColor"/>
+  <circle cx="84.3" cy="120" r="6" fill="currentColor"/>
+  <circle cx="106.7" cy="120" r="6" fill="currentColor"/>
+  <text x="85" y="150" fill="currentColor" text-anchor="middle">orders 102, 104, 101</text>
+  <circle cx="732.3" cy="120" r="7" fill="#e53935"/>
+  <text x="732.3" y="100" fill="#e53935" text-anchor="end" font-weight="bold">order 103 · 1,250.00 → is_outlier = true</text>
+  <g fill="currentColor" opacity="0.7" text-anchor="middle">
+    <text x="40" y="180">0</text>
+    <text x="178.5" y="180">250</text>
+    <text x="316.9" y="180">500</text>
+    <text x="455.4" y="180">750</text>
+    <text x="593.8" y="180">1,000</text>
+    <text x="732.3" y="180">1,250</text>
+  </g>
+</svg>
+<figcaption>The four clean orders on a number line. The box is the middle half (Q1 = 45 to Q3 = 120.50); everything up to 233.75 is normal. Order 103 is far beyond that, so it gets flagged.</figcaption>
+</figure>
+
 - **`F.percentile_approx("amount", [0.25, 0.75])`** — the values at 25 % and 75 % of the sorted
   `amount` column, returned as an array `[Q1, Q3]`. *Approx* because on billions of rows an exact
   answer is expensive; on small data it's exact.
