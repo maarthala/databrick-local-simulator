@@ -733,6 +733,266 @@ ORDER BY n DESC, reject_reason
     instead of all `string`. `clean_customers` has the new `has_email`, `first_name`,
     `last_name` and `email_domain` columns.
 
+## At scale — millions of rows
+Same cleaning rules — the code above is already Spark, so `trim`, `when`, `try_cast`, the window
+and the join run spread over the cluster. What changes is **how** you run them. Each point below
+shows what to avoid and what to do instead.
+
+### 1 · Keep the data in Spark — look at samples
+❌ **Avoid** — pulling the whole table into the notebook:
+
+```python
+pdf  = raw_o.toPandas()     # every row into notebook memory → crash at millions of rows
+rows = raw_o.collect()      # same problem, as a Python list
+```
+
+✅ **Do** — look at a **sample**, and limit what comes back:
+
+```python
+raw_o.sample(fraction=0.01, seed=42).limit(1000).toPandas()   # ~1 % of rows, max 1,000
+raw_o.select("channel").distinct().limit(50).show()           # at most 50 spellings
+```
+
+- **`toPandas()`** / **`collect()`** — copy **all** rows from the cluster into the notebook. Fine
+  for a few thousand rows, fatal for millions.
+- **`sample(fraction=0.01, seed=42)`** — a random ~1 % of the rows; the **`seed`** makes the "random"
+  pick the same every run, so results are repeatable.
+- **`limit(n)`** — never return more than `n` rows. `show()`, `count()` and `first()` are always
+  safe — they return very little.
+
+### 2 · Clean only the new data — then `MERGE`
+❌ **Avoid** — rebuilding Silver from **all** of Bronze every day:
+
+```python
+good.writeTo("iceberg.silver.clean_orders").using("iceberg").createOrReplace()   # every day, all rows
+```
+
+At millions of rows that's hours of work to change a few thousand.
+
+✅ **Do** — clean just the **new batch**, then **merge** it into Silver:
+
+```python
+# 1) only rows that arrived since the last run (needs an ingested_at column in Bronze)
+batch = spark.table("iceberg.bronze.messy_orders").filter(F.col("ingested_at") > last_run)
+
+# 2) … run the same cleaning steps on `batch` → `good` …
+
+# 3) upsert into Silver
+good.localCheckpoint().createOrReplaceTempView("orders_batch")
+spark.sql("""
+MERGE INTO iceberg.silver.clean_orders AS t
+USING orders_batch AS s
+ON t.order_id = s.order_id
+WHEN MATCHED AND s.order_ts > t.order_ts THEN UPDATE SET *
+WHEN NOT MATCHED THEN INSERT *
+""")
+```
+
+- **`ingested_at`** / **`last_run`** — a load timestamp that Bronze gets when a file is loaded, and
+  the time of the previous successful run. (Our lab files have no `ingested_at`; this line shows the
+  pattern.)
+- **`MERGE INTO … USING …`** — the upsert from [2.8](../unit2/merge.md) / [4.3](../unit4/transform-silver.md):
+  **update** orders that already exist, **insert** new ones, in one transaction.
+- **`WHEN MATCHED AND s.order_ts > t.order_ts`** — only overwrite when the incoming version is
+  **newer** — the same "keep the latest" rule as step 11, now across days.
+- **`localCheckpoint()`** — freeze the batch before the merge. Spark 4.1 can't plan a `MERGE` whose
+  source still points back at tables (*"No plan for TableReference…"*); see [4.3](../unit4/transform-silver.md).
+
+### 3 · Cut down the expensive steps (shuffles)
+`dropDuplicates`, windows and joins **shuffle** — move rows between machines so matching rows
+meet. Shuffles are the slow part of a big job.
+
+❌ **Avoid** — two de-duplications and a big join:
+
+```python
+o = o.dropDuplicates()                                    # compares EVERY column — shuffle 1
+o = o.withColumn("rn", F.row_number().over(latest)) ...   # shuffle 2
+o = o.join(known, on="customer_id", how="left")           # shuffles the big orders table too
+```
+
+✅ **Do** — one de-duplication on the **key**, and **broadcast** the small table:
+
+```python
+o = (o.withColumn("rn", F.row_number().over(latest))      # also removes exact copies
+      .filter(F.col("rn") == 1).drop("rn"))
+o = o.join(F.broadcast(known), on="customer_id", how="left")
+```
+
+- The **window** on `order_id` keeps one row per order — exact copies included — so the extra
+  `dropDuplicates()` only cost a shuffle.
+- **`F.broadcast(known)`** — send a full copy of the **small** table (customers) to every machine,
+  so the **big** table (orders) can be joined where it already is — no shuffle of orders. Use it
+  when one side is small (up to a few hundred MB). More in [4.8](../unit4/performance.md) and
+  [4.10](../unit4/skew.md).
+
+### 4 · Do the column fixes in one pass — and cache what you reuse
+❌ **Avoid** — one `withColumn` per column in a loop (our `tidy()` from step 6):
+
+```python
+for c in df.columns:
+    df = df.withColumn(c, ...)      # 200 columns → 200 nested steps in Spark's plan
+```
+
+✅ **Do** — build **all** columns in a single `select`:
+
+```python
+def tidy(df):
+    return df.select([
+        F.when(F.trim(F.col(c)).isin(NULL_LIKE), None).otherwise(F.trim(F.col(c))).alias(c)
+        for c in df.columns])
+```
+
+Same result (we checked: identical rows), but Spark gets one step instead of one per column —
+much faster to plan when a table has hundreds of columns.
+
+❌ **Avoid** — re-computing a DataFrame you use several times:
+
+```python
+good.select(F.percentile_approx(...))   # computes `good` from Bronze …
+good.writeTo(...)                       # … and again from Bronze
+```
+
+✅ **Do** — **cache** it once, and release it when done:
+
+```python
+good = good.cache()        # keep `good` in cluster memory after its first use
+q1, q3 = good.select(F.percentile_approx("amount", [0.25, 0.75]).alias("q")).first()["q"]
+good.writeTo("iceberg.silver.clean_orders").using("iceberg").createOrReplace()
+good.unpersist()           # free the memory
+```
+
+- **`cache()`** — the first action computes `good` and keeps the result in memory; later actions
+  reuse it instead of re-reading and re-cleaning Bronze. **`unpersist()`** gives the memory back.
+
+### 5 · Turn the reject count into an alarm
+❌ **Avoid** — writing whatever comes out, no matter how much was rejected:
+
+```python
+good.writeTo("iceberg.silver.clean_orders").using("iceberg").createOrReplace()
+```
+
+If the source suddenly sends broken dates, half the rows go to the reject table and nobody notices
+that Silver is half empty.
+
+✅ **Do** — check the **reject rate** first, and **stop** when it's too high:
+
+```python
+total, rejected = o.count(), bad.count()
+rate = rejected / total
+print(f"rejected {rejected} of {total} rows ({rate:.1%})")
+if rate > 0.05:
+    raise ValueError(f"Reject rate {rate:.1%} is above 5 % — stopping before loading Silver")
+```
+
+On our lab files (messy on purpose) this stops the run:
+
+```
+rejected 7 of 11 rows (63.6%)
+ValueError: Reject rate 63.6% is above 5 % — stopping before loading Silver
+```
+
+- **`f"…{rate:.1%}"`** — an **f-string**: Python fills in the values between `{ }`; **`:.1%`**
+  shows a fraction as a percentage with one decimal (`0.636` → `63.6%`).
+- **`raise ValueError(...)`** — stop the program with an error. In an Airflow task
+  ([Unit 5](../unit5/basics.md)) this fails the run and alerts you — **before** bad data lands in
+  Silver. The 5 % limit is a business choice; more checks like this in [8.4](../recipes/data-quality.md).
+
+### 6 · Outliers — limits per group
+❌ **Avoid** — one limit for everything when groups differ a lot:
+
+```python
+q1, q3 = good.select(F.percentile_approx("amount", [0.25, 0.75]).alias("q")).first()["q"]
+```
+
+An order of 5,000 is normal in INR (about €50) but huge in EUR — one shared limit flags the
+wrong orders.
+
+✅ **Do** — compute the limits **per currency** (or per country, product…):
+
+```python
+limits = (good.groupBy("currency")
+              .agg(F.percentile_approx("amount", 0.25).alias("q1"),
+                   F.percentile_approx("amount", 0.75).alias("q3"))
+              .withColumn("iqr",  F.col("q3") - F.col("q1"))
+              .withColumn("low",  F.col("q1") - 1.5 * F.col("iqr"))
+              .withColumn("high", F.col("q3") + 1.5 * F.col("iqr")))
+
+good = (good.join(F.broadcast(limits.select("currency", "low", "high")), on="currency")
+            .withColumn("is_outlier",
+                        (F.col("amount") < F.col("low")) | (F.col("amount") > F.col("high")))
+            .drop("low", "high"))
+```
+
+```
++--------+-------+-------+-----+------+------+
+|currency|     q1|     q3|  iqr|   low|  high|
++--------+-------+-------+-----+------+------+
+|     GBP|1250.00|1250.00| 0.00|1250.0|1250.0|
+|     EUR|  80.00|  80.00| 0.00|  80.0|  80.0|
+|     USD|  45.00| 120.50|75.50|-68.25|233.75|
++--------+-------+-------+-----+------+------+
+```
+
+- **`groupBy("currency").agg(...)`** — one row of Q1/Q3 **per currency**; then **`low`** and
+  **`high`** are computed per row.
+- **`.join(F.broadcast(limits…), on="currency")`** — attach each order's own limits (the limits
+  table is tiny → broadcast), flag, then drop the helper columns.
+- Look at **GBP**: order 103 is the **only** GBP order, so its Q1 = Q3 = 1,250 and it is
+  **not** flagged any more. Per-group limits need **enough rows per group** — at millions of rows
+  they have them; on 4 orders they don't.
+
+### 7 · Write for the queries that come next
+❌ **Avoid** — one big unpartitioned table:
+
+```python
+good.writeTo("iceberg.silver.clean_orders").using("iceberg").createOrReplace()
+```
+
+Every query for "last week" then reads **all** files.
+
+✅ **Do** — **partition** by date, and compact the files from time to time:
+
+```python
+from pyspark.sql.functions.partitioning import days
+
+(good.writeTo("iceberg.silver.clean_orders")
+     .using("iceberg")
+     .partitionedBy(days("order_ts"))
+     .createOrReplace())
+```
+
+```sql
+%%sql
+SELECT partition, record_count FROM iceberg.silver.clean_orders.partitions ORDER BY 1
+```
+
+```
++------------+------------+
+|partition   |record_count|
++------------+------------+
+|{2024-11-04}|1           |
+|{2024-11-05}|2           |
+|{2024-11-08}|1           |
++------------+------------+
+```
+
+```sql
+%%sql
+CALL iceberg.system.rewrite_data_files(table => 'silver.clean_orders')
+```
+
+- **`partitionedBy(days("order_ts"))`** — store the rows in folders **per day** of `order_ts`.
+  A query with `WHERE order_ts >= '2024-11-08'` then skips every other day's files. Iceberg
+  derives the day itself ("hidden partitioning") — no extra `order_date` column needed.
+- **`….partitions`** — an Iceberg **metadata table**: one row per partition, with its row count.
+- **`CALL iceberg.system.rewrite_data_files(...)`** — merge many small files into fewer big
+  ones (daily batches leave lots of small files). Run it now and then — see
+  [4.7 Table maintenance](../unit4/table-maintenance.md).
+
+!!! info "In one line"
+    Same cleaning rules — run on **new data only**, keep the work **inside Spark** (samples,
+    broadcast, one pass, cache), **alert** on the reject rate, and **partition** what you write.
+
 ## Challenge
 1. Add a rule: an order is rejected when its customer has **no valid email** (hint: also bring
    `email` into `known`). Which orders move to the reject table?
@@ -759,5 +1019,6 @@ and [8.4 Data quality checks & quarantine](../recipes/data-quality.md).
 - **Fill** missing values with `fillna` — or deliberately keep `NULL` and add a flag
 - **Split & extract** text with `split`, `element_at` and `regexp_extract`
 - **Flag outliers** with the IQR rule and `percentile_approx`
+- **Scale it up**: samples instead of `toPandas()`, new data + `MERGE`, `broadcast`, one-pass `select`, `cache`, a reject-rate alarm, per-group limits, date partitions
 - **De-duplicate** — exact copies with `dropDuplicates()`, latest version with `row_number()` over a window
 - **Validate** with clear reasons and **quarantine** bad rows instead of dropping them
