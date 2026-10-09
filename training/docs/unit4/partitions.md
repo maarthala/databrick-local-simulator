@@ -256,14 +256,44 @@ show_partitions(one)
   blocks) of 1 MB. Spark can only cut a Parquet file **between** row groups — more on that below.
 - **`one.inputFiles()`** — the list of files the DataFrame reads; **`len(...)`** counts them → **1**.
 
-**One file, yet 2 partitions.** When Spark reads files it cuts them into pieces:
+**One file, yet 2 partitions.** When Spark reads files it cuts them into pieces, and it
+doesn't only cut at 128 MB — it also wants **every core** to get a piece of work. It works out
+the **piece size** like this (simplified):
 
-- a piece is at most **128 MB** (the setting `spark.sql.files.maxPartitionBytes`), and
-- Spark also tries to give **every core** something to do — so a smaller file is cut into
-  smaller pieces when the cluster has more than one core.
+```
+per_core   = (total file size + 4 MB per file) / number of cores
+piece size = min( 128 MB , max( 4 MB , per_core ) )
+```
 
-That's why the 20 MB file gave **2** partitions here. On a cluster with more cores you may see
-more — the number depends on the cluster, not just the file.
+- **128 MB** — `spark.sql.files.maxPartitionBytes`: the **largest** piece.
+- **4 MB** — `spark.sql.files.openCostInBytes`: what Spark counts for *opening* a file. It's
+  added once per file, and it's also the **smallest** piece Spark aims for — tiny pieces cost more
+  to schedule than they save.
+- **number of cores** — how many tasks your session can run at once. In this lab your Spark
+  session has **2 cores** (`spark.cores.max=2`, locally and on Kubernetes).
+
+For our 20 MB file:
+
+```
+per_core   = (20 + 4) / 2              = 12 MB
+piece size = min(128, max(4, 12))      = 12 MB
+pieces     = 20 MB cut into 12 MB      → 2   (12 MB + 8 MB)
+```
+
+That's exactly what the output shows: **179,348 / 120,652 rows** — about 60 % / 40 %, the same
+split as 12 MB / 8 MB.
+
+The **same file** on other clusters:
+
+| Cores | `per_core` | Piece size | Partitions |
+|---|---|---|---|
+| 1 | 24 MB | 24 MB | **1** |
+| 2 (this lab) | 12 MB | 12 MB | **2** |
+| 4 | 6 MB | 6 MB | **about 4** |
+| 8 | 3 MB | 4 MB (the minimum) | **about 5** |
+
+So the number of partitions depends on the **cluster**, not just the file. A big file is cut at
+128 MB; a smaller file is cut so all cores get a share — but never into pieces under 4 MB.
 
 You can choose smaller pieces yourself:
 
@@ -287,7 +317,12 @@ show_partitions(small_chunks)
 
 - **`spark.conf.set("spark.sql.files.maxPartitionBytes", "4MB")`** — pieces of at most 4 MB → the
   same single file now reads as **5** partitions. (`spark.conf.set` changes a setting for **your
-  session** only — [4.8](performance.md).)
+  session** only — [4.8](performance.md).) With the formula:
+
+    ```
+    piece size = min(4, max(4, 12))   = 4 MB
+    pieces     = 20 MB cut into 4 MB  → 5
+    ```
 
 Now `coalesce` and `repartition` on this DataFrame:
 
