@@ -1,4 +1,4 @@
-# 3.9.1 Data cleaning — from messy Bronze to clean Silver
+# 4.2.1 Data cleaning — from messy Bronze to clean Silver
 
 ## Concept
 Files and feeds almost never arrive clean. Before anyone can trust a number, a data engineer
@@ -36,8 +36,9 @@ flowchart LR
   MO --> RO["🗄️ silver.rejected_orders"]
 ```
 
-> Work in a notebook ([3.7](spark.md)): `%%sql` cells for SQL ([3.8](sql-magic.md)), Python cells
+> Work in a notebook ([3.7](../unit3/spark.md)): `%%sql` cells for SQL ([3.8](../unit3/sql-magic.md)), Python cells
 > for the cleaning. Everything lands in **your own** lakehouse (`iceberg` = `<username>_lake`).
+> Steps 1–3 use the upload-and-register flow from [3.9](../unit3/upload-register.md).
 
 ## Lab
 
@@ -79,7 +80,7 @@ Signed in with your own account? Use **your** bucket instead of `demouser-lake` 
 of My files, e.g. `ravi-lake`) — in the SQL below too.
 
 ### 3 · Create the Bronze tables with SQL
-The same two-step pattern as [3.9](upload-register.md): a **temporary view** over the file, then
+The same two-step pattern as [3.9](../unit3/upload-register.md): a **temporary view** over the file, then
 a **table** from the view. One statement per `%%sql` cell — four cells:
 
 ```sql
@@ -586,7 +587,7 @@ bad.select("order_id", "customer_id", "order_ts", "amount", "reject_reason") \
 ```
 
 - **`F.current_timestamp()`** — now (date and time); an order placed after "now" is impossible.
-- **`|`** = **or**, **`~`** = **not** — the same rules as pandas masks ([3.2](pandas.md)): use
+- **`|`** = **or**, **`~`** = **not** — the same rules as pandas masks ([3.2](../unit3/pandas.md)): use
   them, not Python's `or`/`not`. `~…isin(...)` means "**not** one of the allowed values".
 - Why `F.col("channel").isNull() | …` first? `isin` on a `NULL` gives `NULL` — not `True` — so a
   missing channel would slip past `~isin(...)` without the explicit `isNull()` check.
@@ -682,7 +683,7 @@ good.writeTo("iceberg.silver.clean_orders").using("iceberg").createOrReplace()
     .writeTo("iceberg.silver.rejected_orders").using("iceberg").createOrReplace())
 ```
 
-- **`writeTo(...).createOrReplace()`** — write a DataFrame as a catalog table ([3.9](upload-register.md)).
+- **`writeTo(...).createOrReplace()`** — write a DataFrame as a catalog table ([3.9](../unit3/upload-register.md)).
 - **`withColumn("rejected_at", F.current_timestamp())`** — stamp **when** each row was rejected,
   so you can follow up later.
 
@@ -791,12 +792,12 @@ WHEN NOT MATCHED THEN INSERT *
 - **`ingested_at`** / **`last_run`** — a load timestamp that Bronze gets when a file is loaded, and
   the time of the previous successful run. (Our lab files have no `ingested_at`; this line shows the
   pattern.)
-- **`MERGE INTO … USING …`** — the upsert from [2.8](../unit2/merge.md) / [4.3](../unit4/transform-silver.md):
+- **`MERGE INTO … USING …`** — the upsert from [2.8](../unit2/merge.md) / [4.3](transform-silver.md):
   **update** orders that already exist, **insert** new ones, in one transaction.
 - **`WHEN MATCHED AND s.order_ts > t.order_ts`** — only overwrite when the incoming version is
   **newer** — the same "keep the latest" rule as step 11, now across days.
 - **`localCheckpoint()`** — freeze the batch before the merge. Spark 4.1 can't plan a `MERGE` whose
-  source still points back at tables (*"No plan for TableReference…"*); see [4.3](../unit4/transform-silver.md).
+  source still points back at tables (*"No plan for TableReference…"*); see [4.3](transform-silver.md).
 
 ### 3 · Cut down the expensive steps (shuffles)
 `dropDuplicates`, windows and joins **shuffle** — move rows between machines so matching rows
@@ -822,8 +823,8 @@ o = o.join(F.broadcast(known), on="customer_id", how="left")
   `dropDuplicates()` only cost a shuffle.
 - **`F.broadcast(known)`** — send a full copy of the **small** table (customers) to every machine,
   so the **big** table (orders) can be joined where it already is — no shuffle of orders. Use it
-  when one side is small (up to a few hundred MB). More in [4.8](../unit4/performance.md) and
-  [4.10](../unit4/skew.md).
+  when one side is small (up to a few hundred MB). More in [4.8](performance.md) and
+  [4.10](skew.md).
 
 ### 4 · Do the column fixes in one pass — and cache what you reuse
 ❌ **Avoid** — one `withColumn` per column in a loop (our `tidy()` from step 6):
@@ -987,7 +988,7 @@ CALL iceberg.system.rewrite_data_files(table => 'silver.clean_orders')
 - **`….partitions`** — an Iceberg **metadata table**: one row per partition, with its row count.
 - **`CALL iceberg.system.rewrite_data_files(...)`** — merge many small files into fewer big
   ones (daily batches leave lots of small files). Run it now and then — see
-  [4.7 Table maintenance](../unit4/table-maintenance.md).
+  [4.7 Table maintenance](table-maintenance.md).
 
 !!! info "In one line"
     Same cleaning rules — run on **new data only**, keep the work **inside Spark** (samples,
@@ -1006,7 +1007,7 @@ CALL iceberg.system.rewrite_data_files(table => 'silver.clean_orders')
 `trim`, `when`, `try_cast`, `try_to_timestamp`, `dropDuplicates`, `row_number` over a window and a
 reject table are the same in **Databricks** and **Fabric** notebooks (PySpark), and the SQL
 versions (`TRIM`, `CASE WHEN`, `TRY_CAST`, `QUALIFY ROW_NUMBER() …`) work in **Snowflake**. At
-scale you'd run these rules as a pipeline step — see [4.3 Transform to Silver](../unit4/transform-silver.md)
+scale you'd run these rules as a pipeline step — see [4.3 Transform to Silver](transform-silver.md)
 and [8.4 Data quality checks & quarantine](../recipes/data-quality.md).
 
 ## You can now…

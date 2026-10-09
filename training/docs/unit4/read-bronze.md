@@ -359,3 +359,6 @@ from Postgres and appends them.
 - Land raw copies into `iceberg.bronze.*` with no premature cleaning
 - Write Iceberg tables that Trino can read immediately (same catalog)
 - Ingest incrementally with a high-water mark instead of full overwrites
+
+> **Next:** Bronze is raw on purpose. [4.2.1 Data cleaning](data-cleaning.md) practises every
+> cleaning step on two messy files, before [4.3](transform-silver.md) builds Silver from ShopFlow.

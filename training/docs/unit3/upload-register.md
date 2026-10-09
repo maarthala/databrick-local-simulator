@@ -143,7 +143,7 @@ SELECT count(*) FROM customers_tmp
 ```
 The view disappears when the kernel stops; a catalog table persists and is shared.
 
-> **Next:** the data you just registered is rarely clean — [3.9.1 Data cleaning](data-cleaning.md)
+> **Next:** the data you just registered is rarely clean — [4.2.1 Data cleaning](../unit4/data-cleaning.md)
 > takes two messy Bronze tables to clean Silver.
 
 ## 🎯 This runs unchanged on Azure, Databricks, Snowflake & Fabric

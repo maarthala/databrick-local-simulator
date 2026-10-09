@@ -51,6 +51,10 @@ markdown_extensions:
 
 plugins:
   - search
+  - redirects:
+      redirect_maps:
+        # 3.9.1 moved to 4.2.1 — keep the shared link working
+        unit3/data-cleaning.md: unit4/data-cleaning.md
 
 extra_css:
   - stylesheets/extra.css
@@ -107,10 +111,10 @@ nav:
       - "3.7 Spark from a notebook": unit3/spark.md
       - "3.8 Query tables with %%sql": unit3/sql-magic.md
       - "3.9 Upload a file & register it as a table": unit3/upload-register.md
-      - "3.9.1 Data cleaning (messy Bronze → clean Silver)": unit3/data-cleaning.md
   - "4 · Spark":
       - "4.1 Spark fundamentals": unit4/fundamentals.md
       - "4.2 Read the lake (Bronze)": unit4/read-bronze.md
+      - "4.2.1 Data cleaning (messy Bronze → clean Silver)": unit4/data-cleaning.md
       - "4.3 Transform to Silver": unit4/transform-silver.md
       - "4.4 Spark SQL & aggregates (Gold)": unit4/spark-sql-gold.md
       - "4.5 Materialized views": unit4/materialized-views.md

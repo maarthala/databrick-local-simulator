@@ -29,8 +29,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Install MkDocs Material
-        run: pip install "mkdocs-material>=9,<10"
+      - name: Install MkDocs Material + redirects
+        run: pip install "mkdocs-material>=9,<10" "mkdocs-redirects>=1.2,<2"
       - name: Build site (strict — fails on broken links)
         run: mkdocs build --strict -f training/mkdocs.yml
       - name: Upload Pages artifact
